@@ -2,7 +2,8 @@ import asyncio
 import json
 import random
 import math
-import websockets
+import os
+from aiohttp import web
 
 PORT = 8000
 MAP_SIZE = 2000
@@ -24,11 +25,10 @@ for _ in range(FOOD_COUNT):
 
 async def game_loop():
     while True:
-        await asyncio.sleep(0.03)  # ~33 кадра в секунду
+        await asyncio.sleep(0.03)
         dead_players = []
 
         for pid, p in list(players.items()):
-            # Движение головы червяка к курсору
             dx = p["target_x"] - p["x"]
             dy = p["target_y"] - p["y"]
             angle = math.atan2(dy, dx)
@@ -37,16 +37,13 @@ async def game_loop():
             p["x"] += math.cos(angle) * speed
             p["y"] += math.sin(angle) * speed
 
-            # Ограничение картой
             p["x"] = max(10, min(MAP_SIZE - 10, p["x"]))
             p["y"] = max(10, min(MAP_SIZE - 10, p["y"]))
 
-            # Добавляем новую точку в тело и обрезаем хвост
             p["body"].insert(0, {"x": p["x"], "y": p["y"]})
             while len(p["body"]) > p["length"]:
                 p["body"].pop()
 
-            # Проверка поедания еды
             for f in list(food):
                 if math.hypot(p["x"] - f["x"], p["y"] - f["y"]) < 20:
                     food.remove(f)
@@ -54,7 +51,6 @@ async def game_loop():
                     p["length"] += 3
                     p["score"] += 10
 
-            # Проверка столкновения с телами других червяков
             for other_id, other in players.items():
                 if pid == other_id:
                     continue
@@ -63,7 +59,6 @@ async def game_loop():
                         dead_players.append(pid)
                         break
 
-        # Возрождение проигравших
         for pid in set(dead_players):
             if pid in players:
                 players[pid]["x"] = random.randint(200, MAP_SIZE - 200)
@@ -72,19 +67,29 @@ async def game_loop():
                 players[pid]["score"] = 0
                 players[pid]["body"] = []
 
-        # Рассылка состояния всем подключенным игрокам
         if players:
+            clean_players = {
+                k: {key: val for key, val in v.items() if key != "ws"}
+                for k, v in players.items()
+            }
             state = json.dumps({
                 "type": "state",
-                "players": players,
+                "players": clean_players,
                 "food": food
             })
             await asyncio.gather(
-                *[p["ws"].send(state) for p in players.values()],
+                *[p["ws"].send_str(state) for p in players.values()],
                 return_exceptions=True
             )
 
-async def handler(ws):
+async def index_handler(request):
+    html_path = os.path.join(os.path.dirname(__file__), "index.html")
+    return web.FileResponse(html_path)
+
+async def ws_handler(request):
+    ws = web.WebSocketResponse()
+    await ws.prepare(request)
+
     pid = str(id(ws))
     players[pid] = {
         "ws": ws,
@@ -98,27 +103,30 @@ async def handler(ws):
         "color": f"hsl({random.randint(0, 360)}, 85%, 55%)",
         "body": []
     }
-    await ws.send(json.dumps({"type": "init", "id": pid, "map_size": MAP_SIZE}))
+    await ws.send_str(json.dumps({"type": "init", "id": pid, "map_size": MAP_SIZE}))
 
     try:
-        async for message in ws:
-            data = json.loads(message)
-            if data.get("type") == "move" and pid in players:
-                players[pid]["target_x"] = data["x"]
-                players[pid]["target_y"] = data["y"]
-            elif data.get("type") == "name" and pid in players:
-                players[pid]["name"] = data["name"][:15]
-    except websockets.exceptions.ConnectionClosed:
-        pass
+        async for msg in ws:
+            if msg.type == web.WSMsgType.TEXT:
+                data = json.loads(msg.data)
+                if data.get("type") == "move" and pid in players:
+                    players[pid]["target_x"] = data["x"]
+                    players[pid]["target_y"] = data["y"]
+                elif data.get("type") == "name" and pid in players:
+                    players[pid]["name"] = data["name"][:15]
     finally:
         if pid in players:
             del players[pid]
 
-async def main():
-    asyncio.create_task(game_loop())
-    async with websockets.serve(handler, "0.0.0.0", PORT):
-        print(f"Сервер червячков запущен на порту {PORT}")
-        await asyncio.Future()
+    return ws
+
+async def on_startup(app):
+    app["game_loop"] = asyncio.create_task(game_loop())
+
+app = web.Application()
+app.on_startup.append(on_startup)
+app.router.add_get("/", index_handler)
+app.router.add_get("/ws", ws_handler)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    web.run_app(app, host="0.0.0.0", port=PORT)
