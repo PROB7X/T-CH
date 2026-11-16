@@ -8,7 +8,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-const PORT = 3001;
+const PORT = 3000;
 const USERS_FILE = path.join(__dirname, 'users.json');
 
 app.get('/', (req, res) => {
