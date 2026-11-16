@@ -1,141 +1,3 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Онлайн Червячки</title>
-    <style>
-        * { box-sizing: border-box; font-family: sans-serif; user-select: none; }
-        body { margin: 0; overflow: hidden; background: #121212; color: white; touch-action: none; }
-        canvas { display: block; }
-        
-        /* Оверлей полноэкранного режима */
-        #fsOverlay {
-            position: fixed; inset: 0; background: rgba(10, 10, 10, 0.96);
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            z-index: 100; text-align: center; padding: 20px;
-        }
-        #fsOverlay p { color: #aaa; margin-bottom: 20px; font-size: 16px; }
-        #fsBtn {
-            padding: 16px 32px; font-size: 20px; font-weight: bold; border-radius: 12px;
-            border: none; background: #2196f3; color: white; cursor: pointer;
-            box-shadow: 0 4px 15px rgba(33, 150, 243, 0.4);
-        }
-
-        /* Главное меню */
-        #menu {
-            position: fixed; inset: 0; background: rgba(18, 18, 18, 0.92);
-            display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10;
-        }
-        #menu h1 { font-size: 28px; color: #4caf50; margin: 0 0 15px 0; text-shadow: 0 0 10px rgba(76,175,80,0.5); }
-        #menu input {
-            padding: 10px 16px; font-size: 16px; border-radius: 8px; border: 2px solid #333;
-            background: #222; color: white; text-align: center; margin-bottom: 12px; width: 240px; outline: none;
-        }
-        #menu input:focus { border-color: #4caf50; }
-        #menu button {
-            padding: 10px 36px; font-size: 18px; font-weight: bold; border-radius: 8px; border: none;
-            background: #4caf50; color: white; cursor: pointer;
-        }
-
-        /* Игровой интерфейс */
-        #hud { display: none; position: fixed; inset: 0; pointer-events: none; }
-        #stats { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.6); padding: 8px 12px; border-radius: 8px; font-size: 14px; }
-        #leaderboard { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.6); padding: 8px 12px; border-radius: 8px; font-size: 13px; min-width: 130px; }
-        
-        /* Панель улучшений (сдвинута правее, чтобы не мешать джойстику) */
-        #upgrades {
-            position: absolute; bottom: 15px; right: 15px;
-            display: flex; gap: 8px; pointer-events: auto;
-        }
-        .upg-btn {
-            background: rgba(30, 30, 30, 0.85); border: 1px solid #555; color: white;
-            padding: 8px 10px; border-radius: 8px; font-size: 12px; cursor: pointer; text-align: center;
-        }
-        .upg-cost { color: #ffd740; font-weight: bold; display: block; margin-top: 2px; }
-
-        /* Виртуальный джойстик */
-        #joyBase {
-            position: absolute; bottom: 20px; left: 20px; width: 110px; height: 110px;
-            border-radius: 50%; background: rgba(255, 255, 255, 0.1);
-            border: 2px solid rgba(255, 255, 255, 0.25); pointer-events: auto;
-            display: flex; align-items: center; justify-content: center;
-        }
-        #joyStick {
-            width: 44px; height: 44px; border-radius: 50%;
-            background: rgba(76, 175, 80, 0.85); box-shadow: 0 0 10px rgba(0,0,0,0.5);
-            position: relative; pointer-events: none;
-        }
-    </style>
-</head>
-<body>
-
-    <div id="fsOverlay">
-        <p>Для удобного управления переведите игру в горизонтальный полноэкранный режим</p>
-        <button id="fsBtn">📱 На весь экран</button>
-    </div>
-
-    <div id="menu">
-        <h1>🐛 Червячки Онлайн</h1>
-        <input type="text" id="nickInput" placeholder="Введи имя..." maxlength="15">
-        <button id="playBtn">Играть</button>
-    </div>
-
-    <div id="hud">
-        <div id="stats">
-            Вес: <b id="massVal">10</b> | Онлайн: <b id="onlineVal">1</b>
-        </div>
-        <div id="leaderboard"><b>Топ игроков:</b><div id="topList"></div></div>
-        
-        <div id="joyBase">
-            <div id="joyStick"></div>
-        </div>
-
-        <div id="upgrades">
-            <button class="upg-btn" id="btnSpeed">⚡ Скорость (Ур. <span id="lvlSpeed">1</span>)<span class="upg-cost">Цена: <span id="costSpeed">15</span></span></button>
-            <button class="upg-btn" id="btnMagnet">🧲 Магнит (Ур. <span id="lvlMagnet">1</span>)<span class="upg-cost">Цена: <span id="costMagnet">15</span></span></button>
-        </div>
-    </div>
-
-    <canvas id="game"></canvas>
-
-    <script src="/socket.io/socket.io.js"></script>
-    <script>
-        const socket = io();
-        const canvas = document.getElementById('game');
-        const ctx = canvas.getContext('2d');
-        const fsOverlay = document.getElementById('fsOverlay');
-
-        function resize() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        }
-        window.addEventListener('resize', resize);
-        resize();
-
-        // Полноэкранный режим и горизонтальная ориентация
-        async function enterFullscreen() {
-            try {
-                const el = document.documentElement;
-                if (el.requestFullscreen) await el.requestFullscreen();
-                else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
-                if (screen.orientation && screen.orientation.lock) {
-                    await screen.orientation.lock('landscape').catch(() => {});
-                }
-            } catch (e) {}
-            fsOverlay.style.display = 'none';
-            resize();
-        }
-
-        document.getElementById('fsBtn').onclick = enterFullscreen;
-
-        function checkFullscreen() {
-            const isFs = document.fullscreenElement || document.webkitFullscreenElement;
-            fsOverlay.style.display = isFs ? 'none' : 'flex';
-            resize();
-        }
-        document.addEventListener('fullscreenchange', checkFullscreen);
-        document.addEventListener('webkitfullscreenchange', checkFullscreen);
         let myId = null;
         let mapSize = 2000;
         let playing = false;
@@ -146,8 +8,7 @@
         let myPos = { x: 1000, y: 1000 };
         let angle = 0;
         let tail = [];
-        let speedLvl = 1;
-        let magnetLvl = 1;
+        let isBoosting = false;
 
         // Логика виртуального джойстика
         const joyBase = document.getElementById('joyBase');
@@ -163,19 +24,15 @@
             const dist = Math.hypot(dx, dy);
             const maxRadius = 35;
 
-            if (dist > 3) {
-                angle = Math.atan2(dy, dx);
-            }
+            if (dist > 3) angle = Math.atan2(dy, dx);
 
             const clampedDist = Math.min(dist, maxRadius);
-            const stickX = Math.cos(angle) * clampedDist;
-            const stickY = Math.sin(angle) * clampedDist;
-            joyStick.style.transform = `translate(${stickX}px, ${stickY}px)`;
+            joyStick.style.transform = `translate(${Math.cos(angle) * clampedDist}px, ${Math.sin(angle) * clampedDist}px)`;
         }
 
         joyBase.addEventListener('touchstart', e => {
             e.preventDefault();
-            const touch = e.changedTouches[0];
+            const touch = e.changedTouches;
             joyTouchId = touch.identifier;
             handleJoyMove(touch.clientX, touch.clientY);
         }, { passive: false });
@@ -200,7 +57,21 @@
         joyBase.addEventListener('touchend', resetJoy);
         joyBase.addEventListener('touchcancel', resetJoy);
 
-        // Управление мышкой (для игры с компьютера)
+        // Кнопка ускорения (мультитач + мышь/пробел)
+        const boostBtn = document.getElementById('boostBtn');
+        function setBoost(state) {
+            isBoosting = state;
+            boostBtn.classList.toggle('active', state && myData.mass > 12);
+        }
+        boostBtn.addEventListener('touchstart', e => { e.preventDefault(); setBoost(true); }, { passive: false });
+        boostBtn.addEventListener('touchend', e => { e.preventDefault(); setBoost(false); }, { passive: false });
+        boostBtn.addEventListener('touchcancel', () => setBoost(false));
+        boostBtn.addEventListener('mousedown', () => setBoost(true));
+        window.addEventListener('mouseup', () => setBoost(false));
+        window.addEventListener('keydown', e => { if (e.code === 'Space') setBoost(true); });
+        window.addEventListener('keyup', e => { if (e.code === 'Space') setBoost(false); });
+
+        // Управление мышкой (для ПК)
         window.addEventListener('mousemove', e => {
             if (playing && joyTouchId === null) {
                 angle = Math.atan2(e.clientY - canvas.height / 2, e.clientX - canvas.width / 2);
@@ -216,34 +87,10 @@
             document.getElementById('hud').style.display = 'block';
             playing = true;
         };
-
-        // Прокачка улучшений за вес
-        document.getElementById('btnSpeed').onclick = () => {
-            const cost = speedLvl * 15;
-            if (myData.mass - cost >= 10) {
-                socket.emit('spendMass', cost);
-                myData.mass -= cost;
-                speedLvl++;
-                document.getElementById('lvlSpeed').innerText = speedLvl;
-                document.getElementById('costSpeed').innerText = speedLvl * 15;
-            }
-        };
-
-        document.getElementById('btnMagnet').onclick = () => {
-            const cost = magnetLvl * 15;
-            if (myData.mass - cost >= 10) {
-                socket.emit('spendMass', cost);
-                myData.mass -= cost;
-                magnetLvl++;
-                document.getElementById('lvlMagnet').innerText = magnetLvl;
-                document.getElementById('costMagnet').innerText = magnetLvl * 15;
-            }
-        };
-
         socket.on('init', data => {
             myId = data.id;
             mapSize = data.mapSize;
-            foods = data.foods;
+            foods = data.foods || [];
             if (data.player) {
                 myData = data.player;
                 myPos.x = data.player.x;
@@ -255,26 +102,29 @@
         socket.on('foods', serverFoods => { foods = serverFoods; });
 
         socket.on('state', serverPlayers => {
-            players = serverPlayers;
+            players = serverPlayers || {};
             if (myId && players[myId]) {
-                myData.mass = players[myId].mass;
-                myData.color = players[myId].color;
-                myData.name = players[myId].name;
+                myData.mass = players[myId].mass || 10;
+                myData.color = players[myId].color || myData.color;
+                myData.name = players[myId].name || myData.name;
             }
             document.getElementById('massVal').innerText = myData.mass;
 
             const list = Object.values(players);
             document.getElementById('onlineVal').innerText = Math.max(1, list.length);
 
-            list.sort((a, b) => b.mass - a.mass);
+            list.sort((a, b) => (b.mass || 10) - (a.mass || 10));
             document.getElementById('topList').innerHTML = list.slice(0, 5)
-                .map((p, i) => `<div>${i + 1}. ${p.name}: <b>${p.mass}</b></div>`).join('');
+                .map((p, i) => `<div>${i + 1}. ${p.name || 'Игрок'}: <b>${p.mass || 10}</b></div>`).join('');
         });
 
         function update() {
             if (!playing) return;
 
-            const speed = 3 + (speedLvl - 1) * 0.6;
+            const canBoost = isBoosting && myData.mass > 12;
+            boostBtn.classList.toggle('active', canBoost);
+            const speed = canBoost ? 5.6 : 3.1;
+
             myPos.x += Math.cos(angle) * speed;
             myPos.y += Math.sin(angle) * speed;
 
@@ -282,81 +132,112 @@
             myPos.y = Math.max(15, Math.min(mapSize - 15, myPos.y));
 
             tail.push({ x: myPos.x, y: myPos.y });
-            const maxTail = Math.min(180, 12 + Math.floor(myData.mass * 0.8));
+            const maxTail = Math.min(200, 12 + Math.floor(myData.mass * 0.8));
             while (tail.length > maxTail) tail.shift();
 
             socket.emit('update', {
                 x: myPos.x,
                 y: myPos.y,
                 tail: tail,
-                magnetLevel: magnetLvl - 1
+                boosting: canBoost
             });
         }
 
-        function drawWorm(x, y, t, color, name, mass) {
+        // Проверка попадания в камеру с запасом (чтобы части не исчезали на глазах)
+        function isVisible(x, y, margin, view) {
+            return x >= view.left - margin && x <= view.right + margin &&
+                   y >= view.top - margin && y <= view.bottom + margin;
+        }
+
+        function drawWorm(x, y, t, color, name, mass, view) {
             const radius = Math.min(28, 11 + mass * 0.05);
+            const margin = radius + 80;
 
             if (t && t.length > 0) {
+                ctx.fillStyle = color;
                 for (let i = 0; i < t.length; i++) {
-                    ctx.beginPath();
-                    ctx.arc(t[i].x, t[i].y, radius * (0.55 + 0.45 * (i / t.length)), 0, Math.PI * 2);
-                    ctx.fillStyle = color;
-                    ctx.fill();
+                    if (isVisible(t[i].x, t[i].y, margin, view)) {
+                        ctx.beginPath();
+                        ctx.arc(t[i].x, t[i].y, radius * (0.55 + 0.45 * (i / t.length)), 0, Math.PI * 2);
+                        ctx.fill();
+                    }
                 }
             }
 
-            ctx.beginPath();
-            ctx.arc(x, y, radius, 0, Math.PI * 2);
-            ctx.fillStyle = color;
-            ctx.fill();
-            ctx.lineWidth = 2;
-            ctx.strokeStyle = '#ffffff';
-            ctx.stroke();
+            if (isVisible(x, y, margin, view)) {
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                ctx.fillStyle = color;
+                ctx.fill();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#ffffff';
+                ctx.stroke();
 
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 13px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText(`${name} (${mass})`, x, y - radius - 8);
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 13px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(`${name} (${mass})`, x, y - radius - 8);
+            }
         }
 
         function draw() {
             ctx.fillStyle = '#161616';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            ctx.save();
-            const camX = canvas.width / 2 - myPos.x;
-            const camY = canvas.height / 2 - myPos.y;
-            ctx.translate(camX, camY);
+            const view = {
+                left: myPos.x - canvas.width / 2,
+                right: myPos.x + canvas.width / 2,
+                top: myPos.y - canvas.height / 2,
+                bottom: myPos.y + canvas.height / 2
+            };
 
+            ctx.save();
+            ctx.translate(-view.left, -view.top);
+
+            // Сетка
             ctx.strokeStyle = '#242424';
             ctx.lineWidth = 1;
-            for (let x = 0; x <= mapSize; x += 50) {
-                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, mapSize); ctx.stroke();
+            const startX = Math.max(0, Math.floor(view.left / 50) * 50);
+            const endX = Math.min(mapSize, Math.ceil(view.right / 50) * 50);
+            const startY = Math.max(0, Math.floor(view.top / 50) * 50);
+            const endY = Math.min(mapSize, Math.ceil(view.bottom / 50) * 50);
+
+            for (let x = startX; x <= endX; x += 50) {
+                ctx.beginPath(); ctx.moveTo(x, startY); ctx.lineTo(x, endY); ctx.stroke();
             }
-            for (let y = 0; y <= mapSize; y += 50) {
-                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(mapSize, y); ctx.stroke();
+            for (let y = startY; y <= endY; y += 50) {
+                ctx.beginPath(); ctx.moveTo(startX, y); ctx.lineTo(endX, y); ctx.stroke();
             }
 
+            // Границы карты
             ctx.strokeStyle = '#ff5252';
             ctx.lineWidth = 4;
             ctx.strokeRect(0, 0, mapSize, mapSize);
 
-            foods.forEach(f => {
-                ctx.beginPath();
-                ctx.arc(f.x, f.y, f.value > 1 ? 9 : 5, 0, Math.PI * 2);
-                ctx.fillStyle = f.color;
-                ctx.fill();
-            });
-
-            for (let id in players) {
-                if (id !== myId) {
-                    const p = players[id];
-                    drawWorm(p.x, p.y, p.tail, p.color, p.name, p.mass);
+            // Еда
+            for (let i = 0; i < foods.length; i++) {
+                const f = foods[i];
+                if (isVisible(f.x, f.y, 50, view)) {
+                    ctx.beginPath();
+                    ctx.arc(f.x, f.y, f.value > 1 ? 9 : 5, 0, Math.PI * 2);
+                    ctx.fillStyle = f.color;
+                    ctx.fill();
                 }
             }
 
+            // Другие игроки
+            for (let id in players) {
+                if (id !== myId) {
+                    const p = players[id];
+                    if (p && typeof p.x === 'number') {
+                        drawWorm(p.x, p.y, p.tail, p.color || '#448aff', p.name || 'Игрок', p.mass || 10, view);
+                    }
+                }
+            }
+
+            // Наш игрок
             if (playing) {
-                drawWorm(myPos.x, myPos.y, tail, myData.color, myData.name, myData.mass);
+                drawWorm(myPos.x, myPos.y, tail, myData.color, myData.name, myData.mass, view);
             }
 
             ctx.restore();
