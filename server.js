@@ -10,7 +10,7 @@ const io = new Server(server, {
 });
 
 const MAP_SIZE = 2000;
-const FOOD_COUNT = 180;
+const FOOD_COUNT = 200;
 const players = {};
 let foods = [];
 
@@ -20,8 +20,8 @@ function spawnFood() {
     while (foods.length < FOOD_COUNT) {
         foods.push({
             id: Math.random().toString(36).substr(2, 9),
-            x: Math.floor(Math.random() * MAP_SIZE),
-            y: Math.floor(Math.random() * MAP_SIZE),
+            x: Math.floor(Math.random() * (MAP_SIZE - 40)) + 20,
+            y: Math.floor(Math.random() * (MAP_SIZE - 40)) + 20,
             color: colors[Math.floor(Math.random() * colors.length)],
             value: Math.random() > 0.85 ? 5 : 1
         });
@@ -61,7 +61,17 @@ io.on('connection', (socket) => {
         p.y = data.y;
         p.tail = Array.isArray(data.tail) ? data.tail : [];
 
-        const pickupRadius = 22 + (data.magnetLevel || 0) * 14;
+        // Трата веса при ускорении
+        if (data.boosting && p.mass > 12) {
+            p.boostTick = (p.boostTick || 0) + 1;
+            if (p.boostTick >= 10) {
+                p.mass -= 1;
+                p.boostTick = 0;
+            }
+        }
+
+        // Поедание еды
+        const pickupRadius = Math.min(35, 16 + p.mass * 0.05);
         let ate = false;
 
         for (let i = foods.length - 1; i >= 0; i--) {
@@ -76,13 +86,6 @@ io.on('connection', (socket) => {
         if (ate) {
             spawnFood();
             io.emit('foods', foods);
-        }
-    });
-
-    socket.on('spendMass', (amount) => {
-        const p = players[socket.id];
-        if (p && p.mass - amount >= 10) {
-            p.mass -= amount;
         }
     });
 
