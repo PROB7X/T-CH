@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Онлайн Червячки</title>
     <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
         body {
             margin: 0;
             overflow: hidden;
@@ -14,15 +19,23 @@
         }
         canvas {
             display: block;
+            width: 100vw;
+            height: 100vh;
         }
         #ui {
             position: absolute;
             top: 15px;
             left: 15px;
-            background: rgba(0, 0, 0, 0.6);
+            background: rgba(0, 0, 0, 0.65);
             padding: 10px 15px;
             border-radius: 8px;
             pointer-events: none;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        #status {
+            color: #ffa500;
+            font-weight: bold;
         }
         #login {
             position: absolute;
@@ -33,18 +46,21 @@
             padding: 25px;
             border-radius: 12px;
             text-align: center;
-            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            box-shadow: 0 0 25px rgba(0,0,0,0.9);
+            z-index: 10;
+            width: 280px;
         }
         input {
             padding: 10px;
             font-size: 16px;
             border-radius: 6px;
             border: none;
-            margin-bottom: 10px;
-            width: 200px;
+            margin-bottom: 12px;
+            width: 100%;
+            text-align: center;
         }
         button {
-            padding: 10px 20px;
+            padding: 12px 20px;
             font-size: 16px;
             background: #28a745;
             color: white;
@@ -52,19 +68,34 @@
             border-radius: 6px;
             cursor: pointer;
             font-weight: bold;
+            width: 100%;
+        }
+        #fullscreen-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: auto;
+            padding: 10px 16px;
+            font-size: 14px;
+            background: #007bff;
+            z-index: 20;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
         }
     </style>
 </head>
 <body>
 
     <div id="ui">
+        <div id="status">Подключение...</div>
         <div>Очки: <span id="score">0</span></div>
-        <div>Игроков онлайн: <span id="online">1</span></div>
+        <div>Игроков онлайн: <span id="online">0</span></div>
     </div>
 
+    <button id="fullscreen-btn" onclick="enterFullscreen()">На весь экран</button>
+
     <div id="login">
-        <h2>Онлайн Червячки</h2>
-        <input type="text" id="nick" placeholder="Ваш ник" maxlength="15"><br>
+        <h2 style="margin-top: 0;">Онлайн Червячки</h2>
+        <input type="text" id="nick" placeholder="Ваш ник" maxlength="15" value="Петя">
         <button onclick="startGame()">Играть</button>
     </div>
 
@@ -76,53 +107,120 @@
 
         const canvas = document.getElementById("game");
         const ctx = canvas.getContext("2d");
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+        const statusEl = document.getElementById("status");
+        const fsBtn = document.getElementById("fullscreen-btn");
 
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener("resize", resizeCanvas);
+
+        // Полноэкранный режим + горизонтальная ориентация
+        async function enterFullscreen() {
+            try {
+                const elem = document.documentElement;
+                if (elem.requestFullscreen) {
+                    await elem.requestFullscreen();
+                } else if (elem.webkitRequestFullscreen) {
+                    await elem.webkitRequestFullscreen();
+                }
+
+                if (screen.orientation && screen.orientation.lock) {
+                    await screen.orientation.lock("landscape");
+                }
+            } catch (err) {
+                console.log("Ошибка перехода в полноэкранный режим:", err);
+            }
+            updateFullscreenButton();
+        }
+
+        function updateFullscreenButton() {
+            const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
+            fsBtn.style.display = isFullscreen ? "none" : "block";
+            setTimeout(resizeCanvas, 200);
+        }
+
+        document.addEventListener("fullscreenchange", updateFullscreenButton);
+        document.addEventListener("webkitfullscreenchange", updateFullscreenButton);
+
+        // Логика WebSocket
         let myId = null;
         let mapSize = 2000;
         let players = {};
         let food = [];
         let mouseX = canvas.width / 2;
         let mouseY = canvas.height / 2;
+        let ws;
 
-        const ws = new WebSocket(`ws://${SERVER_IP}:${SERVER_PORT}`);
-
-        ws.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            if (data.type === "init") {
-                myId = data.id;
-                mapSize = data.map_size;
-            } else if (data.type === "state") {
-                players = data.players;
-                food = data.food;
-                document.getElementById("online").textContent = Object.keys(players).length;
-                if (myId && players[myId]) {
-                    document.getElementById("score").textContent = players[myId].score;
-                }
+        function connect() {
+            // Если сайт открыт по HTTPS (GitHub Pages), браузер заблокирует ws://
+            if (window.location.protocol === "https:") {
+                statusEl.textContent = "Ошибка: откройте по HTTP (не GitHub Pages)";
+                statusEl.style.color = "#ff4444";
             }
-        };
+
+            ws = new WebSocket(`ws://${SERVER_IP}:${SERVER_PORT}`);
+
+            ws.onopen = () => {
+                statusEl.textContent = "В сети";
+                statusEl.style.color = "#4caf50";
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.type === "init") {
+                    myId = data.id;
+                    mapSize = data.map_size;
+                } else if (data.type === "state") {
+                    players = data.players;
+                    food = data.food;
+                    document.getElementById("online").textContent = Object.keys(players).length;
+                    if (myId && players[myId]) {
+                        document.getElementById("score").textContent = players[myId].score;
+                    }
+                }
+            };
+
+            ws.onclose = () => {
+                statusEl.textContent = "Нет связи с сервером";
+                statusEl.style.color = "#ff4444";
+                setTimeout(connect, 3000);
+            };
+        }
 
         function startGame() {
+            enterFullscreen();
             const nick = document.getElementById("nick").value.trim();
-            if (nick && ws.readyState === WebSocket.OPEN) {
+            if (nick && ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({ type: "name", name: nick }));
             }
             document.getElementById("login").style.display = "none";
         }
 
+        // Управление мышью и пальцем
         window.addEventListener("mousemove", (e) => {
             mouseX = e.clientX;
             mouseY = e.clientY;
         });
 
+        window.addEventListener("touchstart", (e) => {
+            if (e.touches.length > 0) {
+                mouseX = e.touches[0].clientX;
+                mouseY = e.touches[0].clientY;
+            }
+        }, { passive: true });
+
         window.addEventListener("touchmove", (e) => {
-            mouseX = e.touches[0].clientX;
-            mouseY = e.touches[0].clientY;
-        });
+            if (e.touches.length > 0) {
+                mouseX = e.touches[0].clientX;
+                mouseY = e.touches[0].clientY;
+            }
+        }, { passive: true });
 
         setInterval(() => {
-            if (myId && players[myId] && ws.readyState === WebSocket.OPEN) {
+            if (myId && players[myId] && ws && ws.readyState === WebSocket.OPEN) {
                 const me = players[myId];
                 const worldX = me.x + (mouseX - canvas.width / 2);
                 const worldY = me.y + (mouseY - canvas.height / 2);
@@ -151,7 +249,7 @@
             ctx.lineWidth = 5;
             ctx.strokeRect(0, 0, mapSize, mapSize);
 
-            // Сетка фона
+            // Сетка
             ctx.strokeStyle = "#252525";
             ctx.lineWidth = 1;
             for (let x = 0; x <= mapSize; x += 100) {
@@ -169,7 +267,7 @@
                 ctx.fill();
             }
 
-            // Игроки
+            // Червяки
             for (const pid in players) {
                 const p = players[pid];
                 ctx.fillStyle = p.color;
@@ -180,7 +278,6 @@
                     ctx.fill();
                 }
 
-                // Имя игрока
                 ctx.fillStyle = "white";
                 ctx.font = "14px Arial";
                 ctx.textAlign = "center";
@@ -191,11 +288,7 @@
             requestAnimationFrame(draw);
         }
 
-        window.addEventListener("resize", () => {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        });
-
+        connect();
         draw();
     </script>
 </body>
