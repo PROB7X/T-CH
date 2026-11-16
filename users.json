@@ -1,0 +1,26 @@
+{
+  "admins": [
+    "PROB7X"
+  ],
+  "protected": {
+    "PROB7X": "0027"
+  },
+  "tags": {
+    "PROB7X": {
+      "badge": "ADMIN",
+      "badgeColor": "#e91916",
+      "nickColor": "#ff4f4d"
+    },
+    "Moderator1": {
+      "badge": "MOD",
+      "badgeColor": "#00ad03",
+      "nickColor": "#00e604"
+    },
+    "VIP_User": {
+      "badge": "VIP",
+      "badgeColor": "#e005b9",
+      "nickColor": "#ff5ce1"
+    }
+  },
+  "banned": []
+}
