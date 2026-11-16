@@ -5,81 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Онлайн Червячки</title>
     <style>
-        * {
-            box-sizing: border-box;
-            user-select: none;
-            -webkit-user-select: none;
-        }
-        body {
-            margin: 0;
-            overflow: hidden;
-            background-color: #111;
-            font-family: Arial, sans-serif;
-            color: white;
-        }
-        canvas {
-            display: block;
-            width: 100vw;
-            height: 100vh;
-        }
+        * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+        body { margin: 0; overflow: hidden; background-color: #111; font-family: Arial, sans-serif; color: white; }
+        canvas { display: block; width: 100vw; height: 100vh; }
         #ui {
-            position: absolute;
-            top: 15px;
-            left: 15px;
-            background: rgba(0, 0, 0, 0.65);
-            padding: 10px 15px;
-            border-radius: 8px;
-            pointer-events: none;
-            font-size: 14px;
-            line-height: 1.5;
+            position: absolute; top: 15px; left: 15px;
+            background: rgba(0, 0, 0, 0.65); padding: 10px 15px;
+            border-radius: 8px; pointer-events: none; font-size: 14px; line-height: 1.5;
         }
-        #status {
-            color: #ffa500;
-            font-weight: bold;
-        }
+        #status { color: #ffa500; font-weight: bold; }
         #login {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: #222;
-            padding: 25px;
-            border-radius: 12px;
-            text-align: center;
-            box-shadow: 0 0 25px rgba(0,0,0,0.9);
-            z-index: 10;
-            width: 280px;
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: #222; padding: 25px; border-radius: 12px; text-align: center;
+            box-shadow: 0 0 25px rgba(0,0,0,0.9); z-index: 10; width: 280px;
         }
-        input {
-            padding: 10px;
-            font-size: 16px;
-            border-radius: 6px;
-            border: none;
-            margin-bottom: 12px;
-            width: 100%;
-            text-align: center;
-        }
-        button {
-            padding: 12px 20px;
-            font-size: 16px;
-            background: #28a745;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-            width: 100%;
-        }
+        input { padding: 10px; font-size: 16px; border-radius: 6px; border: none; margin-bottom: 12px; width: 100%; text-align: center; }
+        button { padding: 12px 20px; font-size: 16px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; }
         #fullscreen-btn {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            width: auto;
-            padding: 10px 16px;
-            font-size: 14px;
-            background: #007bff;
-            z-index: 20;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            position: absolute; top: 15px; right: 15px; width: auto;
+            padding: 10px 16px; font-size: 14px; background: #007bff; z-index: 20;
         }
     </style>
 </head>
@@ -102,9 +46,6 @@
     <canvas id="game"></canvas>
 
     <script>
-        const SERVER_IP = "103.82.102.226";
-        const SERVER_PORT = "8000";
-
         const canvas = document.getElementById("game");
         const ctx = canvas.getContext("2d");
         const statusEl = document.getElementById("status");
@@ -117,22 +58,13 @@
         resizeCanvas();
         window.addEventListener("resize", resizeCanvas);
 
-        // Полноэкранный режим + горизонтальная ориентация
         async function enterFullscreen() {
             try {
                 const elem = document.documentElement;
-                if (elem.requestFullscreen) {
-                    await elem.requestFullscreen();
-                } else if (elem.webkitRequestFullscreen) {
-                    await elem.webkitRequestFullscreen();
-                }
-
-                if (screen.orientation && screen.orientation.lock) {
-                    await screen.orientation.lock("landscape");
-                }
-            } catch (err) {
-                console.log("Ошибка перехода в полноэкранный режим:", err);
-            }
+                if (elem.requestFullscreen) await elem.requestFullscreen();
+                else if (elem.webkitRequestFullscreen) await elem.webkitRequestFullscreen();
+                if (screen.orientation && screen.orientation.lock) await screen.orientation.lock("landscape");
+            } catch (err) {}
             updateFullscreenButton();
         }
 
@@ -145,23 +77,13 @@
         document.addEventListener("fullscreenchange", updateFullscreenButton);
         document.addEventListener("webkitfullscreenchange", updateFullscreenButton);
 
-        // Логика WebSocket
-        let myId = null;
-        let mapSize = 2000;
-        let players = {};
-        let food = [];
-        let mouseX = canvas.width / 2;
-        let mouseY = canvas.height / 2;
+        let myId = null, mapSize = 2000, players = {}, food = [];
+        let mouseX = canvas.width / 2, mouseY = canvas.height / 2;
         let ws;
 
         function connect() {
-            // Если сайт открыт по HTTPS (GitHub Pages), браузер заблокирует ws://
-            if (window.location.protocol === "https:") {
-                statusEl.textContent = "Ошибка: откройте по HTTP (не GitHub Pages)";
-                statusEl.style.color = "#ff4444";
-            }
-
-            ws = new WebSocket(`ws://${SERVER_IP}:${SERVER_PORT}`);
+            const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+            ws = new WebSocket(`${wsProtocol}//${window.location.host}/ws`);
 
             ws.onopen = () => {
                 statusEl.textContent = "В сети";
@@ -199,24 +121,12 @@
             document.getElementById("login").style.display = "none";
         }
 
-        // Управление мышью и пальцем
-        window.addEventListener("mousemove", (e) => {
-            mouseX = e.clientX;
-            mouseY = e.clientY;
-        });
-
+        window.addEventListener("mousemove", (e) => { mouseX = e.clientX; mouseY = e.clientY; });
         window.addEventListener("touchstart", (e) => {
-            if (e.touches.length > 0) {
-                mouseX = e.touches[0].clientX;
-                mouseY = e.touches[0].clientY;
-            }
+            if (e.touches.length > 0) { mouseX = e.touches[0].clientX; mouseY = e.touches[0].clientY; }
         }, { passive: true });
-
         window.addEventListener("touchmove", (e) => {
-            if (e.touches.length > 0) {
-                mouseX = e.touches[0].clientX;
-                mouseY = e.touches[0].clientY;
-            }
+            if (e.touches.length > 0) { mouseX = e.touches[0].clientX; mouseY = e.touches[0].clientY; }
         }, { passive: true });
 
         setInterval(() => {
@@ -238,49 +148,29 @@
             }
 
             const me = players[myId];
-            const camX = me.x - canvas.width / 2;
-            const camY = me.y - canvas.height / 2;
-
             ctx.save();
-            ctx.translate(-camX, -camY);
+            ctx.translate(-(me.x - canvas.width / 2), -(me.y - canvas.height / 2));
 
-            // Границы карты
-            ctx.strokeStyle = "#ff4444";
-            ctx.lineWidth = 5;
+            ctx.strokeStyle = "#ff4444"; ctx.lineWidth = 5;
             ctx.strokeRect(0, 0, mapSize, mapSize);
 
-            // Сетка
-            ctx.strokeStyle = "#252525";
-            ctx.lineWidth = 1;
-            for (let x = 0; x <= mapSize; x += 100) {
-                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, mapSize); ctx.stroke();
-            }
-            for (let y = 0; y <= mapSize; y += 100) {
-                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(mapSize, y); ctx.stroke();
-            }
+            ctx.strokeStyle = "#252525"; ctx.lineWidth = 1;
+            for (let x = 0; x <= mapSize; x += 100) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, mapSize); ctx.stroke(); }
+            for (let y = 0; y <= mapSize; y += 100) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(mapSize, y); ctx.stroke(); }
 
-            // Еда
             for (const f of food) {
                 ctx.fillStyle = f.color;
-                ctx.beginPath();
-                ctx.arc(f.x, f.y, 6, 0, Math.PI * 2);
-                ctx.fill();
+                ctx.beginPath(); ctx.arc(f.x, f.y, 6, 0, Math.PI * 2); ctx.fill();
             }
 
-            // Червяки
             for (const pid in players) {
                 const p = players[pid];
                 ctx.fillStyle = p.color;
                 for (let i = p.body.length - 1; i >= 0; i--) {
                     const seg = p.body[i];
-                    ctx.beginPath();
-                    ctx.arc(seg.x, seg.y, i === 0 ? 14 : 11, 0, Math.PI * 2);
-                    ctx.fill();
+                    ctx.beginPath(); ctx.arc(seg.x, seg.y, i === 0 ? 14 : 11, 0, Math.PI * 2); ctx.fill();
                 }
-
-                ctx.fillStyle = "white";
-                ctx.font = "14px Arial";
-                ctx.textAlign = "center";
+                ctx.fillStyle = "white"; ctx.font = "14px Arial"; ctx.textAlign = "center";
                 ctx.fillText(p.name, p.x, p.y - 20);
             }
 
