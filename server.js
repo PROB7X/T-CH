@@ -10,7 +10,7 @@ const io = new Server(server, {
 });
 
 const MAP_SIZE = 2000;
-const FOOD_COUNT = 150;
+const FOOD_COUNT = 180;
 const players = {};
 let foods = [];
 
@@ -23,7 +23,7 @@ function spawnFood() {
             x: Math.floor(Math.random() * MAP_SIZE),
             y: Math.floor(Math.random() * MAP_SIZE),
             color: colors[Math.floor(Math.random() * colors.length)],
-            value: Math.random() > 0.85 ? 5 : 1 // Редкая крупная еда дает +5 веса
+            value: Math.random() > 0.85 ? 5 : 1
         });
     }
 }
@@ -38,13 +38,19 @@ io.on('connection', (socket) => {
         players[socket.id] = {
             id: socket.id,
             name: (name || 'Червяк').slice(0, 15),
-            x: Math.floor(Math.random() * (MAP_SIZE - 200)) + 100,
-            y: Math.floor(Math.random() * (MAP_SIZE - 200)) + 100,
+            x: Math.floor(Math.random() * (MAP_SIZE - 400)) + 200,
+            y: Math.floor(Math.random() * (MAP_SIZE - 400)) + 200,
             color: colors[Math.floor(Math.random() * colors.length)],
             mass: 10,
             tail: []
         };
-        socket.emit('init', { id: socket.id, mapSize: MAP_SIZE, foods });
+        socket.emit('init', {
+            id: socket.id,
+            player: players[socket.id],
+            mapSize: MAP_SIZE,
+            foods
+        });
+        io.emit('state', players);
     });
 
     socket.on('update', (data) => {
@@ -53,16 +59,14 @@ io.on('connection', (socket) => {
 
         p.x = data.x;
         p.y = data.y;
-        p.tail = data.tail;
+        p.tail = Array.isArray(data.tail) ? data.tail : [];
 
-        // Проверка поедания еды (с учетом радиуса магнита игрока)
-        const pickupRadius = 20 + (data.magnetLevel || 0) * 12;
+        const pickupRadius = 22 + (data.magnetLevel || 0) * 14;
         let ate = false;
 
         for (let i = foods.length - 1; i >= 0; i--) {
             const f = foods[i];
-            const dist = Math.hypot(p.x - f.x, p.y - f.y);
-            if (dist < pickupRadius) {
+            if (Math.hypot(p.x - f.x, p.y - f.y) < pickupRadius) {
                 p.mass += f.value;
                 foods.splice(i, 1);
                 ate = true;
@@ -84,10 +88,10 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', () => {
         delete players[socket.id];
+        io.emit('state', players);
     });
 });
 
-// Рассылка состояния всем игрокам 30 раз в секунду
 setInterval(() => {
     io.emit('state', players);
 }, 1000 / 30);
