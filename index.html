@@ -1,426 +1,251 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Червячки Онлайн</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
-  body { background: #0d1117; color: #f0f6fc; font-family: system-ui, -apple-system, sans-serif; overflow: hidden; width: 100vw; height: 100vh; }
-  .screen { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 20px; background: radial-gradient(circle at center, #161b22 0%, #090c10 100%); z-index: 10; }
-  .card { width: 100%; max-width: 420px; background: #161b22; border: 1px solid #30363d; border-radius: 16px; padding: 22px; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 12px 32px rgba(0,0,0,0.6); }
-  h1, h2 { font-size: 22px; font-weight: 700; text-align: center; color: #58a6ff; }
-  p.sub { font-size: 14px; color: #8b949e; text-align: center; line-height: 1.4; }
-  input { width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid #30363d; background: #0d1117; color: #fff; font-size: 16px; outline: none; }
-  input:focus { border-color: #58a6ff; }
-  .btn { width: 100%; padding: 13px 16px; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: transform 0.1s, opacity 0.15s; color: #fff; background: #238636; }
-  .btn:active { transform: scale(0.98); }
-  .btn.blue { background: #1f6feb; }
-  .btn.purple { background: #8957e5; }
-  .btn.gray { background: #21262d; border: 1px solid #30363d; }
-  .btn.red { background: #da3633; }
-  .row { display: flex; gap: 10px; width: 100%; }
-  .topbar { position: fixed; top: 12px; left: 12px; right: 12px; display: flex; justify-content: space-between; align-items: center; pointer-events: none; z-index: 5; }
-  .badge { background: rgba(22,27,34,0.9); border: 1px solid #30363d; padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; pointer-events: auto; }
-  .grid-skins { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-  .skin-item { background: #0d1117; border: 2px solid #30363d; border-radius: 12px; padding: 10px; text-align: center; cursor: pointer; font-size: 13px; }
-  .skin-item.active { border-color: #2ea043; background: #13231a; }
-  .skin-dot { width: 28px; height: 28px; border-radius: 50%; margin: 0 auto 6px; }
-  #gameCanvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; background: #0b0e14; }
-  #hud { position: fixed; inset: 0; pointer-events: none; display: none; z-index: 6; }
-  .lb-box { position: absolute; top: 12px; right: 12px; width: 175px; background: rgba(13,17,23,0.8); border: 1px solid #30363d; border-radius: 10px; padding: 8px 10px; font-size: 12px; }
-  .lb-title { font-weight: 700; color: #58a6ff; margin-bottom: 4px; }
-  .lb-row { display: flex; justify-content: space-between; padding: 2px 0; color: #c9d1d9; }
-  #minimap { position: absolute; bottom: 16px; left: 16px; width: 110px; height: 110px; border-radius: 50%; background: rgba(13,17,23,0.85); border: 2px solid #30363d; }
-  #boostBtn { position: absolute; bottom: 24px; right: 24px; width: 72px; height: 72px; border-radius: 50%; background: rgba(31,111,235,0.85); border: 2px solid #58a6ff; color: #fff; display: flex; align-items: center; justify-content: center; pointer-events: auto; }
-  #videoOverlay { position: fixed; inset: 0; background: #000; z-index: 30; display: none; flex-direction: column; align-items: center; justify-content: center; }
-  #rewardVideoEl { width: 100%; max-width: 640px; max-height: 80vh; }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Общий Чат</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, sans-serif; }
+    body { background-color: #0e0e10; color: #efeff1; height: 100vh; display: flex; flex-direction: column; }
+
+    #login-screen {
+      position: fixed; inset: 0; background: #0e0e10; display: flex;
+      align-items: center; justify-content: center; z-index: 100; padding: 20px;
+    }
+    .login-box {
+      background: #18181b; padding: 30px; border-radius: 10px; width: 100%; max-width: 360px;
+      border: 1px solid #2f2f35; text-align: center;
+    }
+    .login-box h2 { margin-bottom: 15px; color: #bf94ff; }
+    .login-box input {
+      width: 100%; padding: 12px; border-radius: 6px; border: 1px solid #3a3a3d;
+      background: #0e0e10; color: #fff; font-size: 16px; margin-bottom: 12px; outline: none;
+    }
+    .login-box input:focus { border-color: #9147ff; }
+    #pass-input { display: none; border-color: #e91916; }
+    .login-box button {
+      width: 100%; padding: 12px; border-radius: 6px; border: none; background: #9147ff;
+      color: #fff; font-size: 16px; font-weight: bold; cursor: pointer;
+    }
+    .login-box button:hover { background: #772ce8; }
+    #login-error { color: #ff4f4d; font-size: 14px; margin-top: 10px; }
+
+    header {
+      background: #18181b; padding: 12px 16px; border-bottom: 1px solid #2f2f35;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .header-title { font-weight: bold; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+    .online-badge { background: #2f2f35; padding: 4px 10px; border-radius: 12px; font-size: 13px; color: #00f593; }
+
+    #admin-bar {
+      display: none; background: #26171a; padding: 8px 16px; border-bottom: 1px solid #5c1e24;
+      gap: 8px; align-items: center; flex-wrap: wrap; font-size: 13px;
+    }
+    .admin-btn {
+      background: #e91916; color: #fff; border: none; padding: 4px 10px;
+      border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px;
+    }
+
+    #messages {
+      flex: 1; overflow-y: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px;
+    }
+    .msg { line-height: 1.4; font-size: 14px; word-wrap: break-word; }
+    .msg-time { color: #adadb8; font-size: 11px; margin-right: 6px; }
+    .badge {
+      display: inline-block; padding: 1px 5px; border-radius: 3px; font-size: 11px;
+      font-weight: bold; color: #fff; margin-right: 5px; vertical-align: middle;
+    }
+    .nick { font-weight: bold; margin-right: 6px; cursor: pointer; }
+    .sys-msg { color: #adadb8; font-style: italic; font-size: 13px; }
+
+    .input-area {
+      background: #18181b; padding: 12px 16px; border-top: 1px solid #2f2f35;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .emotes { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
+    .emote-btn {
+      background: #2f2f35; border: none; border-radius: 4px; padding: 4px 8px;
+      font-size: 16px; cursor: pointer;
+    }
+    .form-row { display: flex; gap: 8px; }
+    #msg-input {
+      flex: 1; padding: 10px 12px; border-radius: 6px; border: 1px solid #3a3a3d;
+      background: #0e0e10; color: #fff; font-size: 14px; outline: none;
+    }
+    #msg-input:focus { border-color: #9147ff; }
+    #send-btn {
+      padding: 10px 18px; border-radius: 6px; border: none; background: #9147ff;
+      color: #fff; font-weight: bold; cursor: pointer;
+    }
+  </style>
 </head>
 <body>
-<!-- Экран 1: На весь экран -->
-<div id="fsScreen" class="screen" style="display:flex;">
-  <div class="card">
-    <h1>Червячки Онлайн</h1>
-    <p class="sub">Для комфортного управления и полного обзора арены перейдите в полноэкранный режим.</p>
-    <button class="btn blue" onclick="enterFullscreenAndStart()">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
-      На весь экран
-    </button>
-  </div>
-</div>
 
-<!-- Экран 2: Создание профиля -->
-<div id="regScreen" class="screen">
-  <div class="card">
-    <h2>Создание профиля</h2>
-    <p class="sub">Введите ваш игровой никнейм. Аккаунт привяжется к браузеру автоматически.</p>
-    <input id="regNickInput" type="text" maxlength="16" placeholder="Ваш никнейм">
-    <button class="btn" onclick="submitRegister()">Продолжить</button>
-  </div>
-</div>
-
-<!-- Экран 3: Главное меню -->
-<div id="menuScreen" class="screen">
-  <div class="topbar">
-    <div class="badge" id="menuNick">Игрок</div>
-    <div class="row" style="width:auto;">
-      <div class="badge"><svg width="14" height="14" viewBox="0 0 24 24" fill="#f1c40f"><circle cx="12" cy="12" r="10"/></svg><span id="menuCoins">0</span></div>
-      <div class="badge"><svg width="14" height="14" viewBox="0 0 24 24" fill="#38bdf8"><polygon points="12 2 22 9 18 21 6 21 2 9"/></svg><span id="menuCrystals">0</span></div>
+  <div id="login-screen">
+    <div class="login-box">
+      <h2>Вход в чат</h2>
+      <input type="text" id="nick-input" placeholder="Введите ваш ник..." maxlength="20">
+      <input type="password" id="pass-input" placeholder="Секретный код владельца...">
+      <button onclick="login()">Войти</button>
+      <div id="login-error"></div>
     </div>
   </div>
-  <div class="card">
-    <h1>Червячки Онлайн</h1>
-    <button class="btn" onclick="startOnlineGame('main')">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-      Играть онлайн
-    </button>
-    <button class="btn blue" onclick="startOfflineBots()">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/></svg>
-      Тренировка с ботами
-    </button>
-    <div class="row">
-      <button class="btn gray" onclick="showScreen('profileScreen')">Профиль</button>
-      <button class="btn gray" onclick="showScreen('skinsScreen')">Скины</button>
+
+  <header>
+    <div class="header-title">💬 Чат сообщества</div>
+    <div class="online-badge">Онлайн: <span id="online-count">0</span></div>
+  </header>
+
+  <div id="admin-bar">
+    <span>👑 Админ-панель:</span>
+    <button class="admin-btn" onclick="sendCmd('/clear')">Очистить чат</button>
+    <span style="color:#adadb8">Клик по нику — вставить /ban</span>
+  </div>
+
+  <div id="messages"></div>
+
+  <div class="input-area">
+    <div class="emotes">
+      <button class="emote-btn" onclick="addEmote('🔥')">🔥</button>
+      <button class="emote-btn" onclick="addEmote('😂')">😂</button>
+      <button class="emote-btn" onclick="addEmote('❤️')">❤️</button>
+      <button class="emote-btn" onclick="addEmote('👏')">👏</button>
+      <button class="emote-btn" onclick="addEmote('💀')">💀</button>
+      <button class="emote-btn" onclick="addEmote('👑')">👑</button>
+      <button class="emote-btn" onclick="addEmote('🚀')">🚀</button>
     </div>
-    <div class="row">
-      <button class="btn gray" onclick="showScreen('duelScreen')">Дуэль</button>
-      <button class="btn gray" onclick="showScreen('customScreen')">Свой сервер</button>
-    </div>
-    <button class="btn purple" onclick="watchRewardVideo('crystals')">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><polygon points="10 9 15 12 10 15 10 9" fill="currentColor"/></svg>
-      +3 кристалла за видео
-    </button>
-    <button class="btn gray" onclick="showScreen('settingsScreen')">Настройки</button>
+    <form class="form-row" onsubmit="sendMessage(event)">
+      <input type="text" id="msg-input" placeholder="Отправить сообщение..." autocomplete="off" maxlength="500">
+      <button type="submit" id="send-btn">Чат</button>
+    </form>
   </div>
-</div>
 
-<!-- Экран 4: Профиль -->
-<div id="profileScreen" class="screen">
-  <div class="card">
-    <h2>Профиль игрока</h2>
-    <p class="sub" id="profileUidLabel">ID: —</p>
-    <input id="profileNickInput" type="text" maxlength="16" placeholder="Новый ник">
-    <button class="btn" onclick="saveProfileChanges()">Сохранить</button>
-    <button class="btn gray" onclick="showScreen('menuScreen')">Назад</button>
-  </div>
-</div>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    let me = null;
 
-<!-- Экран 5: Скины -->
-<div id="skinsScreen" class="screen">
-  <div class="card">
-    <h2>Выбор скина</h2>
-    <div class="grid-skins" id="skinsGrid"></div>
-    <button class="btn" onclick="saveProfileChanges()">Применить</button>
-    <button class="btn gray" onclick="showScreen('menuScreen')">Назад</button>
-  </div>
-</div>
+    const nickInput = document.getElementById('nick-input');
+    const passInput = document.getElementById('pass-input');
+    const errorBox = document.getElementById('login-error');
 
-<!-- Экран 6: Настройки -->
-<div id="settingsScreen" class="screen">
-  <div class="card">
-    <h2>Настройки</h2>
-    <button class="btn gray" id="toggleArrowBtn" onclick="toggleSetting('arrow')">Стрелка направления: ВКЛ</button>
-    <button class="btn gray" id="toggleMapBtn" onclick="toggleSetting('minimap')">Миникарта: ВКЛ</button>
-    <button class="btn gray" onclick="showScreen('menuScreen')">Назад</button>
-  </div>
-</div>
+    const savedNick = localStorage.getItem('chat_nick');
+    if (savedNick) nickInput.value = savedNick;
 
-<!-- Экран 7: Дуэль -->
-<div id="duelScreen" class="screen">
-  <div class="card">
-    <h2>Режим Дуэль</h2>
-    <p class="sub">Введите код комнаты для входа вдвоём с другом.</p>
-    <input id="duelCodeInput" type="text" maxlength="12" placeholder="Код комнаты (например: 777)">
-    <button class="btn blue" onclick="joinDuelRoom()">Войти в дуэль</button>
-    <button class="btn gray" onclick="showScreen('menuScreen')">Назад</button>
-  </div>
-</div>
-
-<!-- Экран 8: Кастомный сервер -->
-<div id="customScreen" class="screen">
-  <div class="card">
-    <h2>Кастомный сервер</h2>
-    <input id="customRoomName" type="text" placeholder="Название комнаты" value="vip_arena">
-    <input id="customRadius" type="number" placeholder="Радиус зоны (1000-4000)" value="1800">
-    <button class="btn" onclick="createCustomRoom()">Создать и войти</button>
-    <button class="btn gray" onclick="showScreen('menuScreen')">Назад</button>
-  </div>
-</div>
-<!-- Экран 9: Игра -->
-<div id="gameScreen" class="screen" style="background:none;padding:0;">
-  <canvas id="gameCanvas"></canvas>
-  <div id="hud">
-    <div class="lb-box">
-      <div class="lb-title">Лидеры</div>
-      <div id="leaderboardList"></div>
-    </div>
-    <canvas id="minimap" width="110" height="110"></canvas>
-    <button id="boostBtn" onmousedown="setBoost(true)" onmouseup="setBoost(false)" ontouchstart="setBoost(true)" ontouchend="setBoost(false)">
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-    </button>
-  </div>
-</div>
-
-<!-- Экран 10: Смерть -->
-<div id="deathScreen" class="screen">
-  <div class="card">
-    <h2>Вы погибли</h2>
-    <p class="sub" id="deathReasonText">Счёт: 0</p>
-    <button class="btn purple" onclick="watchRewardVideo('revive')">Возродиться за видео (1.mp4)</button>
-    <button class="btn" onclick="startOnlineGame(lastRoomId)">Играть снова</button>
-    <button class="btn gray" onclick="showScreen('menuScreen')">В меню</button>
-  </div>
-</div>
-
-<!-- Оверлей видеорекламы -->
-<div id="videoOverlay">
-  <video id="rewardVideoEl" src="/1.mp4" playsinline></video>
-  <p class="sub" style="margin-top:10px;">Досмотрите видео до конца для получения награды</p>
-</div>
-
-<script src="/socket.io/socket.io.js"></script>
-<script>
-const socket = io();
-const SKINS = {
-  emerald: ['#2ea043', '#56d364'],
-  ocean: ['#1f6feb', '#58a6ff'],
-  lava: ['#da3633', '#ff7b72'],
-  gold: ['#d29922', '#f1e05a'],
-  violet: ['#8957e5', '#bc8cff'],
-  cyber: ['#00d2d3', '#ff9ff3']
-};
-
-let fsPassed = false, pendingScreen = null, userProfile = null, selectedSkin = 'emerald';
-let isOffline = false, lastRoomId = 'main', myId = null, targetAngle = 0, isBoosting = false;
-let settings = { arrow: true, minimap: true };
-let gameState = { radius: 2400, players: [], foods: [], coins: [], leaderboard: [] };
-
-function getCookie(n) {
-  const m = document.cookie.match(new RegExp('(?:^|; )' + n + '=([^;]*)'));
-  return m ? decodeURIComponent(m) : null;
-}
-function setCookie(n, v) {
-  document.cookie = `${n}=${encodeURIComponent(v)}; path=/; max-age=31536000; SameSite=Lax`;
-  localStorage.setItem(n, v);
-}
-
-function showScreen(id) {
-  if (!fsPassed && id !== 'fsScreen') { pendingScreen = id; return; }
-  document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
-  document.getElementById('hud').style.display = (id === 'gameScreen') ? 'block' : 'none';
-  const el = document.getElementById(id);
-  if (el) el.style.display = 'flex';
-}
-
-function enterFullscreenAndStart() {
-  fsPassed = true;
-  if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {});
-  showScreen(pendingScreen || (userProfile ? 'menuScreen' : 'regScreen'));
-}
-
-const savedUid = getCookie('worm_uid') || getCookie('m') || localStorage.getItem('worm_uid');
-socket.emit('initAuth', savedUid);
-
-socket.on('needRegister', () => showScreen('regScreen'));
-socket.on('authSuccess', (p) => {
-  userProfile = p; selectedSkin = p.skin || 'emerald';
-  setCookie('worm_uid', p.uid); setCookie('m', p.uid);
-  syncUI(); showScreen('menuScreen');
-});
-socket.on('profileSaved', (p) => {
-  userProfile = p; selectedSkin = p.skin || 'emerald';
-  syncUI(); showScreen('menuScreen');
-});
-
-function syncUI() {
-  if (!userProfile) return;
-  document.getElementById('menuNick').textContent = userProfile.nick;
-  document.getElementById('menuCoins').textContent = userProfile.coins || 0;
-  document.getElementById('menuCrystals').textContent = userProfile.crystals || 0;
-  document.getElementById('profileNickInput').value = userProfile.nick;
-  document.getElementById('profileUidLabel').textContent = 'ID: ' + userProfile.uid;
-  renderSkinsGrid();
-}
-
-function renderSkinsGrid() {
-  const grid = document.getElementById('skinsGrid');
-  grid.innerHTML = Object.keys(SKINS).map(k => `
-    <div class="skin-item ${selectedSkin === k ? 'active' : ''}" onclick="selectedSkin='${k}';renderSkinsGrid()">
-      <div class="skin-dot" style="background:linear-gradient(135deg,${SKINS[k][0]},${SKINS[k][1]})"></div>
-      <div>${k.toUpperCase()}</div>
-    </div>`).join('');
-}
-
-function submitRegister() {
-  const nick = document.getElementById('regNickInput').value.trim() || 'Игрок';
-  socket.emit('registerProfile', { uid: savedUid, nick, skin: selectedSkin });
-}
-function saveProfileChanges() {
-  if (!userProfile) return;
-  const nick = document.getElementById('profileNickInput').value.trim() || userProfile.nick;
-  socket.emit('saveProfile', { uid: userProfile.uid, nick, skin: selectedSkin });
-}
-function startOnlineGame(roomId = 'main', customCfg = null) {
-  isOffline = false; lastRoomId = roomId;
-  showScreen('gameScreen');
-  socket.emit('joinRoom', {
-    roomId, uid: userProfile?.uid,
-    nick: userProfile?.nick || 'Игрок',
-    skin: selectedSkin, customCfg
-  });
-}
-
-function joinDuelRoom() {
-  const code = document.getElementById('duelCodeInput').value.trim() || 'duel_1';
-  startOnlineGame('duel_' + code, { radius: 1400, shrinkRate: 0.45 });
-}
-
-function createCustomRoom() {
-  const name = document.getElementById('customRoomName').value.trim() || 'custom';
-  const radius = Math.max(1000, Math.min(4000, Number(document.getElementById('customRadius').value) || 1800));
-  startOnlineGame('srv_' + name, { radius, shrinkRate: 0.3 });
-}
-
-function startOfflineBots() {
-  isOffline = true; myId = 'me'; showScreen('gameScreen');
-  const bots = Array.from({ length: 8 }, (_, i) => ({
-    id: 'bot_' + i, nick: 'Бот #' + (i + 1), skin: Object.keys(SKINS)[i % 6],
-    x: (Math.random() - 0.5) * 1200, y: (Math.random() - 0.5) * 1200,
-    angle: Math.random() * 6.28, score: 30, shieldUntil: 0, segments: []
-  }));
-  const me = {
-    id: 'me', nick: userProfile?.nick || 'Игрок', skin: selectedSkin,
-    x: 0, y: 0, angle: 0, score: 25, shieldUntil: Date.now() + 3000, segments: []
-  };
-  bots.concat(me).forEach(p => { for (let j = 0; j < 14; j++) p.segments.push({ x: p.x - j * 5, y: p.y }); });
-  const foods = Array.from({ length: 180 }, () => ({
-    x: (Math.random() - 0.5) * 2600, y: (Math.random() - 0.5) * 2600, r: 10, color: '#2ed573'
-  }));
-  gameState = { radius: 1600, players: [me, ...bots], foods, coins: [], leaderboard: [] };
-}
-
-socket.on('joinedRoom', (d) => { myId = d.playerId; gameState.radius = d.radius; });
-socket.on('state', (st) => {
-  if (isOffline) return;
-  gameState = st;
-  document.getElementById('leaderboardList').innerHTML = (st.leaderboard || [])
-    .map((p, i) => `<div class="lb-row"><span>${i + 1}. ${p.nick}</span><b>${p.score}</b></div>`).join('');
-});
-socket.on('playerDied', (d) => {
-  document.getElementById('deathReasonText').textContent = `Причина: выход за зону | Счёт: ${d.score}`;
-  showScreen('deathScreen');
-});
-
-function watchRewardVideo(type) {
-  const ov = document.getElementById('videoOverlay');
-  const vid = document.getElementById('rewardVideoEl');
-  ov.style.display = 'flex'; vid.currentTime = 0; vid.play().catch(() => {});
-  vid.onended = () => {
-    ov.style.display = 'none';
-    if (type === 'crystals') socket.emit('rewardVideo', { type: 'crystals', uid: userProfile?.uid });
-    if (type === 'revive') startOnlineGame(lastRoomId);
-  };
-}
-
-function toggleSetting(key) {
-  settings[key] = !settings[key];
-  document.getElementById('toggleArrowBtn').textContent = `Стрелка направления: ${settings.arrow ? 'ВКЛ' : 'ВЫКЛ'}`;
-  document.getElementById('toggleMapBtn').textContent = `Миникарта: ${settings.minimap ? 'ВКЛ' : 'ВЫКЛ'}`;
-  document.getElementById('minimap').style.display = settings.minimap ? 'block' : 'none';
-}
-
-function setBoost(val) {
-  isBoosting = val;
-  if (!isOffline) socket.emit('input', { angle: targetAngle, boost: isBoosting });
-}
-
-window.addEventListener('pointermove', (e) => {
-  targetAngle = Math.atan2(e.clientY - window.innerHeight / 2, e.clientX - window.innerWidth / 2);
-  if (!isOffline) socket.emit('input', { angle: targetAngle, boost: isBoosting });
-});
-
-const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
-const mCanvas = document.getElementById('minimap'), mCtx = mCanvas.getContext('2d');
-
-function updateOfflineLoop() {
-  if (!isOffline) return;
-  gameState.radius = Math.max(400, gameState.radius - 0.25);
-  gameState.players.forEach(p => {
-    if (p.id === 'me') p.angle = targetAngle;
-    else if (Math.random() < 0.05) p.angle += (Math.random() - 0.5);
-    const spd = (p.id === 'me' && isBoosting) ? 5.8 : 3.5;
-    p.x += Math.cos(p.angle) * spd; p.y += Math.sin(p.angle) * spd;
-    p.segments.unshift({ x: p.x, y: p.y });
-    if (p.segments.length > 15 + p.score / 4) p.segments.pop();
-    gameState.foods = gameState.foods.filter(f => {
-      if (Math.hypot(p.x - f.x, p.y - f.y) < 24) { p.score += 3; return false; }
-      return true;
+    nickInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') login();
     });
-  });
-  const me = gameState.players.find(p => p.id === 'me');
-  if (me && Math.hypot(me.x, me.y) > gameState.radius && Date.now() > me.shieldUntil) {
-    isOffline = false;
-    document.getElementById('deathReasonText').textContent = `Выход за красную стену | Счёт: ${Math.floor(me.score)}`;
-    showScreen('deathScreen');
-  }
-}
-
-function render() {
-  canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-  updateOfflineLoop();
-  const me = gameState.players.find(p => p.id === myId) || { x: 0, y: 0, angle: targetAngle };
-  ctx.save();
-  ctx.translate(canvas.width / 2 - me.x, canvas.height / 2 - me.y);
-
-  // Красная граница арены
-  ctx.beginPath(); ctx.arc(0, 0, gameState.radius, 0, Math.PI * 2);
-  ctx.lineWidth = 14; ctx.strokeStyle = '#ff3b30'; ctx.stroke();
-
-  // Крупная еда и монеты
-  gameState.foods.forEach(f => {
-    ctx.beginPath(); ctx.arc(f.x, f.y, f.r || 10, 0, Math.PI * 2);
-    ctx.fillStyle = f.color || '#2ed573'; ctx.fill();
-  });
-  (gameState.coins || []).forEach(c => {
-    ctx.beginPath(); ctx.arc(c.x, c.y, 12, 0, Math.PI * 2);
-    ctx.fillStyle = '#f1c40f'; ctx.fill();
-  });
-
-  // Игроки, щит 3 сек и локальная стрелка перед головой
-  gameState.players.forEach(p => {
-    const cols = SKINS[p.skin] || SKINS.emerald;
-    for (let i = p.segments.length - 1; i >= 0; i--) {
-      ctx.beginPath(); ctx.arc(p.segments[i].x, p.segments[i].y, i === 0 ? 16 : 13, 0, Math.PI * 2);
-      ctx.fillStyle = i % 2 === 0 ? cols[0] : cols[1]; ctx.fill();
-    }
-    if (p.shieldUntil && Date.now() < p.shieldUntil) {
-      ctx.beginPath(); ctx.arc(p.x, p.y, 26, 0, Math.PI * 2);
-      ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 3; ctx.stroke();
-    }
-    if (p.id === myId && settings.arrow) {
-      const ax = p.x + Math.cos(targetAngle) * 38, ay = p.y + Math.sin(targetAngle) * 38;
-      ctx.save(); ctx.translate(ax, ay); ctx.rotate(targetAngle);
-      ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(-7, -7); ctx.lineTo(-4, 0); ctx.lineTo(-7, 7); ctx.closePath();
-      ctx.fillStyle = '#ffffff'; ctx.fill(); ctx.restore();
-    }
-  });
-  ctx.restore();
-
-  // Миникарта
-  if (settings.minimap) {
-    mCtx.clearRect(0, 0, 110, 110);
-    const scale = 48 / Math.max(500, gameState.radius);
-    mCtx.beginPath(); mCtx.arc(55, 55, 48, 0, Math.PI * 2);
-    mCtx.strokeStyle = '#ff3b30'; mCtx.lineWidth = 2; mCtx.stroke();
-    gameState.players.forEach(p => {
-      mCtx.beginPath(); mCtx.arc(55 + p.x * scale, 55 + p.y * scale, p.id === myId ? 3.5 : 2.5, 0, Math.PI * 2);
-      mCtx.fillStyle = p.id === myId ? '#2ea043' : '#ff7b72'; mCtx.fill();
+    passInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') login();
     });
-  }
-  requestAnimationFrame(render);
-}
-render();
-</script>
+
+    function login() {
+      const nick = nickInput.value.trim();
+      const password = passInput.value;
+      if (!nick) return;
+      errorBox.innerText = '';
+      socket.emit('login', { nick, password });
+    }
+
+    socket.on('need_password', (msg) => {
+      passInput.style.display = 'block';
+      passInput.focus();
+      errorBox.style.color = '#ffb31a';
+      errorBox.innerText = msg;
+    });
+
+    socket.on('login_error', (err) => {
+      errorBox.style.color = '#ff4f4d';
+      errorBox.innerText = err;
+    });
+
+    socket.on('login_success', (data) => {
+      me = data.user;
+      localStorage.setItem('chat_nick', me.nick);
+      document.getElementById('login-screen').style.display = 'none';
+      if (me.isAdmin) {
+        document.getElementById('admin-bar').style.display = 'flex';
+      }
+      data.history.forEach(renderMessage);
+    });
+
+    socket.on('online_count', (count) => {
+      document.getElementById('online-count').innerText = count;
+    });
+
+    socket.on('chat_message', (msg) => {
+      renderMessage(msg);
+    });
+
+    socket.on('system_message', (text) => {
+      const box = document.getElementById('messages');
+      const div = document.createElement('div');
+      div.className = 'sys-msg';
+      div.innerText = text;
+      box.appendChild(div);
+      box.scrollTop = box.scrollHeight;
+    });
+
+    socket.on('clear_chat', () => {
+      document.getElementById('messages').innerHTML = '';
+    });
+
+    socket.on('kicked', (reason) => {
+      alert(reason);
+      location.reload();
+    });
+
+    function renderMessage(msg) {
+      const box = document.getElementById('messages');
+      const div = document.createElement('div');
+      div.className = 'msg';
+
+      const timeSpan = `<span class="msg-time">${msg.time}</span>`;
+      const badgeSpan = msg.badge
+        ? `<span class="badge" style="background:${msg.badgeColor}">${escapeHtml(msg.badge)}</span>`
+        : '';
+      const nickSpan = `<span class="nick" style="color:${msg.nickColor}" onclick="clickNick('${escapeHtml(msg.nick)}')">${escapeHtml(msg.nick)}:</span>`;
+      const textSpan = `<span>${escapeHtml(msg.text)}</span>`;
+
+      div.innerHTML = timeSpan + badgeSpan + nickSpan + textSpan;
+      box.appendChild(div);
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function sendMessage(e) {
+      e.preventDefault();
+      const input = document.getElementById('msg-input');
+      const text = input.value.trim();
+      if (!text) return;
+      socket.emit('chat_message', text);
+      input.value = '';
+    }
+
+    function sendCmd(cmd) {
+      socket.emit('chat_message', cmd);
+    }
+
+    function addEmote(emote) {
+      const input = document.getElementById('msg-input');
+      input.value += emote;
+      input.focus();
+    }
+
+    function clickNick(nick) {
+      const input = document.getElementById('msg-input');
+      if (me && me.isAdmin) {
+        input.value = `/ban ${nick}`;
+      } else {
+        input.value = `@${nick}, `;
+      }
+      input.focus();
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, m => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      })[m]);
+    }
+  </script>
 </body>
 </html>
