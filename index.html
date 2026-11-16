@@ -7,7 +7,7 @@
     <style>
         * { box-sizing: border-box; font-family: sans-serif; user-select: none; }
         body { margin: 0; overflow: hidden; background: #121212; color: white; touch-action: none; }
-        canvas { display: block; }
+        canvas#game { display: block; }
         
         #fsOverlay {
             position: fixed; inset: 0; background: rgba(10, 10, 10, 0.96);
@@ -37,8 +37,26 @@
         }
 
         #hud { display: none; position: fixed; inset: 0; pointer-events: none; }
-        #stats { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.6); padding: 8px 12px; border-radius: 8px; font-size: 14px; }
-        #leaderboard { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.6); padding: 8px 12px; border-radius: 8px; font-size: 13px; min-width: 140px; }
+        
+        /* Левый верхний угол: статистика и миникарта */
+        #topLeft { position: absolute; top: 10px; left: 10px; display: flex; flex-direction: column; gap: 8px; }
+        #stats { background: rgba(0,0,0,0.65); padding: 7px 12px; border-radius: 8px; font-size: 14px; width: fit-content; }
+        #minimap {
+            width: 110px; height: 110px; background: rgba(0, 0, 0, 0.65);
+            border: 2px solid rgba(255, 255, 255, 0.25); border-radius: 8px;
+        }
+
+        /* Фиксированная таблица лидеров (не дергается) */
+        #leaderboard {
+            position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.65);
+            padding: 8px 12px; border-radius: 8px; font-size: 13px;
+            width: 170px; height: 122px; overflow: hidden;
+        }
+        .top-row {
+            display: flex; justify-content: space-between; margin-top: 3px;
+            white-space: nowrap; overflow: hidden;
+        }
+        .top-name { overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
         
         #joyBase {
             position: absolute; bottom: 20px; left: 20px; width: 110px; height: 110px;
@@ -79,15 +97,12 @@
     </div>
 
     <div id="hud">
-        <div id="stats">
-            Вес: <b id="massVal">10</b> | Онлайн: <b id="onlineVal">1</b>
+        <div id="topLeft">
+            <div id="stats">Вес: <b id="massVal">10</b> | Онлайн: <b id="onlineVal">1</b></div>
+            <canvas id="minimap" width="110" height="110"></canvas>
         </div>
         <div id="leaderboard"><b>Топ игроков:</b><div id="topList"></div></div>
-        
-        <div id="joyBase">
-            <div id="joyStick"></div>
-        </div>
-
+        <div id="joyBase"><div id="joyStick"></div></div>
         <div id="boostBtn">🚀</div>
     </div>
 
@@ -98,6 +113,8 @@
         const socket = io();
         const canvas = document.getElementById('game');
         const ctx = canvas.getContext('2d');
+        const miniCanvas = document.getElementById('minimap');
+        const miniCtx = miniCanvas.getContext('2d');
         const fsOverlay = document.getElementById('fsOverlay');
 
         function resize() {
@@ -119,7 +136,6 @@
             fsOverlay.style.display = 'none';
             resize();
         }
-
         document.getElementById('fsBtn').onclick = enterFullscreen;
 
         function checkFullscreen() {
@@ -141,7 +157,6 @@
         let tail = [];
         let isBoosting = false;
 
-        // Исправленный виртуальный джойстик (с поддержкой мультитача)
         const joyBase = document.getElementById('joyBase');
         const joyStick = document.getElementById('joyStick');
         let joyTouchId = null;
@@ -155,9 +170,7 @@
             const dist = Math.hypot(dx, dy);
             const maxRadius = 35;
 
-            if (dist > 2) {
-                angle = Math.atan2(dy, dx);
-            }
+            if (dist > 2) angle = Math.atan2(dy, dx);
 
             const clampedDist = Math.min(dist, maxRadius);
             joyStick.style.transform = `translate(${Math.cos(angle) * clampedDist}px, ${Math.sin(angle) * clampedDist}px)`;
@@ -192,7 +205,6 @@
         window.addEventListener('touchend', resetJoy);
         window.addEventListener('touchcancel', resetJoy);
 
-        // Кнопка ускорения (работает всегда при зажатии)
         const boostBtn = document.getElementById('boostBtn');
         function setBoost(state) {
             isBoosting = state;
@@ -206,14 +218,12 @@
         window.addEventListener('keydown', e => { if (e.code === 'Space') setBoost(true); });
         window.addEventListener('keyup', e => { if (e.code === 'Space') setBoost(false); });
 
-        // Управление мышкой (если нет касания джойстика)
         window.addEventListener('mousemove', e => {
             if (playing && joyTouchId === null) {
                 angle = Math.atan2(e.clientY - canvas.height / 2, e.clientX - canvas.width / 2);
             }
         });
 
-        // Старт игры
         document.getElementById('playBtn').onclick = () => {
             const nick = document.getElementById('nickInput').value.trim() || 'Игрок';
             myData.name = nick;
@@ -253,14 +263,13 @@
 
             list.sort((a, b) => (b.mass || 10) - (a.mass || 10));
             document.getElementById('topList').innerHTML = list.slice(0, 5)
-                .map((p, i) => `<div>${i + 1}. ${p.name || 'Игрок'}: <b>${p.mass || 10}</b></div>`).join('');
+                .map((p, i) => `<div class="top-row"><span class="top-name">${i + 1}. ${p.name || 'Игрок'}</span><b>${p.mass || 10}</b></div>`).join('');
         });
 
         function update() {
             if (!playing) return;
 
             const speed = isBoosting ? 6.2 : 3.2;
-
             myPos.x += Math.cos(angle) * speed;
             myPos.y += Math.sin(angle) * speed;
 
@@ -290,12 +299,13 @@
             const radius = Math.min(28, 11 + mass * 0.05);
             const margin = radius + 80;
 
+            // Хвост всегда одного размера с головой (без уменьшения к концу)
             if (t && t.length > 0) {
                 ctx.fillStyle = color;
                 for (let i = 0; i < t.length; i++) {
                     if (isVisible(t[i].x, t[i].y, margin, view)) {
                         ctx.beginPath();
-                        ctx.arc(t[i].x, t[i].y, radius * (0.55 + 0.45 * (i / t.length)), 0, Math.PI * 2);
+                        ctx.arc(t[i].x, t[i].y, radius, 0, Math.PI * 2);
                         ctx.fill();
                     }
                 }
@@ -317,6 +327,39 @@
             }
         }
 
+        function drawMinimap() {
+            const w = miniCanvas.width;
+            const h = miniCanvas.height;
+            miniCtx.clearRect(0, 0, w, h);
+
+            const myServerId = myId || socket.id;
+
+            // Остальные игроки на миникарте (цветные точки)
+            for (let id in players) {
+                if (id !== myServerId) {
+                    const p = players[id];
+                    if (p && typeof p.x === 'number') {
+                        const mx = (p.x / mapSize) * w;
+                        const my = (p.y / mapSize) * h;
+                        miniCtx.beginPath();
+                        miniCtx.arc(mx, my, 3.5, 0, Math.PI * 2);
+                        miniCtx.fillStyle = p.color || '#ff5252';
+                        miniCtx.fill();
+                    }
+                }
+            }
+
+            // Мы сами на миникарте (яркая белая точка)
+            if (playing) {
+                const mx = (myPos.x / mapSize) * w;
+                const my = (myPos.y / mapSize) * h;
+                miniCtx.beginPath();
+                miniCtx.arc(mx, my, 4, 0, Math.PI * 2);
+                miniCtx.fillStyle = '#ffffff';
+                miniCtx.fill();
+            }
+        }
+
         function draw() {
             ctx.fillStyle = '#161616';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -331,7 +374,6 @@
             ctx.save();
             ctx.translate(-view.left, -view.top);
 
-            // Сетка
             ctx.strokeStyle = '#242424';
             ctx.lineWidth = 1;
             const startX = Math.max(0, Math.floor(view.left / 50) * 50);
@@ -346,12 +388,10 @@
                 ctx.beginPath(); ctx.moveTo(startX, y); ctx.lineTo(endX, y); ctx.stroke();
             }
 
-            // Границы карты
             ctx.strokeStyle = '#ff5252';
             ctx.lineWidth = 4;
             ctx.strokeRect(0, 0, mapSize, mapSize);
 
-            // Еда
             for (let i = 0; i < foods.length; i++) {
                 const f = foods[i];
                 if (isVisible(f.x, f.y, 50, view)) {
@@ -362,7 +402,6 @@
                 }
             }
 
-            // Другие игроки
             const myServerId = myId || socket.id;
             for (let id in players) {
                 if (id !== myServerId) {
@@ -373,12 +412,12 @@
                 }
             }
 
-            // Наш игрок
             if (playing) {
                 drawWorm(myPos.x, myPos.y, tail, myData.color, myData.name, myData.mass, view);
             }
 
             ctx.restore();
+            drawMinimap();
         }
 
         function loop() {
