@@ -3,71 +3,245 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Червячки Онлайн</title>
+    <title>Онлайн Червячки</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #1a1a1a; touch-action: none; }
+        * { box-sizing: border-box; font-family: sans-serif; user-select: none; }
+        body { margin: 0; overflow: hidden; background: #121212; color: white; touch-action: none; }
         canvas { display: block; }
+        
+        /* Главное меню */
+        #menu {
+            position: fixed; inset: 0; background: rgba(18, 18, 18, 0.92);
+            display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10;
+        }
+        #menu h1 { font-size: 32px; color: #4caf50; margin-bottom: 20px; text-shadow: 0 0 10px rgba(76,175,80,0.5); }
+        #menu input {
+            padding: 12px 16px; font-size: 18px; border-radius: 8px; border: 2px solid #333;
+            background: #222; color: white; text-align: center; margin-bottom: 15px; width: 240px; outline: none;
+        }
+        #menu input:focus { border-color: #4caf50; }
+        #menu button {
+            padding: 12px 40px; font-size: 18px; font-weight: bold; border-radius: 8px; border: none;
+            background: #4caf50; color: white; cursor: pointer; transition: 0.2s;
+        }
+        #menu button:active { transform: scale(0.95); }
+
+        /* Игровой интерфейс */
+        #hud { display: none; position: fixed; inset: 0; pointer-events: none; }
+        #stats { position: absolute; top: 15px; left: 15px; background: rgba(0,0,0,0.6); padding: 10px 15px; border-radius: 8px; font-size: 16px; }
+        #leaderboard { position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.6); padding: 10px 15px; border-radius: 8px; font-size: 14px; min-width: 140px; }
+        
+        /* Панель улучшений */
+        #upgrades {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 10px; pointer-events: auto;
+        }
+        .upg-btn {
+            background: rgba(30, 30, 30, 0.85); border: 1px solid #555; color: white;
+            padding: 10px 14px; border-radius: 8px; font-size: 13px; cursor: pointer; text-align: center;
+        }
+        .upg-btn:active { background: #333; }
+        .upg-cost { color: #ffd740; font-weight: bold; display: block; margin-top: 3px; }
     </style>
 </head>
 <body>
+
+    <div id="menu">
+        <h1>🐛 Червячки Онлайн</h1>
+        <input type="text" id="nickInput" placeholder="Введи имя..." maxlength="15">
+        <button id="playBtn">Играть</button>
+    </div>
+
+    <div id="hud">
+        <div id="stats">
+            Вес: <b id="massVal">10</b><br>
+            Онлайн: <b id="onlineVal">1</b>
+        </div>
+        <div id="leaderboard"><b>Топ игроков:</b><div id="topList"></div></div>
+        <div id="upgrades">
+            <button class="upg-btn" id="btnSpeed">⚡ Скорость (Ур. <span id="lvlSpeed">1</span>)<span class="upg-cost">Цена: <span id="costSpeed">15</span></span></button>
+            <button class="upg-btn" id="btnMagnet">🧲 Магнит (Ур. <span id="lvlMagnet">1</span>)<span class="upg-cost">Цена: <span id="costMagnet">15</span></span></button>
+        </div>
+    </div>
+
     <canvas id="game"></canvas>
+
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
         const canvas = document.getElementById('game');
         const ctx = canvas.getContext('2d');
-        
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
 
-        let myPos = { x: canvas.width / 2, y: canvas.height / 2 };
-        let target = { x: myPos.x, y: myPos.y };
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        let myId = null;
+        let mapSize = 2000;
+        let playing = false;
         let players = {};
-        let tail = [];
+        let foods = [];
 
-        window.addEventListener('mousemove', e => { target = { x: e.clientX, y: e.clientY }; });
-        window.addEventListener('touchmove', e => {
-            target = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        // Локальные параметры игрока
+        let myPos = { x: 1000, y: 1000 };
+        let angle = 0;
+        let tail = [];
+        let speedLvl = 1;
+        let magnetLvl = 1;
+
+        // Управление
+        function updateAngle(clientX, clientY) {
+            angle = Math.atan2(clientY - canvas.height / 2, clientX - canvas.width / 2);
+        }
+        window.addEventListener('mousemove', e => { if (playing) updateAngle(e.clientX, e.clientY); });
+        window.addEventListener('touchmove', e => { if (playing) updateAngle(e.touches[0].clientX, e.touches[0].clientY); });
+        window.addEventListener('touchstart', e => { if (playing) updateAngle(e.touches[0].clientX, e.touches[0].clientY); });
+
+        // Старт игры
+        document.getElementById('playBtn').onclick = () => {
+            const nick = document.getElementById('nickInput').value.trim() || 'Игрок';
+            socket.emit('join', nick);
+            document.getElementById('menu').style.display = 'none';
+            document.getElementById('hud').style.display = 'block';
+            playing = true;
+        };
+
+        // Прокачка улучшений за вес
+        document.getElementById('btnSpeed').onclick = () => {
+            const cost = speedLvl * 15;
+            if (players[myId] && players[myId].mass - cost >= 10) {
+                socket.emit('spendMass', cost);
+                speedLvl++;
+                document.getElementById('lvlSpeed').innerText = speedLvl;
+                document.getElementById('costSpeed').innerText = speedLvl * 15;
+            }
+        };
+
+        document.getElementById('btnMagnet').onclick = () => {
+            const cost = magnetLvl * 15;
+            if (players[myId] && players[myId].mass - cost >= 10) {
+                socket.emit('spendMass', cost);
+                magnetLvl++;
+                document.getElementById('lvlMagnet').innerText = magnetLvl;
+                document.getElementById('costMagnet').innerText = magnetLvl * 15;
+            }
+        };
+socket.on('init', data => {
+            myId = data.id;
+            mapSize = data.mapSize;
+            foods = data.foods;
         });
 
-        socket.on('state', serverPlayers => { players = serverPlayers; });
+        socket.on('foods', serverFoods => { foods = serverFoods; });
+
+        socket.on('state', serverPlayers => {
+            players = serverPlayers;
+            if (myId && players[myId]) {
+                if (tail.length === 0) {
+                    myPos.x = players[myId].x;
+                    myPos.y = players[myId].y;
+                }
+                document.getElementById('massVal').innerText = players[myId].mass;
+            }
+            const list = Object.values(players);
+            document.getElementById('onlineVal').innerText = list.length;
+
+            // Обновление таблицы лидеров
+            list.sort((a, b) => b.mass - a.mass);
+            document.getElementById('topList').innerHTML = list.slice(0, 5)
+                .map((p, i) => `<div>${i + 1}. ${p.name}: <b>${p.mass}</b></div>`).join('');
+        });
 
         function update() {
-            const dx = target.x - myPos.x;
-            const dy = target.y - myPos.y;
-            const angle = Math.atan2(dy, dx);
-            const speed = 3;
+            if (!playing || !players[myId]) return;
 
+            const speed = 3 + (speedLvl - 1) * 0.6;
             myPos.x += Math.cos(angle) * speed;
             myPos.y += Math.sin(angle) * speed;
 
-            tail.push({ x: myPos.x, y: myPos.y });
-            if (tail.length > 25) tail.shift();
+            // Границы карты
+            myPos.x = Math.max(15, Math.min(mapSize - 15, myPos.x));
+            myPos.y = Math.max(15, Math.min(mapSize - 15, myPos.y));
 
-            socket.emit('move', myPos);
+            tail.push({ x: myPos.x, y: myPos.y });
+            const maxTail = Math.min(150, 10 + Math.floor(players[myId].mass * 0.8));
+            while (tail.length > maxTail) tail.shift();
+
+            socket.emit('update', { x: myPos.x, y: myPos.y, tail: tail, magnetLevel: magnetLvl - 1 });
         }
 
-        function draw() {
-            ctx.fillStyle = '#1a1a1a';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        function drawWorm(p, isMe) {
+            const t = isMe ? tail : p.tail;
+            const radius = Math.min(28, 11 + p.mass * 0.05);
 
-            // Рисуем свой хвост
-            tail.forEach((part, index) => {
-                ctx.beginPath();
-                ctx.arc(part.x, part.y, 10 + index * 0.2, 0, Math.PI * 2);
-                ctx.fillStyle = '#4caf50';
-                ctx.fill();
-            });
-
-            // Рисуем других игроков
-            for (let id in players) {
-                if (id !== socket.id) {
+            // Хвост
+            if (t && t.length > 0) {
+                for (let i = 0; i < t.length; i++) {
                     ctx.beginPath();
-                    ctx.arc(players[id].x, players[id].y, 15, 0, Math.PI * 2);
-                    ctx.fillStyle = players[id].color;
+                    ctx.arc(t[i].x, t[i].y, radius * (0.6 + 0.4 * (i / t.length)), 0, Math.PI * 2);
+                    ctx.fillStyle = p.color;
                     ctx.fill();
                 }
             }
+
+            // Голова
+            ctx.beginPath();
+            ctx.arc(isMe ? myPos.x : p.x, isMe ? myPos.y : p.y, radius, 0, Math.PI * 2);
+            ctx.fillStyle = p.color;
+            ctx.fill();
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#ffffff';
+            ctx.stroke();
+
+            // Ник и вес над головой
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 13px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(`${p.name} (${p.mass})`, isMe ? myPos.x : p.x, (isMe ? myPos.y : p.y) - radius - 8);
+        }
+
+        function draw() {
+            ctx.fillStyle = '#161616';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.save();
+            // Камера следит за игроком
+            const camX = canvas.width / 2 - myPos.x;
+            const camY = canvas.height / 2 - myPos.y;
+            ctx.translate(camX, camY);
+
+            // Сетка карты
+            ctx.strokeStyle = '#242424';
+            ctx.lineWidth = 1;
+            for (let x = 0; x <= mapSize; x += 50) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, mapSize); ctx.stroke();
+            }
+            for (let y = 0; y <= mapSize; y += 50) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(mapSize, y); ctx.stroke();
+            }
+
+            // Красная рамка границ карты
+            ctx.strokeStyle = '#ff5252';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(0, 0, mapSize, mapSize);
+
+            // Еда
+            foods.forEach(f => {
+                ctx.beginPath();
+                ctx.arc(f.x, f.y, f.value > 1 ? 9 : 5, 0, Math.PI * 2);
+                ctx.fillStyle = f.color;
+                ctx.fill();
+            });
+
+            // Все игроки
+            for (let id in players) {
+                drawWorm(players[id], id === myId);
+            }
+
+            ctx.restore();
         }
 
         function loop() {
