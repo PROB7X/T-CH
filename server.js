@@ -10,7 +10,7 @@ const io = new Server(server, {
 });
 
 const MAP_SIZE = 2000;
-const FOOD_COUNT = 200;
+const FOOD_COUNT = 220;
 const players = {};
 let foods = [];
 
@@ -34,6 +34,9 @@ app.get('/', (req, res) => {
 });
 
 io.on('connection', (socket) => {
+    // Сразу отправляем еду и игроков при подключении
+    socket.emit('init', { id: socket.id, mapSize: MAP_SIZE, foods });
+
     socket.on('join', (name) => {
         players[socket.id] = {
             id: socket.id,
@@ -54,24 +57,35 @@ io.on('connection', (socket) => {
     });
 
     socket.on('update', (data) => {
-        const p = players[socket.id];
-        if (!p) return;
+        // Если игрок ещё не записан в списке, создаём его автоматически
+        if (!players[socket.id]) {
+            players[socket.id] = {
+                id: socket.id,
+                name: (data.name || 'Червяк').slice(0, 15),
+                x: data.x || 1000,
+                y: data.y || 1000,
+                color: data.color || '#4caf50',
+                mass: 10,
+                tail: []
+            };
+        }
 
+        const p = players[socket.id];
         p.x = data.x;
         p.y = data.y;
         p.tail = Array.isArray(data.tail) ? data.tail : [];
 
-        // Трата веса при ускорении
-        if (data.boosting && p.mass > 12) {
+        // Трата веса при ускорении (если вес больше 10)
+        if (data.boosting && p.mass > 10) {
             p.boostTick = (p.boostTick || 0) + 1;
-            if (p.boostTick >= 10) {
+            if (p.boostTick >= 15) {
                 p.mass -= 1;
                 p.boostTick = 0;
             }
         }
 
         // Поедание еды
-        const pickupRadius = Math.min(35, 16 + p.mass * 0.05);
+        const pickupRadius = Math.min(35, 18 + p.mass * 0.05);
         let ate = false;
 
         for (let i = foods.length - 1; i >= 0; i--) {
