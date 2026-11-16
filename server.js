@@ -57,13 +57,11 @@ io.on('connection', (socket) => {
     const config = getUsersConfig();
     const lowerNick = cleanNick.toLowerCase();
 
-    // Проверка на бан (без учета регистра)
-    if (config.banned.some(b => b.toLowerCase() === lowerNick)) {
+    if ((config.banned || []).some(b => b.toLowerCase() === lowerNick)) {
       socket.emit('login_error', 'Этот никнейм заблокирован администратором.');
       return;
     }
 
-    // Проверка, не занят ли ник прямо сейчас в онлайне
     for (let u of onlineUsers.values()) {
       if (u.nick.toLowerCase() === lowerNick) {
         socket.emit('login_error', 'Пользователь с таким ником уже в чате.');
@@ -71,12 +69,12 @@ io.on('connection', (socket) => {
       }
     }
 
-    // Проверка защищенного ника (PROB7X и др.)
     const protectedEntries = Object.entries(config.protected || {});
     const foundProtected = protectedEntries.find(([pNick]) => pNick.toLowerCase() === lowerNick);
 
     if (foundProtected) {
-      const [exactNick, requiredPass] = foundProtected;
+      const exactNick = foundProtected[0];
+      const requiredPass = foundProtected[1];
       if (!password) {
         socket.emit('need_password', `Ник ${exactNick} защищён. Введите секретный код:`);
         return;
@@ -87,9 +85,9 @@ io.on('connection', (socket) => {
       }
     }
 
-    const finalNick = foundProtected ? foundProtected : cleanNick;
+    const finalNick = foundProtected ? foundProtected[0] : cleanNick;
     const isAdmin = (config.admins || []).some(a => a.toLowerCase() === lowerNick);
-    const userTag = config.tags[finalNick] || null;
+    const userTag = (config.tags || {})[finalNick] || null;
 
     currentUser = {
       nick: finalNick,
@@ -116,17 +114,16 @@ io.on('connection', (socket) => {
     if (!cleanText) return;
 
     const config = getUsersConfig();
-    if (config.banned.some(b => b.toLowerCase() === currentUser.nick.toLowerCase())) {
+    if ((config.banned || []).some(b => b.toLowerCase() === currentUser.nick.toLowerCase())) {
       socket.emit('kicked', 'Вы были заблокированы.');
       socket.disconnect();
       return;
     }
 
-    // Админ-команды
     if (currentUser.isAdmin && cleanText.startsWith('/')) {
       const parts = cleanText.split(' ');
-      const cmd = parts.toLowerCase();
-      const target = parts;
+      const cmd = parts[0].toLowerCase();
+      const target = parts[1];
 
       if (cmd === '/clear') {
         messageHistory = [];
