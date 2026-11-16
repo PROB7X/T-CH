@@ -2,184 +2,80 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Онлайн Червячки</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Червячки Онлайн</title>
     <style>
-        * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
-        body { margin: 0; overflow: hidden; background-color: #111; font-family: Arial, sans-serif; color: white; }
-        canvas { display: block; width: 100vw; height: 100vh; }
-        #ui {
-            position: absolute; top: 15px; left: 15px;
-            background: rgba(0, 0, 0, 0.65); padding: 10px 15px;
-            border-radius: 8px; pointer-events: none; font-size: 14px; line-height: 1.5;
-        }
-        #status { color: #ffa500; font-weight: bold; }
-        #login {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: #222; padding: 25px; border-radius: 12px; text-align: center;
-            box-shadow: 0 0 25px rgba(0,0,0,0.9); z-index: 10; width: 280px;
-        }
-        input { padding: 10px; font-size: 16px; border-radius: 6px; border: none; margin-bottom: 12px; width: 100%; text-align: center; }
-        button { padding: 12px 20px; font-size: 16px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; }
-        #fullscreen-btn {
-            position: absolute; top: 15px; right: 15px; width: auto;
-            padding: 10px 16px; font-size: 14px; background: #007bff; z-index: 20;
-        }
+        body { margin: 0; overflow: hidden; background: #1a1a1a; touch-action: none; }
+        canvas { display: block; }
     </style>
 </head>
 <body>
-
-    <div id="ui">
-        <div id="status">Подключение...</div>
-        <div>Очки: <span id="score">0</span></div>
-        <div>Игроков онлайн: <span id="online">0</span></div>
-    </div>
-
-    <button id="fullscreen-btn" onclick="enterFullscreen()">На весь экран</button>
-
-    <div id="login">
-        <h2 style="margin-top: 0;">Онлайн Червячки</h2>
-        <input type="text" id="nick" placeholder="Ваш ник" maxlength="15" value="Петя">
-        <button onclick="startGame()">Играть</button>
-    </div>
-
     <canvas id="game"></canvas>
-
+    <script src="/socket.io/socket.io.js"></script>
     <script>
-        const canvas = document.getElementById("game");
-        const ctx = canvas.getContext("2d");
-        const statusEl = document.getElementById("status");
-        const fsBtn = document.getElementById("fullscreen-btn");
+        const socket = io();
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+        
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
 
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
+        let myPos = { x: canvas.width / 2, y: canvas.height / 2 };
+        let target = { x: myPos.x, y: myPos.y };
+        let players = {};
+        let tail = [];
+
+        window.addEventListener('mousemove', e => { target = { x: e.clientX, y: e.clientY }; });
+        window.addEventListener('touchmove', e => {
+            target = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        });
+
+        socket.on('state', serverPlayers => { players = serverPlayers; });
+
+        function update() {
+            const dx = target.x - myPos.x;
+            const dy = target.y - myPos.y;
+            const angle = Math.atan2(dy, dx);
+            const speed = 3;
+
+            myPos.x += Math.cos(angle) * speed;
+            myPos.y += Math.sin(angle) * speed;
+
+            tail.push({ x: myPos.x, y: myPos.y });
+            if (tail.length > 25) tail.shift();
+
+            socket.emit('move', myPos);
         }
-        resizeCanvas();
-        window.addEventListener("resize", resizeCanvas);
-
-        async function enterFullscreen() {
-            try {
-                const elem = document.documentElement;
-                if (elem.requestFullscreen) await elem.requestFullscreen();
-                else if (elem.webkitRequestFullscreen) await elem.webkitRequestFullscreen();
-                if (screen.orientation && screen.orientation.lock) await screen.orientation.lock("landscape");
-            } catch (err) {}
-            updateFullscreenButton();
-        }
-
-        function updateFullscreenButton() {
-            const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
-            fsBtn.style.display = isFullscreen ? "none" : "block";
-            setTimeout(resizeCanvas, 200);
-        }
-
-        document.addEventListener("fullscreenchange", updateFullscreenButton);
-        document.addEventListener("webkitfullscreenchange", updateFullscreenButton);
-
-        let myId = null, mapSize = 2000, players = {}, food = [];
-        let mouseX = canvas.width / 2, mouseY = canvas.height / 2;
-        let ws;
-
-        function connect() {
-            const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-            ws = new WebSocket(`${wsProtocol}//${window.location.host}/ws`);
-
-            ws.onopen = () => {
-                statusEl.textContent = "В сети";
-                statusEl.style.color = "#4caf50";
-            };
-
-            ws.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                if (data.type === "init") {
-                    myId = data.id;
-                    mapSize = data.map_size;
-                } else if (data.type === "state") {
-                    players = data.players;
-                    food = data.food;
-                    document.getElementById("online").textContent = Object.keys(players).length;
-                    if (myId && players[myId]) {
-                        document.getElementById("score").textContent = players[myId].score;
-                    }
-                }
-            };
-
-            ws.onclose = () => {
-                statusEl.textContent = "Нет связи с сервером";
-                statusEl.style.color = "#ff4444";
-                setTimeout(connect, 3000);
-            };
-        }
-
-        function startGame() {
-            enterFullscreen();
-            const nick = document.getElementById("nick").value.trim();
-            if (nick && ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ type: "name", name: nick }));
-            }
-            document.getElementById("login").style.display = "none";
-        }
-
-        window.addEventListener("mousemove", (e) => { mouseX = e.clientX; mouseY = e.clientY; });
-        window.addEventListener("touchstart", (e) => {
-            if (e.touches.length > 0) { mouseX = e.touches[0].clientX; mouseY = e.touches[0].clientY; }
-        }, { passive: true });
-        window.addEventListener("touchmove", (e) => {
-            if (e.touches.length > 0) { mouseX = e.touches[0].clientX; mouseY = e.touches[0].clientY; }
-        }, { passive: true });
-
-        setInterval(() => {
-            if (myId && players[myId] && ws && ws.readyState === WebSocket.OPEN) {
-                const me = players[myId];
-                const worldX = me.x + (mouseX - canvas.width / 2);
-                const worldY = me.y + (mouseY - canvas.height / 2);
-                ws.send(JSON.stringify({ type: "move", x: worldX, y: worldY }));
-            }
-        }, 50);
 
         function draw() {
-            ctx.fillStyle = "#181818";
+            ctx.fillStyle = '#1a1a1a';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            if (!myId || !players[myId]) {
-                requestAnimationFrame(draw);
-                return;
-            }
+            // Рисуем свой хвост
+            tail.forEach((part, index) => {
+                ctx.beginPath();
+                ctx.arc(part.x, part.y, 10 + index * 0.2, 0, Math.PI * 2);
+                ctx.fillStyle = '#4caf50';
+                ctx.fill();
+            });
 
-            const me = players[myId];
-            ctx.save();
-            ctx.translate(-(me.x - canvas.width / 2), -(me.y - canvas.height / 2));
-
-            ctx.strokeStyle = "#ff4444"; ctx.lineWidth = 5;
-            ctx.strokeRect(0, 0, mapSize, mapSize);
-
-            ctx.strokeStyle = "#252525"; ctx.lineWidth = 1;
-            for (let x = 0; x <= mapSize; x += 100) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, mapSize); ctx.stroke(); }
-            for (let y = 0; y <= mapSize; y += 100) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(mapSize, y); ctx.stroke(); }
-
-            for (const f of food) {
-                ctx.fillStyle = f.color;
-                ctx.beginPath(); ctx.arc(f.x, f.y, 6, 0, Math.PI * 2); ctx.fill();
-            }
-
-            for (const pid in players) {
-                const p = players[pid];
-                ctx.fillStyle = p.color;
-                for (let i = p.body.length - 1; i >= 0; i--) {
-                    const seg = p.body[i];
-                    ctx.beginPath(); ctx.arc(seg.x, seg.y, i === 0 ? 14 : 11, 0, Math.PI * 2); ctx.fill();
+            // Рисуем других игроков
+            for (let id in players) {
+                if (id !== socket.id) {
+                    ctx.beginPath();
+                    ctx.arc(players[id].x, players[id].y, 15, 0, Math.PI * 2);
+                    ctx.fillStyle = players[id].color;
+                    ctx.fill();
                 }
-                ctx.fillStyle = "white"; ctx.font = "14px Arial"; ctx.textAlign = "center";
-                ctx.fillText(p.name, p.x, p.y - 20);
             }
-
-            ctx.restore();
-            requestAnimationFrame(draw);
         }
 
-        connect();
-        draw();
+        function loop() {
+            update();
+            draw();
+            requestAnimationFrame(loop);
+        }
+        loop();
     </script>
 </body>
 </html>
