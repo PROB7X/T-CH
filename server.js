@@ -6,245 +6,182 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: '*' } });
+const io = new Server(server);
 
-const DB_FILE = path.join(__dirname, 'database.json');
-let db = { users: {} };
+const PORT = 3001;
+const USERS_FILE = path.join(__dirname, 'users.json');
 
-if (fs.existsSync(DB_FILE)) {
-  try { db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8')); } catch (e) { db = { users: {} }; }
-}
-function saveDB() {
-  fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
-}
-
-function parseCookies(str = '') {
-  return str.split(';').reduce((acc, part) => {
-    const [k, ...v] = part.trim().split('=');
-    if (k) acc[k] = decodeURIComponent(v.join('='));
-    return acc;
-  }, {});
-}
-
-app.use(express.json());
-app.get('/1.mp4', (req, res) => {
-  const videoPath = path.join(__dirname, '1.mp4');
-  if (fs.existsSync(videoPath)) return res.sendFile(videoPath);
-  res.status(404).send('Video not found');
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
-app.use(express.static(__dirname));
 
-const rooms = {};
-function getOrCreateRoom(roomId = 'main', customCfg = {}) {
-  if (!rooms[roomId]) {
-    rooms[roomId] = {
-      id: roomId,
-      players: {},
-      foods: [],
-      coins: [],
-      radius: customCfg.radius || 2400,
-      minRadius: 500,
-      shrinkRate: customCfg.shrinkRate || 0.35
-    };
-    spawnEntities(rooms[roomId]);
+function getUsersConfig() {
+  try {
+    const raw = fs.readFileSync(USERS_FILE, 'utf8');
+    return JSON.parse(raw);
+  } catch (err) {
+    console.error('Ошибка чтения users.json:', err);
+    return { admins: [], protected: {}, tags: {}, banned: [] };
   }
-  return rooms[roomId];
 }
 
-function spawnEntities(room) {
-  const colors = ['#ff4757', '#2ed573', '#1e90ff', '#ffa502', '#eccc68', '#ff6b81', '#7bed9f'];
-  while (room.foods.length < 280) {
-    const ang = Math.random() * Math.PI * 2;
-    const dist = Math.sqrt(Math.random()) * (room.radius - 60);
-    room.foods.push({
-      id: Math.random().toString(36).slice(2),
-      x: Math.cos(ang) * dist,
-      y: Math.sin(ang) * dist,
-      r: 8 + Math.random() * 5,
-      val: 2,
-      color: colors[Math.floor(Math.random() * colors.length)]
-    });
-  }
-  while (room.coins.length < 45) {
-    const ang = Math.random() * Math.PI * 2;
-    const dist = Math.sqrt(Math.random()) * (room.radius - 80);
-    room.coins.push({
-      id: Math.random().toString(36).slice(2),
-      x: Math.cos(ang) * dist,
-      y: Math.sin(ang) * dist,
-      r: 12
-    });
-  }
+function saveUsersConfig(config) {
+  fs.writeFileSync(USERS_FILE, JSON.stringify(config, null, 2), 'utf8');
 }
+
+const defaultColors = ['#ff75e6', '#00f593', '#bf94ff', '#ffb31a', '#1e90ff', '#ff6347'];
+function getRandomColor(nick) {
+  let hash = 0;
+  for (let i = 0; i < nick.length; i++) {
+    hash = nick.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return defaultColors[Math.abs(hash) % defaultColors.length];
+}
+
+let onlineUsers = new Map();
+let messageHistory = [];
 
 io.on('connection', (socket) => {
-  const cookies = parseCookies(socket.handshake.headers.cookie || '');
-  let currentUid = cookies.worm_uid || cookies.m || null;
+  let currentUser = null;
 
-  socket.on('initAuth', (clientUid) => {
-    const uid = clientUid || currentUid;
-    if (uid && db.users[uid]) {
-      currentUid = uid;
-      socket.emit('authSuccess', db.users[uid]);
-    } else {
-      socket.emit('needRegister');
+  socket.on('login', (data) => {
+    const rawNick = typeof data === 'object' ? data.nick : data;
+    const password = typeof data === 'object' ? String(data.password || '') : '';
+    const cleanNick = String(rawNick || '').trim().slice(0, 20);
+
+    if (!cleanNick) {
+      socket.emit('login_error', 'Введите корректный никнейм.');
+      return;
     }
-  });
 
-  socket.on('registerProfile', ({ uid, nick, skin }) => {
-    const id = uid || ('u_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6));
-    db.users[id] = {
-      uid: id,
-      nick: (nick || 'Игрок').trim().slice(0, 16),
-      skin: skin || 'emerald',
-      coins: 100,
-      crystals: 5,
-      bestScore: 0
-    };
-    currentUid = id;
-    saveDB();
-    socket.emit('authSuccess', db.users[id]);
-  });
+    const config = getUsersConfig();
+    const lowerNick = cleanNick.toLowerCase();
 
-  socket.on('saveProfile', ({ uid, nick, skin }) => {
-    const id = uid || currentUid;
-    if (!id || !db.users[id]) return;
-    if (nick) db.users[id].nick = nick.trim().slice(0, 16);
-    if (skin) db.users[id].skin = skin;
-    saveDB();
-    socket.emit('profileSaved', db.users[id]);
-  });
-  socket.on('joinRoom', ({ roomId = 'main', uid, nick, skin, customCfg } = {}) => {
-    const id = uid || currentUid;
-    const user = (id && db.users[id]) ? db.users[id] : {
-      uid: id || socket.id,
-      nick: (nick || 'Игрок').slice(0, 16),
-      skin: skin || 'emerald',
-      coins: 0,
-      crystals: 0
-    };
-    if (nick) user.nick = nick.slice(0, 16);
-    if (skin) user.skin = skin;
+    // Проверка на бан (без учета регистра)
+    if (config.banned.some(b => b.toLowerCase() === lowerNick)) {
+      socket.emit('login_error', 'Этот никнейм заблокирован администратором.');
+      return;
+    }
 
-    const room = getOrCreateRoom(roomId, customCfg);
-    socket.join(room.id);
-    socket.roomId = room.id;
+    // Проверка, не занят ли ник прямо сейчас в онлайне
+    for (let u of onlineUsers.values()) {
+      if (u.nick.toLowerCase() === lowerNick) {
+        socket.emit('login_error', 'Пользователь с таким ником уже в чате.');
+        return;
+      }
+    }
 
-    const spawnAng = Math.random() * Math.PI * 2;
-    const spawnDist = Math.random() * (room.radius * 0.45);
-    const sx = Math.cos(spawnAng) * spawnDist;
-    const sy = Math.sin(spawnAng) * spawnDist;
+    // Проверка защищенного ника (PROB7X и др.)
+    const protectedEntries = Object.entries(config.protected || {});
+    const foundProtected = protectedEntries.find(([pNick]) => pNick.toLowerCase() === lowerNick);
 
-    const segments = [];
-    for (let i = 0; i < 14; i++) segments.push({ x: sx - i * 6, y: sy });
+    if (foundProtected) {
+      const [exactNick, requiredPass] = foundProtected;
+      if (!password) {
+        socket.emit('need_password', `Ник ${exactNick} защищён. Введите секретный код:`);
+        return;
+      }
+      if (password !== requiredPass) {
+        socket.emit('login_error', 'Неверный секретный код для этого ника!');
+        return;
+      }
+    }
 
-    room.players[socket.id] = {
-      id: socket.id,
-      uid: user.uid,
-      nick: user.nick,
-      skin: user.skin,
-      x: sx,
-      y: sy,
-      angle: 0,
-      targetAngle: 0,
-      boost: false,
-      score: 20,
-      segments,
-      shieldUntil: Date.now() + 3000
+    const finalNick = foundProtected ? foundProtected : cleanNick;
+    const isAdmin = (config.admins || []).some(a => a.toLowerCase() === lowerNick);
+    const userTag = config.tags[finalNick] || null;
+
+    currentUser = {
+      nick: finalNick,
+      isAdmin: isAdmin,
+      badge: userTag ? userTag.badge : null,
+      badgeColor: userTag ? userTag.badgeColor : null,
+      nickColor: userTag ? userTag.nickColor : getRandomColor(finalNick)
     };
 
-    socket.emit('joinedRoom', {
-      roomId: room.id,
-      playerId: socket.id,
-      radius: room.radius,
-      shieldUntil: room.players[socket.id].shieldUntil
+    onlineUsers.set(socket.id, currentUser);
+
+    socket.emit('login_success', {
+      user: currentUser,
+      history: messageHistory
     });
+
+    io.emit('online_count', onlineUsers.size);
+    io.emit('system_message', `${finalNick} присоединился к чату`);
   });
 
-  socket.on('input', ({ angle, boost }) => {
-    const room = rooms[socket.roomId];
-    if (!room || !room.players[socket.id]) return;
-    room.players[socket.id].targetAngle = angle;
-    room.players[socket.id].boost = !!boost;
-  });
+  socket.on('chat_message', (text) => {
+    if (!currentUser) return;
+    const cleanText = String(text || '').trim().slice(0, 500);
+    if (!cleanText) return;
 
-  socket.on('rewardVideo', ({ type, uid }) => {
-    const id = uid || currentUid;
-    if (id && db.users[id] && type === 'crystals') {
-      db.users[id].crystals = (db.users[id].crystals || 0) + 3;
-      saveDB();
-      socket.emit('profileSaved', db.users[id]);
+    const config = getUsersConfig();
+    if (config.banned.some(b => b.toLowerCase() === currentUser.nick.toLowerCase())) {
+      socket.emit('kicked', 'Вы были заблокированы.');
+      socket.disconnect();
+      return;
     }
-  });
 
-  socket.on('disconnect', () => {
-    const room = rooms[socket.roomId];
-    if (room && room.players[socket.id]) delete room.players[socket.id];
-  });
-});
+    // Админ-команды
+    if (currentUser.isAdmin && cleanText.startsWith('/')) {
+      const parts = cleanText.split(' ');
+      const cmd = parts.toLowerCase();
+      const target = parts;
 
-setInterval(() => {
-  const now = Date.now();
-  Object.values(rooms).forEach((room) => {
-    const playerList = Object.values(room.players);
-    if (playerList.length === 0) return;
-
-    if (room.radius > room.minRadius) {
-      room.radius = Math.max(room.minRadius, room.radius - room.shrinkRate);
-    }
-    spawnEntities(room);
-
-    playerList.forEach((p) => {
-      const speed = p.boost && p.score > 25 ? 6.2 : 3.6;
-      if (p.boost && p.score > 25) p.score -= 0.08;
-      p.angle = p.targetAngle;
-      p.x += Math.cos(p.angle) * speed;
-      p.y += Math.sin(p.angle) * speed;
-
-      p.segments.unshift({ x: p.x, y: p.y });
-      const targetLen = Math.min(220, Math.floor(12 + p.score / 3));
-      while (p.segments.length > targetLen) p.segments.pop();
-
-      const distFromCenter = Math.hypot(p.x, p.y);
-      if (distFromCenter > room.radius && now > p.shieldUntil) {
-        io.to(p.id).emit('playerDied', { reason: 'zone', score: Math.floor(p.score) });
-        delete room.players[p.id];
+      if (cmd === '/clear') {
+        messageHistory = [];
+        io.emit('clear_chat');
+        io.emit('system_message', `Администратор ${currentUser.nick} очистил чат.`);
         return;
       }
 
-      room.foods = room.foods.filter((f) => {
-        if (Math.hypot(p.x - f.x, p.y - f.y) < 22 + f.r) {
-          p.score += f.val;
-          return false;
+      if (cmd === '/ban' && target) {
+        if (!config.banned.some(b => b.toLowerCase() === target.toLowerCase())) {
+          config.banned.push(target);
+          saveUsersConfig(config);
         }
-        return true;
-      });
-
-      room.coins = room.coins.filter((c) => {
-        if (Math.hypot(p.x - c.x, p.y - c.y) < 26) {
-          if (p.uid && db.users[p.uid]) {
-            db.users[p.uid].coins = (db.users[p.uid].coins || 0) + 1;
+        for (let [id, u] of onlineUsers.entries()) {
+          if (u.nick.toLowerCase() === target.toLowerCase()) {
+            io.to(id).emit('kicked', 'Вы были заблокированы администратором.');
+            io.sockets.sockets.get(id)?.disconnect();
           }
-          return false;
         }
-        return true;
-      });
-    });
+        io.emit('system_message', `Пользователь ${target} забанен.`);
+        return;
+      }
 
-    const alive = Object.values(room.players);
-    const leaderboard = alive
-      .map((p) => ({ id: p.id, nick: p.nick, score: Math.floor(p.score) }))
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 10);
+      if (cmd === '/unban' && target) {
+        config.banned = config.banned.filter(u => u.toLowerCase() !== target.toLowerCase());
+        saveUsersConfig(config);
+        socket.emit('system_message', `Пользователь ${target} разбанен.`);
+        return;
+      }
+    }
 
-    io.to(room.id).emit('state', {
-      radius: room.radius,
-      players: alive,
-      foods: room.foods,
-      coins: room.coins,
-      leaderboard
-    });
+    const msgData = {
+      id: Date.now() + Math.random(),
+      nick: currentUser.nick,
+      badge: currentUser.badge,
+      badgeColor: currentUser.badgeColor,
+      nickColor: currentUser.nickColor,
+      text: cleanText,
+      time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+    };
+
+    messageHistory.push(msgData);
+    if (messageHistory.length > 50) messageHistory.shift();
+
+    io.emit('chat_message', msgData);
   });
-}, 1000 / 30);
 
-server.listen(3000, () => console.log('Worms server running on port 3000'));
+  socket.on('disconnect', () => {
+    if (currentUser) {
+      onlineUsers.delete(socket.id);
+      io.emit('online_count', onlineUsers.size);
+    }
+  });
+});
+
+server.listen(PORT, () => {
+  console.log(`Чат запущен на порту ${PORT}`);
+});
