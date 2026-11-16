@@ -9,96 +9,141 @@
         body { margin: 0; overflow: hidden; background: #121212; color: white; touch-action: none; }
         canvas#game { display: block; }
         
-        #fsOverlay {
-            position: fixed; inset: 0; background: rgba(10, 10, 10, 0.96);
+        .overlay {
+            position: fixed; inset: 0; background: rgba(12, 12, 12, 0.95);
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            z-index: 100; text-align: center; padding: 20px;
+            z-index: 50; text-align: center; padding: 15px;
         }
-        #fsOverlay p { color: #aaa; margin-bottom: 20px; font-size: 16px; }
-        #fsBtn {
-            padding: 16px 32px; font-size: 20px; font-weight: bold; border-radius: 12px;
-            border: none; background: #2196f3; color: white; cursor: pointer;
-            box-shadow: 0 4px 15px rgba(33, 150, 243, 0.4);
+        #fsOverlay { z-index: 100; }
+        #adOverlay { z-index: 90; background: black; }
+        
+        .btn {
+            padding: 12px 26px; font-size: 16px; font-weight: bold; border-radius: 10px;
+            border: none; color: white; cursor: pointer; margin: 6px;
+        }
+        .btn-blue { background: #2196f3; }
+        .btn-green { background: #4caf50; }
+        .btn-purple { background: #9c27b0; }
+        .btn-gold { background: #ff9800; }
+
+        input {
+            padding: 10px 15px; font-size: 16px; border-radius: 8px; border: 2px solid #333;
+            background: #222; color: white; text-align: center; margin-bottom: 12px; width: 230px; outline: none;
         }
 
-        #menu {
-            position: fixed; inset: 0; background: rgba(18, 18, 18, 0.92);
-            display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10;
+        .wallet {
+            position: absolute; top: 12px; right: 15px; display: flex; gap: 12px;
+            background: rgba(255,255,255,0.08); padding: 8px 14px; border-radius: 10px; font-size: 15px;
         }
-        #menu h1 { font-size: 28px; color: #4caf50; margin: 0 0 15px 0; text-shadow: 0 0 10px rgba(76,175,80,0.5); }
-        #menu input {
-            padding: 10px 16px; font-size: 16px; border-radius: 8px; border: 2px solid #333;
-            background: #222; color: white; text-align: center; margin-bottom: 12px; width: 240px; outline: none;
+        .plus-btn {
+            background: #00e676; color: #000; border: none; border-radius: 50%;
+            width: 22px; height: 22px; font-weight: bold; cursor: pointer; margin-left: 4px;
         }
-        #menu input:focus { border-color: #4caf50; }
-        #menu button {
-            padding: 10px 36px; font-size: 18px; font-weight: bold; border-radius: 8px; border: none;
-            background: #4caf50; color: white; cursor: pointer;
+
+        #shopBox {
+            background: #1e1e1e; border: 1px solid #333; border-radius: 12px;
+            padding: 15px; width: 92%; max-width: 580px; max-height: 75vh; overflow-y: auto;
         }
+        .skins-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; margin-top: 10px; }
+        .skin-card {
+            background: #282828; border: 2px solid #444; border-radius: 10px; padding: 10px;
+            display: flex; flex-direction: column; align-items: center; cursor: pointer;
+        }
+        .skin-card.equipped { border-color: #4caf50; background: #1f3320; }
+        .skin-preview { width: 40px; height: 40px; border-radius: 50%; margin-bottom: 6px; border: 2px solid white; }
 
         #hud { display: none; position: fixed; inset: 0; pointer-events: none; }
-        
-        /* Левый верхний угол: статистика и миникарта */
         #topLeft { position: absolute; top: 10px; left: 10px; display: flex; flex-direction: column; gap: 8px; }
         #stats { background: rgba(0,0,0,0.65); padding: 7px 12px; border-radius: 8px; font-size: 14px; width: fit-content; }
-        #minimap {
-            width: 110px; height: 110px; background: rgba(0, 0, 0, 0.65);
-            border: 2px solid rgba(255, 255, 255, 0.25); border-radius: 8px;
-        }
-
-        /* Фиксированная таблица лидеров (не дергается) */
+        #minimap { width: 110px; height: 110px; background: rgba(0,0,0,0.65); border: 2px solid rgba(255,255,255,0.25); border-radius: 8px; }
+        
         #leaderboard {
             position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.65);
-            padding: 8px 12px; border-radius: 8px; font-size: 13px;
-            width: 170px; height: 122px; overflow: hidden;
+            padding: 8px 12px; border-radius: 8px; font-size: 13px; width: 170px; height: 122px; overflow: hidden;
         }
-        .top-row {
-            display: flex; justify-content: space-between; margin-top: 3px;
-            white-space: nowrap; overflow: hidden;
-        }
+        .top-row { display: flex; justify-content: space-between; margin-top: 3px; white-space: nowrap; }
         .top-name { overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
-        
+
         #joyBase {
-            position: absolute; bottom: 20px; left: 20px; width: 110px; height: 110px;
-            border-radius: 50%; background: rgba(255, 255, 255, 0.1);
-            border: 2px solid rgba(255, 255, 255, 0.25); pointer-events: auto;
-            display: flex; align-items: center; justify-content: center;
+            position: fixed; width: 110px; height: 110px; border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1); border: 2px solid rgba(255, 255, 255, 0.25);
+            pointer-events: none; display: none; align-items: center; justify-content: center;
+            transform: translate(-50%, -50%);
         }
         #joyStick {
-            width: 44px; height: 44px; border-radius: 50%;
-            background: rgba(76, 175, 80, 0.85); box-shadow: 0 0 10px rgba(0,0,0,0.5);
-            position: relative; pointer-events: none;
+            width: 44px; height: 44px; border-radius: 50%; background: rgba(76, 175, 80, 0.85);
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
         }
 
         #boostBtn {
             position: absolute; bottom: 25px; right: 25px; width: 90px; height: 90px;
-            border-radius: 50%; background: rgba(255, 152, 0, 0.25);
-            border: 2px solid rgba(255, 152, 0, 0.7); color: white; font-size: 32px;
-            display: flex; align-items: center; justify-content: center;
-            pointer-events: auto; cursor: pointer; transition: 0.1s;
+            border-radius: 50%; background: rgba(255, 152, 0, 0.25); border: 2px solid rgba(255, 152, 0, 0.7);
+            color: white; font-size: 32px; display: flex; align-items: center; justify-content: center;
+            pointer-events: auto; cursor: pointer;
         }
-        #boostBtn.active {
-            background: rgba(255, 152, 0, 0.75); transform: scale(0.92);
-            box-shadow: 0 0 20px rgba(255, 152, 0, 0.8);
-        }
+        #boostBtn.active { background: rgba(255, 152, 0, 0.75); transform: scale(0.92); }
+        #boostBtn.disabled { opacity: 0.35; border-color: #666; }
     </style>
 </head>
 <body>
 
-    <div id="fsOverlay">
-        <p>Для удобного управления переведите игру в горизонтальный полноэкранный режим</p>
-        <button id="fsBtn">📱 На весь экран</button>
+    <div id="fsOverlay" class="overlay">
+        <p style="color:#aaa; margin-bottom:15px;">Переведите игру в горизонтальный полноэкранный режим</p>
+        <button id="fsBtn" class="btn btn-blue">📱 На весь экран</button>
     </div>
 
-    <div id="menu">
-        <h1>🐛 Червячки Онлайн</h1>
-        <input type="text" id="nickInput" placeholder="Введи имя..." maxlength="15">
-        <button id="playBtn">Играть</button>
+    <div id="regOverlay" class="overlay" style="display:none;">
+        <h2 style="color:#4caf50;">Создание профиля</h2>
+        <p style="color:#aaa; font-size:14px;">Имя сохранится на сервере навсегда</p>
+        <input type="text" id="regInput" placeholder="Придумай ник..." maxlength="15">
+        <button id="regBtn" class="btn btn-green">Сохранить</button>
+    </div>
+
+    <div id="menuOverlay" class="overlay" style="display:none;">
+        <div class="wallet">
+            <span>🪙 <b id="menuCoins">0</b></span>
+            <span>💎 <b id="menuGems">0</b> <button class="plus-btn" id="openAdBtn">+</button></span>
+        </div>
+        <h1 style="color:#4caf50; margin-bottom:5px;">🐛 Червячки Онлайн</h1>
+        <p id="welcomeText" style="color:#aaa; margin-top:0;"></p>
+        <div>
+            <button id="playBtn" class="btn btn-green">▶ Играть</button>
+            <button id="openShopBtn" class="btn btn-purple">🎨 Скины и Магазин</button>
+        </div>
+    </div>
+
+    <!-- Экран смерти с кнопкой возрождения за 1.mp4 -->
+    <div id="deathOverlay" class="overlay" style="display:none;">
+        <h2 style="color:#ff5252; margin-bottom:6px;">Вы погибли!</h2>
+        <p id="deathReasonText" style="color:#ccc; margin-top:0; margin-bottom:16px;"></p>
+        <button id="reviveAdBtn" class="btn btn-gold">🎬 Возродиться за рекламу (70% веса)</button>
+        <button id="toMenuBtn" class="btn btn-blue">В главное меню</button>
+    </div>
+
+    <div id="shopOverlay" class="overlay" style="display:none;">
+        <div class="wallet">
+            <span>🪙 <b id="shopCoins">0</b></span>
+            <span>💎 <b id="shopGems">0</b> <button class="plus-btn" id="shopAdBtn">+</button></span>
+        </div>
+        <div id="shopBox">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                <h3 style="margin:0;">Магазин скинов</h3>
+                <button id="exchangeBtn" class="btn btn-gold" style="padding:6px 12px; font-size:13px;">Обменять 1 💎 ➔ 10 🪙</button>
+            </div>
+            <div class="skins-grid" id="skinsGrid"></div>
+            <button id="closeShopBtn" class="btn btn-blue" style="margin-top:15px;">Назад в меню</button>
+        </div>
+    </div>
+
+    <div id="adOverlay" class="overlay" style="display:none;">
+        <p id="adPromptText" style="color:#ffd740; margin-bottom:8px;">Досмотрите видео до конца</p>
+        <video id="adVideo" src="/1.mp4" playsinline style="max-width:90%; max-height:70vh; border-radius:10px;"></video>
+        <button id="cancelAdBtn" class="btn" style="background:#444; font-size:13px; margin-top:10px;">Закрыть без награды</button>
     </div>
 
     <div id="hud">
         <div id="topLeft">
-            <div id="stats">Вес: <b id="massVal">10</b> | Онлайн: <b id="onlineVal">1</b></div>
+            <div id="stats">Вес: <b id="massVal">12</b> | 🪙 <b id="hudCoins">0</b> | Онлайн: <b id="onlineVal">1</b></div>
             <canvas id="minimap" width="110" height="110"></canvas>
         </div>
         <div id="leaderboard"><b>Топ игроков:</b><div id="topList"></div></div>
@@ -107,7 +152,6 @@
     </div>
 
     <canvas id="game"></canvas>
-
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
@@ -115,197 +159,323 @@
         const ctx = canvas.getContext('2d');
         const miniCanvas = document.getElementById('minimap');
         const miniCtx = miniCanvas.getContext('2d');
-        const fsOverlay = document.getElementById('fsOverlay');
 
-        function resize() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        }
+        function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
         window.addEventListener('resize', resize);
         resize();
 
+        const fsOverlay = document.getElementById('fsOverlay');
         async function enterFullscreen() {
             try {
                 const el = document.documentElement;
                 if (el.requestFullscreen) await el.requestFullscreen();
                 else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
-                if (screen.orientation && screen.orientation.lock) {
-                    await screen.orientation.lock('landscape').catch(() => {});
-                }
+                if (screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape').catch(() => {});
             } catch (e) {}
             fsOverlay.style.display = 'none';
             resize();
         }
         document.getElementById('fsBtn').onclick = enterFullscreen;
-
-        function checkFullscreen() {
+        function checkFs() {
             const isFs = document.fullscreenElement || document.webkitFullscreenElement;
             fsOverlay.style.display = isFs ? 'none' : 'flex';
             resize();
         }
-        document.addEventListener('fullscreenchange', checkFullscreen);
-        document.addEventListener('webkitfullscreenchange', checkFullscreen);
+        document.addEventListener('fullscreenchange', checkFs);
+        document.addEventListener('webkitfullscreenchange', checkFs);
+
+        let profile = null;
+        let allSkins = [];
+
+        function getCookieUid() {
+            const m = document.cookie.match(/worm_uid=([^;]+)/);
+            return m ? m[1] : null;
+        }
+        function setCookieUid(uid) {
+            document.cookie = `worm_uid=${uid}; max-age=31536000; path=/`;
+        }
+
+        socket.on('connect', () => {
+            socket.emit('auth', { uid: getCookieUid() });
+        });
+
+        socket.on('needRegister', () => {
+            document.getElementById('regOverlay').style.display = 'flex';
+        });
+
+        document.getElementById('regBtn').onclick = () => {
+            const name = document.getElementById('regInput').value.trim();
+            if (name) socket.emit('auth', { registerName: name });
+        };
+
+        function updateWalletUI() {
+            if (!profile) return;
+            document.getElementById('menuCoins').innerText = profile.coins;
+            document.getElementById('menuGems').innerText = profile.gems;
+            document.getElementById('shopCoins').innerText = profile.coins;
+            document.getElementById('shopGems').innerText = profile.gems;
+            document.getElementById('hudCoins').innerText = profile.coins;
+            document.getElementById('welcomeText').innerText = `Игрок: ${profile.name}`;
+            renderShop();
+        }
+
+        socket.on('authSuccess', data => {
+            setCookieUid(data.uid);
+            profile = data.profile;
+            allSkins = data.skins;
+            document.getElementById('regOverlay').style.display = 'none';
+            document.getElementById('menuOverlay').style.display = 'flex';
+            updateWalletUI();
+        });
+
+        socket.on('profile', serverProfile => {
+            profile = serverProfile;
+            updateWalletUI();
+        });
+
+        function renderShop() {
+            const grid = document.getElementById('skinsGrid');
+            if (!grid || !profile) return;
+            grid.innerHTML = allSkins.map(s => {
+                const owned = profile.ownedSkins.includes(s.id);
+                const equipped = profile.equippedSkin === s.id;
+                const bg = s.colors.length > 1 ? `linear-gradient(45deg, ${s.colors.join(',')})` : s.colors[0];
+                let btnText = owned ? (equipped ? '✅ Надет' : 'Надеть') : `${s.price} ${s.currency === 'coins' ? '🪙' : '💎'}`;
+                return `
+                    <div class="skin-card ${equipped ? 'equipped' : ''}" onclick="socket.emit('buyOrEquipSkin', '${s.id}')">
+                        <div class="skin-preview" style="background:${bg}"></div>
+                        <b style="font-size:13px;">${s.name}</b>
+                        <span style="font-size:12px; color:#ffd740; margin-top:4px;">${btnText}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        document.getElementById('openShopBtn').onclick = () => {
+            document.getElementById('menuOverlay').style.display = 'none';
+            document.getElementById('shopOverlay').style.display = 'flex';
+            renderShop();
+        };
+        document.getElementById('closeShopBtn').onclick = () => {
+            document.getElementById('shopOverlay').style.display = 'none';
+            document.getElementById('menuOverlay').style.display = 'flex';
+        };
+        document.getElementById('exchangeBtn').onclick = () => socket.emit('exchangeGems', 1);
+
+        // Видео-реклама 1.mp4 (для кристаллов или возрождения)
+        const adOverlay = document.getElementById('adOverlay');
+        const adVideo = document.getElementById('adVideo');
+        let adMode = 'gems'; // 'gems' или 'revive'
+        let savedLastMass = 12;
+
+        function startAd(mode) {
+            adMode = mode;
+            document.getElementById('adPromptText').innerText = mode === 'revive'
+                ? 'Досмотрите видео до конца, чтобы возродиться!'
+                : 'Досмотрите видео до конца, чтобы получить +5 💎';
+            adOverlay.style.display = 'flex';
+            adVideo.currentTime = 0;
+            adVideo.play().catch(() => {
+                alert('Видео 1.mp4 не найдено на сервере!');
+                adOverlay.style.display = 'none';
+            });
+        }
+        document.getElementById('openAdBtn').onclick = () => startAd('gems');
+        document.getElementById('shopAdBtn').onclick = () => startAd('gems');
+        document.getElementById('reviveAdBtn').onclick = () => startAd('revive');
+
+        adVideo.onended = () => {
+            adOverlay.style.display = 'none';
+            if (adMode === 'revive') {
+                document.getElementById('deathOverlay').style.display = 'none';
+                document.getElementById('hud').style.display = 'block';
+                socket.emit('join', { reviveMass: savedLastMass });
+                playing = true;
+            } else {
+                socket.emit('adReward');
+                alert('Награда начислена: +5 💎!');
+            }
+        };
+
+        document.getElementById('cancelAdBtn').onclick = () => {
+            adVideo.pause();
+            adOverlay.style.display = 'none';
+        };
         let myId = null;
         let mapSize = 2000;
         let playing = false;
         let players = {};
         let foods = [];
+        let mapCoins = [];
 
-        let myData = { name: 'Игрок', color: '#4caf50', mass: 10 };
+        let myData = { name: 'Игрок', skin: { type: 'solid', colors: ['#4caf50'] }, mass: 12, shieldUntil: 0 };
         let myPos = { x: 1000, y: 1000 };
         let angle = 0;
         let tail = [];
         let isBoosting = false;
 
+        // Динамический джойстик
         const joyBase = document.getElementById('joyBase');
         const joyStick = document.getElementById('joyStick');
         let joyTouchId = null;
+        let joyCenter = { x: 0, y: 0 };
+        const maxJoyRadius = 40;
 
-        function handleJoyMove(clientX, clientY) {
-            const rect = joyBase.getBoundingClientRect();
-            const centerX = rect.left + rect.width / 2;
-            const centerY = rect.top + rect.height / 2;
-            const dx = clientX - centerX;
-            const dy = clientY - centerY;
-            const dist = Math.hypot(dx, dy);
-            const maxRadius = 35;
-
-            if (dist > 2) angle = Math.atan2(dy, dx);
-
-            const clampedDist = Math.min(dist, maxRadius);
-            joyStick.style.transform = `translate(${Math.cos(angle) * clampedDist}px, ${Math.sin(angle) * clampedDist}px)`;
-        }
-
-        joyBase.addEventListener('touchstart', e => {
-            e.preventDefault();
-            if (joyTouchId === null && e.changedTouches.length > 0) {
-                const touch = e.changedTouches[0];
-                joyTouchId = touch.identifier;
-                handleJoyMove(touch.clientX, touch.clientY);
+        window.addEventListener('touchstart', e => {
+            if (!playing || joyTouchId !== null) return;
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const t = e.changedTouches[i];
+                if (t.clientX < canvas.width * 0.55) {
+                    joyTouchId = t.identifier;
+                    joyCenter = { x: t.clientX, y: t.clientY };
+                    joyBase.style.left = joyCenter.x + 'px';
+                    joyBase.style.top = joyCenter.y + 'px';
+                    joyBase.style.display = 'flex';
+                    joyStick.style.transform = 'translate(0px, 0px)';
+                    break;
+                }
             }
         }, { passive: false });
 
         window.addEventListener('touchmove', e => {
-            if (joyTouchId === null) return;
+            if (!playing || joyTouchId === null) return;
             for (let i = 0; i < e.changedTouches.length; i++) {
-                if (e.changedTouches[i].identifier === joyTouchId) {
-                    handleJoyMove(e.changedTouches[i].clientX, e.changedTouches[i].clientY);
+                const t = e.changedTouches[i];
+                if (t.identifier === joyTouchId) {
+                    const dx = t.clientX - joyCenter.x;
+                    const dy = t.clientY - joyCenter.y;
+                    const dist = Math.hypot(dx, dy);
+
+                    if (dist > 2) angle = Math.atan2(dy, dx);
+
+                    if (dist > maxJoyRadius) {
+                        joyCenter.x = t.clientX - Math.cos(angle) * maxJoyRadius;
+                        joyCenter.y = t.clientY - Math.sin(angle) * maxJoyRadius;
+                        joyBase.style.left = joyCenter.x + 'px';
+                        joyBase.style.top = joyCenter.y + 'px';
+                    }
+
+                    const clamped = Math.min(dist, maxJoyRadius);
+                    joyStick.style.transform = `translate(${Math.cos(angle) * clamped}px, ${Math.sin(angle) * clamped}px)`;
                 }
             }
         }, { passive: false });
 
-        function resetJoy(e) {
+        function endJoy(e) {
             for (let i = 0; i < e.changedTouches.length; i++) {
                 if (e.changedTouches[i].identifier === joyTouchId) {
                     joyTouchId = null;
-                    joyStick.style.transform = `translate(0px, 0px)`;
+                    joyBase.style.display = 'none';
                 }
             }
         }
-        window.addEventListener('touchend', resetJoy);
-        window.addEventListener('touchcancel', resetJoy);
+        window.addEventListener('touchend', endJoy);
+        window.addEventListener('touchcancel', endJoy);
 
+        // Кнопка ускорения
         const boostBtn = document.getElementById('boostBtn');
-        function setBoost(state) {
-            isBoosting = state;
-            boostBtn.classList.toggle('active', state);
-        }
-        boostBtn.addEventListener('touchstart', e => { e.preventDefault(); setBoost(true); }, { passive: false });
+        function setBoost(s) { isBoosting = s; }
+        boostBtn.addEventListener('touchstart', e => { e.preventDefault(); e.stopPropagation(); setBoost(true); }, { passive: false });
         boostBtn.addEventListener('touchend', e => { e.preventDefault(); setBoost(false); }, { passive: false });
-        boostBtn.addEventListener('touchcancel', () => setBoost(false));
         boostBtn.addEventListener('mousedown', () => setBoost(true));
         window.addEventListener('mouseup', () => setBoost(false));
-        window.addEventListener('keydown', e => { if (e.code === 'Space') setBoost(true); });
-        window.addEventListener('keyup', e => { if (e.code === 'Space') setBoost(false); });
 
         window.addEventListener('mousemove', e => {
-            if (playing && joyTouchId === null) {
-                angle = Math.atan2(e.clientY - canvas.height / 2, e.clientX - canvas.width / 2);
-            }
+            if (playing && joyTouchId === null) angle = Math.atan2(e.clientY - canvas.height / 2, e.clientX - canvas.width / 2);
         });
 
         document.getElementById('playBtn').onclick = () => {
-            const nick = document.getElementById('nickInput').value.trim() || 'Игрок';
-            myData.name = nick;
-            socket.emit('join', nick);
-            document.getElementById('menu').style.display = 'none';
+            socket.emit('join');
+            document.getElementById('menuOverlay').style.display = 'none';
             document.getElementById('hud').style.display = 'block';
             playing = true;
         };
+
+        document.getElementById('toMenuBtn').onclick = () => {
+            document.getElementById('deathOverlay').style.display = 'none';
+            document.getElementById('menuOverlay').style.display = 'flex';
+        };
+
         socket.on('init', data => {
             myId = data.id;
             mapSize = data.mapSize || 2000;
-            if (Array.isArray(data.foods)) foods = data.foods;
+            foods = data.foods || [];
+            mapCoins = data.mapCoins || [];
             if (data.player) {
                 myData = data.player;
-                myPos.x = data.player.x;
-                myPos.y = data.player.y;
+                myPos = { x: data.player.x, y: data.player.y };
                 tail = [];
             }
         });
 
-        socket.on('foods', serverFoods => {
-            if (Array.isArray(serverFoods)) foods = serverFoods;
+        socket.on('items', data => {
+            if (data.foods) foods = data.foods;
+            if (data.mapCoins) mapCoins = data.mapCoins;
         });
 
+        socket.on('died', data => {
+            playing = false;
+            isBoosting = false;
+            joyTouchId = null;
+            joyBase.style.display = 'none';
+            savedLastMass = (data && data.lastMass) ? data.lastMass : 12;
+            document.getElementById('hud').style.display = 'none';
+            document.getElementById('deathReasonText').innerText = `Вы врезались в ${data && data.reason ? data.reason : 'препятствие'}`;
+            document.getElementById('deathOverlay').style.display = 'flex';
+        });
         socket.on('state', serverPlayers => {
             players = serverPlayers || {};
-            const myServerId = myId || socket.id;
-            if (myServerId && players[myServerId]) {
-                myData.mass = players[myServerId].mass || 10;
-                myData.color = players[myServerId].color || myData.color;
-                myData.name = players[myServerId].name || myData.name;
+            if (myId && players[myId]) {
+                myData.mass = players[myId].mass;
+                myData.shieldUntil = players[myId].shieldUntil;
             }
             document.getElementById('massVal').innerText = myData.mass;
 
             const list = Object.values(players);
             document.getElementById('onlineVal').innerText = Math.max(1, list.length);
-
-            list.sort((a, b) => (b.mass || 10) - (a.mass || 10));
+            list.sort((a, b) => b.mass - a.mass);
             document.getElementById('topList').innerHTML = list.slice(0, 5)
-                .map((p, i) => `<div class="top-row"><span class="top-name">${i + 1}. ${p.name || 'Игрок'}</span><b>${p.mass || 10}</b></div>`).join('');
+                .map((p, i) => `<div class="top-row"><span class="top-name">${i + 1}. ${p.name}</span><b>${p.mass}</b></div>`).join('');
         });
 
         function update() {
             if (!playing) return;
 
-            const speed = isBoosting ? 6.2 : 3.2;
+            // Ускорение работает ТОЛЬКО если вес строго больше 10
+            const canBoost = isBoosting && myData.mass > 10;
+            boostBtn.classList.toggle('active', canBoost);
+            boostBtn.classList.toggle('disabled', myData.mass <= 10);
+
+            const speed = canBoost ? 6.2 : 3.2;
             myPos.x += Math.cos(angle) * speed;
             myPos.y += Math.sin(angle) * speed;
-
-            myPos.x = Math.max(15, Math.min(mapSize - 15, myPos.x));
-            myPos.y = Math.max(15, Math.min(mapSize - 15, myPos.y));
 
             tail.push({ x: myPos.x, y: myPos.y });
             const maxTail = Math.min(200, 12 + Math.floor(myData.mass * 0.8));
             while (tail.length > maxTail) tail.shift();
 
-            socket.emit('update', {
-                name: myData.name,
-                color: myData.color,
-                x: myPos.x,
-                y: myPos.y,
-                tail: tail,
-                boosting: isBoosting
-            });
+            socket.emit('update', { x: myPos.x, y: myPos.y, tail, boosting: canBoost });
         }
 
-        function isVisible(x, y, margin, view) {
-            return x >= view.left - margin && x <= view.right + margin &&
-                   y >= view.top - margin && y <= view.bottom + margin;
+        function isVisible(x, y, m, v) {
+            return x >= v.left - m && x <= v.right + m && y >= v.top - m && y <= v.bottom + m;
         }
 
-        function drawWorm(x, y, t, color, name, mass, view) {
+        function drawWorm(x, y, t, skin, name, mass, shieldUntil, view) {
             const radius = Math.min(28, 11 + mass * 0.05);
             const margin = radius + 80;
+            const colors = (skin && skin.colors) ? skin.colors : ['#4caf50'];
+            const hasShield = shieldUntil && Date.now() < shieldUntil;
 
-            // Хвост всегда одного размера с головой (без уменьшения к концу)
+            ctx.save();
+            if (hasShield) ctx.globalAlpha = 0.65;
+
             if (t && t.length > 0) {
-                ctx.fillStyle = color;
                 for (let i = 0; i < t.length; i++) {
                     if (isVisible(t[i].x, t[i].y, margin, view)) {
                         ctx.beginPath();
                         ctx.arc(t[i].x, t[i].y, radius, 0, Math.PI * 2);
+                        ctx.fillStyle = colors[Math.floor((i / t.length) * colors.length) % colors.length];
                         ctx.fill();
                     }
                 }
@@ -314,117 +484,98 @@
             if (isVisible(x, y, margin, view)) {
                 ctx.beginPath();
                 ctx.arc(x, y, radius, 0, Math.PI * 2);
-                ctx.fillStyle = color;
+                ctx.fillStyle = colors;
                 ctx.fill();
-                ctx.lineWidth = 2;
-                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = hasShield ? 4 : 2;
+                ctx.strokeStyle = hasShield ? '#00e5ff' : '#ffffff';
                 ctx.stroke();
+
+                if (hasShield) {
+                    ctx.beginPath();
+                    ctx.arc(x, y, radius + 7, 0, Math.PI * 2);
+                    ctx.strokeStyle = 'rgba(0, 229, 255, 0.7)';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
 
                 ctx.fillStyle = '#ffffff';
                 ctx.font = 'bold 13px sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText(`${name} (${mass})`, x, y - radius - 8);
+                ctx.fillText(`${name} (${mass})`, x, y - radius - 10);
             }
-        }
-
-        function drawMinimap() {
-            const w = miniCanvas.width;
-            const h = miniCanvas.height;
-            miniCtx.clearRect(0, 0, w, h);
-
-            const myServerId = myId || socket.id;
-
-            // Остальные игроки на миникарте (цветные точки)
-            for (let id in players) {
-                if (id !== myServerId) {
-                    const p = players[id];
-                    if (p && typeof p.x === 'number') {
-                        const mx = (p.x / mapSize) * w;
-                        const my = (p.y / mapSize) * h;
-                        miniCtx.beginPath();
-                        miniCtx.arc(mx, my, 3.5, 0, Math.PI * 2);
-                        miniCtx.fillStyle = p.color || '#ff5252';
-                        miniCtx.fill();
-                    }
-                }
-            }
-
-            // Мы сами на миникарте (яркая белая точка)
-            if (playing) {
-                const mx = (myPos.x / mapSize) * w;
-                const my = (myPos.y / mapSize) * h;
-                miniCtx.beginPath();
-                miniCtx.arc(mx, my, 4, 0, Math.PI * 2);
-                miniCtx.fillStyle = '#ffffff';
-                miniCtx.fill();
-            }
+            ctx.restore();
         }
 
         function draw() {
             ctx.fillStyle = '#161616';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            const view = {
-                left: myPos.x - canvas.width / 2,
-                right: myPos.x + canvas.width / 2,
-                top: myPos.y - canvas.height / 2,
-                bottom: myPos.y + canvas.height / 2
-            };
-
+            const view = { left: myPos.x - canvas.width / 2, right: myPos.x + canvas.width / 2, top: myPos.y - canvas.height / 2, bottom: myPos.y + canvas.height / 2 };
             ctx.save();
             ctx.translate(-view.left, -view.top);
 
             ctx.strokeStyle = '#242424';
             ctx.lineWidth = 1;
-            const startX = Math.max(0, Math.floor(view.left / 50) * 50);
-            const endX = Math.min(mapSize, Math.ceil(view.right / 50) * 50);
-            const startY = Math.max(0, Math.floor(view.top / 50) * 50);
-            const endY = Math.min(mapSize, Math.ceil(view.bottom / 50) * 50);
-
-            for (let x = startX; x <= endX; x += 50) {
-                ctx.beginPath(); ctx.moveTo(x, startY); ctx.lineTo(x, endY); ctx.stroke();
+            for (let x = Math.max(0, Math.floor(view.left / 50) * 50); x <= Math.min(mapSize, Math.ceil(view.right / 50) * 50); x += 50) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, mapSize); ctx.stroke();
             }
-            for (let y = startY; y <= endY; y += 50) {
-                ctx.beginPath(); ctx.moveTo(startX, y); ctx.lineTo(endX, y); ctx.stroke();
+            for (let y = Math.max(0, Math.floor(view.top / 50) * 50); y <= Math.min(mapSize, Math.ceil(view.bottom / 50) * 50); y += 50) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(mapSize, y); ctx.stroke();
             }
 
             ctx.strokeStyle = '#ff5252';
-            ctx.lineWidth = 4;
+            ctx.lineWidth = 6;
             ctx.strokeRect(0, 0, mapSize, mapSize);
 
-            for (let i = 0; i < foods.length; i++) {
-                const f = foods[i];
-                if (isVisible(f.x, f.y, 50, view)) {
+            for (let f of foods) {
+                if (isVisible(f.x, f.y, 40, view)) {
                     ctx.beginPath();
-                    ctx.arc(f.x, f.y, f.value > 1 ? 9 : 5, 0, Math.PI * 2);
+                    ctx.arc(f.x, f.y, f.value > 1 ? 8 : 5, 0, Math.PI * 2);
                     ctx.fillStyle = f.color;
                     ctx.fill();
                 }
             }
 
-            const myServerId = myId || socket.id;
-            for (let id in players) {
-                if (id !== myServerId) {
-                    const p = players[id];
-                    if (p && typeof p.x === 'number') {
-                        drawWorm(p.x, p.y, p.tail, p.color || '#448aff', p.name || 'Игрок', p.mass || 10, view);
-                    }
+            for (let c of mapCoins) {
+                if (isVisible(c.x, c.y, 40, view)) {
+                    ctx.beginPath();
+                    ctx.arc(c.x, c.y, 8, 0, Math.PI * 2);
+                    ctx.fillStyle = '#ffd740';
+                    ctx.fill();
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = '#ff6f00';
+                    ctx.stroke();
                 }
             }
 
-            if (playing) {
-                drawWorm(myPos.x, myPos.y, tail, myData.color, myData.name, myData.mass, view);
+            for (let id in players) {
+                if (id !== myId) {
+                    const p = players[id];
+                    drawWorm(p.x, p.y, p.tail, p.skin, p.name, p.mass, p.shieldUntil, view);
+                }
             }
+            if (playing) drawWorm(myPos.x, myPos.y, tail, myData.skin, myData.name, myData.mass, myData.shieldUntil, view);
 
             ctx.restore();
-            drawMinimap();
+
+            miniCtx.clearRect(0, 0, 110, 110);
+            for (let id in players) {
+                if (id !== myId) {
+                    miniCtx.beginPath();
+                    miniCtx.arc((players[id].x / mapSize) * 110, (players[id].y / mapSize) * 110, 3.5, 0, Math.PI * 2);
+                    miniCtx.fillStyle = players[id].skin ? players[id].skin.colors : '#ff5252';
+                    miniCtx.fill();
+                }
+            }
+            if (playing) {
+                miniCtx.beginPath();
+                miniCtx.arc((myPos.x / mapSize) * 110, (myPos.y / mapSize) * 110, 4, 0, Math.PI * 2);
+                miniCtx.fillStyle = '#ffffff';
+                miniCtx.fill();
+            }
         }
 
-        function loop() {
-            update();
-            draw();
-            requestAnimationFrame(loop);
-        }
+        function loop() { update(); draw(); requestAnimationFrame(loop); }
         loop();
     </script>
 </body>
