@@ -1,7 +1,7 @@
 {
-  "name": "island-survival-mp",
+  "name": "indeathpet",
   "version": "1.0.0",
-  "description": "Multiplayer Island Survival",
+  "description": "Multiplayer Pet Evolution & PvP Arena",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
