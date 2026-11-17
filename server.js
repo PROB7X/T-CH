@@ -1,20 +1,15 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// Раздаем статические файлы из текущей папки
 app.use(express.static(__dirname));
 
-// Хранилище комнат (серверов)
-// Формат: { "1234": { seed: 987654, players: { socketId: { id, x, y, color } } } }
 const rooms = {};
 
-// Генерация 4-значного номера комнаты
 function generateRoomCode() {
     let code;
     do {
@@ -26,7 +21,6 @@ function generateRoomCode() {
 io.on('connection', (socket) => {
     let currentRoom = null;
 
-    // Создание новой комнаты
     socket.on('createRoom', (callback) => {
         const roomCode = generateRoomCode();
         rooms[roomCode] = {
@@ -36,7 +30,6 @@ io.on('connection', (socket) => {
         joinPlayerToRoom(socket, roomCode, callback);
     });
 
-    // Подключение к существующей комнате
     socket.on('joinRoom', (roomCode, callback) => {
         if (!rooms[roomCode]) {
             return callback({ error: 'Сервер с таким номером не найден!' });
@@ -51,18 +44,18 @@ io.on('connection', (socket) => {
         currentRoom = roomCode;
         socket.join(roomCode);
 
-        const colors = ['#FF5733', '#33FF57', '#3357FF', '#F333FF', '#FF33A8', '#33FFF5', '#FFC300', '#DAF7A6', '#FF8D1A', '#900C3F'];
+        const colors = ['#e74c3c', '#2ecc71', '#3498db', '#9b59b6', '#f1c40f', '#1abc9c', '#e67e22', '#ecf0f1', '#ff7979', '#badc58'];
         const playerIndex = Object.keys(rooms[roomCode].players).length;
 
-        // Спавним игрока в центре острова (координаты мира от 0 до 4000, центр = 2000)
+        // В 3D центре острова координаты (0, 0, 0), y — высота
         rooms[roomCode].players[socket.id] = {
             id: socket.id,
-            x: 2000 + (Math.random() * 100 - 50),
-            y: 2000 + (Math.random() * 100 - 50),
+            x: (Math.random() * 6 - 3),
+            y: 0,
+            z: (Math.random() * 6 - 3),
             color: colors[playerIndex % colors.length]
         };
 
-        // Отправляем игроку данные комнаты и всех игроков
         callback({
             success: true,
             roomCode: roomCode,
@@ -71,27 +64,23 @@ io.on('connection', (socket) => {
             myId: socket.id
         });
 
-        // Сообщаем остальным в комнате о новом игроке
         socket.to(roomCode).emit('playerJoined', rooms[roomCode].players[socket.id]);
     }
 
-    // Обновление позиции игрока
     socket.on('move', (data) => {
         if (currentRoom && rooms[currentRoom] && rooms[currentRoom].players[socket.id]) {
             const p = rooms[currentRoom].players[socket.id];
             p.x = data.x;
             p.y = data.y;
+            p.z = data.z;
             socket.to(currentRoom).emit('playerMoved', p);
         }
     });
 
-    // Отключение игрока
     socket.on('disconnect', () => {
         if (currentRoom && rooms[currentRoom]) {
             delete rooms[currentRoom].players[socket.id];
             io.to(currentRoom).emit('playerLeft', socket.id);
-
-            // Удаляем комнату, если никого не осталось
             if (Object.keys(rooms[currentRoom].players).length === 0) {
                 delete rooms[currentRoom];
             }
@@ -101,5 +90,5 @@ io.on('connection', (socket) => {
 
 const PORT = 3000;
 server.listen(PORT, () => {
-    console.log(`Сервер запущен на порту ${PORT}`);
+    console.log(`3D Сервер запущен на порту ${PORT}`);
 });
