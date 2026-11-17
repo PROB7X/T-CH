@@ -1,7 +1,7 @@
 {
-  "name": "night-kiosk-coop",
+  "name": "island-survival-mp",
   "version": "1.0.0",
-  "description": "Co-op kiosk waiter game against monsters",
+  "description": "Multiplayer Island Survival",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
