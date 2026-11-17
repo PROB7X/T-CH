@@ -25,7 +25,29 @@
         .player-item { background: #1e1b4b; padding: 8px 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; font-weight: 600; font-size: 14px; }
         .badge { background: #4f46e5; padding: 3px 8px; border-radius: 6px; font-size: 11px; }
 
-        /* Выбор режима в лобби (SVG + текст снизу) */
+        /* Особые ники и тег owner */
+        .nick-silver {
+            background: linear-gradient(90deg, #94a3b8, #f8fafc, #94a3b8);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            font-weight: 800; text-shadow: 0 0 8px rgba(226, 232, 240, 0.35);
+        }
+        .nick-gold {
+            background: linear-gradient(90deg, #f59e0b, #fef08a, #d97706);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            font-weight: 900; text-shadow: 0 0 10px rgba(250, 204, 21, 0.45);
+        }
+        .badge-owner {
+            background: linear-gradient(135deg, #f59e0b, #b45309);
+            color: #fef08a; border: 1px solid #fde047;
+            padding: 2px 7px; border-radius: 6px; font-size: 11px; font-weight: 800; text-transform: lowercase;
+        }
+
+        /* Список открытых комнат внизу меню */
+        .public-rooms-box { background: rgba(30,27,75,0.6); padding: 12px; border-radius: 12px; display: flex; flex-direction: column; gap: 8px; border: 1px solid #4338ca; }
+        .public-room-row { background: #1e1b4b; padding: 8px 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+        .btn-join-quick { width: auto; padding: 6px 12px; font-size: 12px; background: #10b981; border-radius: 7px; }
+
+        /* Выбор режима в лобби */
         .modes-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .mode-card { background: #1e1b4b; border: 2px solid #4f46e5; border-radius: 12px; padding: 12px 8px; display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer; text-align: center; transition: 0.15s; }
         .mode-card.active { border-color: #10b981; background: rgba(16, 185, 129, 0.18); }
@@ -55,7 +77,7 @@
         .prompt-box { background: #1e1b4b; padding: 12px; border-radius: 10px; text-align: center; font-size: 16px; font-weight: 700; border: 1px dashed #818cf8; }
         .result-img { width: 100%; border-radius: 10px; background: white; border: 2px solid #4f46e5; }
         .album-step { background: #1e1b4b; padding: 10px; border-radius: 10px; display: flex; flex-direction: column; gap: 6px; }
-        .author-tag { font-size: 12px; color: #a5b4fc; font-weight: 700; }
+        .author-tag { font-size: 12px; color: #a5b4fc; font-weight: 700; display: flex; align-items: center; gap: 6px; }
     </style>
 </head>
 <body>
@@ -87,6 +109,17 @@
             </button>
         </div>
         <div id="menu-error" class="error"></div>
+
+        <!-- Открытые комнаты внизу -->
+        <div class="public-rooms-box">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 700; color: #a5b4fc;">
+                <span>Открытые комнаты:</span>
+                <span id="public-rooms-count">0</span>
+            </div>
+            <div id="public-rooms-list" style="display: flex; flex-direction: column; gap: 6px; max-height: 150px; overflow-y: auto;">
+                <div style="font-size: 12px; color: #94a3b8; text-align: center; padding: 6px;">Нет открытых комнат</div>
+            </div>
+        </div>
     </div>
 
     <!-- 2. ЛОББИ КОМНАТЫ -->
@@ -132,7 +165,6 @@
         <div id="lobby-wait-text" style="text-align: center; color: #a5b4fc; font-size: 13px;">Ждём, пока создатель запустит игру...</div>
         <div id="lobby-error" class="error"></div>
     </div>
-
     <!-- 3. ИГРОВОЙ ЭКРАН -->
     <div id="screen-game" class="card hidden">
         <div style="display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #a5b4fc; font-weight: 700;">
@@ -141,19 +173,16 @@
             <span id="wait-counter"></span>
         </div>
 
-        <!-- Этап 1 и 3: Текст -->
         <div id="mode-write" class="hidden" style="display: flex; flex-direction: column; gap: 12px;">
             <div id="write-instruction" style="text-align: center; font-weight: 700;"></div>
             <img id="img-to-guess" class="result-img hidden" alt="Рисунок">
             <input type="text" id="input-phrase" placeholder="Напиши сюда..." maxlength="70">
         </div>
 
-        <!-- Этап 2: Рисование -->
         <div id="mode-draw" class="hidden" style="display: flex; flex-direction: column; gap: 8px;">
             <div id="text-to-draw" class="prompt-box"></div>
             <canvas id="draw-canvas" width="400" height="300"></canvas>
             
-            <!-- Инструменты: Кисть, Заливка, Линия, Квадрат, Круг, Очистка -->
             <div class="tools-row">
                 <button type="button" class="tool-icon-btn active" data-tool="brush" title="Кисть">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/></svg>
@@ -175,14 +204,12 @@
                 </button>
             </div>
 
-            <!-- Толщина -->
             <div class="tools-row">
                 <button type="button" class="size-btn active" data-size="4">Тонко</button>
                 <button type="button" class="size-btn" data-size="10">Средне</button>
                 <button type="button" class="size-btn" data-size="20">Толсто</button>
             </div>
 
-            <!-- Выбор цвета: Круг + HEX + быстрые цвета -->
             <div class="color-controls">
                 <input type="color" id="color-picker" value="#000000" title="Цветовой круг">
                 <input type="text" id="hex-input" value="#000000" maxlength="7" placeholder="#000000">
@@ -224,7 +251,49 @@
         let drawTimerInterval = null;
         let submittedCurrentPhase = false;
 
-        // Активность игрока (для таймаута 10 минут)
+        // Особые ники: StardL123 (серебро) и HELM77ZX (золото + тег owner)
+        function formatPlayerBadge(name) {
+            const safeName = String(name || 'Игрок').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            if (safeName === 'StardL123') {
+                return `<span class="nick-silver">${safeName}</span>`;
+            }
+            if (safeName === 'HELM77ZX') {
+                return `<span class="nick-gold">${safeName}</span> <span class="badge-owner">owner</span>`;
+            }
+            return `<span>${safeName}</span>`;
+        }
+
+        // Обновление списка открытых комнат внизу главного меню
+        socket.on('publicRoomsUpdate', (roomsList) => {
+            const listEl = document.getElementById('public-rooms-list');
+            const countEl = document.getElementById('public-rooms-count');
+            countEl.textContent = roomsList.length;
+
+            if (roomsList.length === 0) {
+                listEl.innerHTML = '<div style="font-size: 12px; color: #94a3b8; text-align: center; padding: 6px;">Нет открытых комнат</div>';
+                return;
+            }
+
+            listEl.innerHTML = '';
+            roomsList.forEach(r => {
+                const row = document.createElement('div');
+                row.className = 'public-room-row';
+                const modeLabel = r.mode === 'timer' ? 'Таймер' : 'Обычный';
+                row.innerHTML = `
+                    <div style="display: flex; flex-direction: column; gap: 2px;">
+                        <div><b>#${r.code}</b> • ${formatPlayerBadge(r.hostName)}</div>
+                        <div style="font-size: 11px; color: #94a3b8;">${modeLabel} • Игроков: ${r.count}/10</div>
+                    </div>
+                    <button type="button" class="btn-join-quick">Войти</button>
+                `;
+                row.querySelector('button').addEventListener('click', () => {
+                    const playerName = document.getElementById('input-name').value;
+                    socket.emit('joinRoom', { roomCode: r.code, playerName, password: '' }, handleJoinResponse);
+                });
+                listEl.appendChild(row);
+            });
+        });
+
         let lastPing = 0;
         function reportActivity() {
             if (!inRoom) return;
@@ -290,7 +359,6 @@
             showScreen('lobby');
         }
 
-        // Выбор режима в лобби
         document.querySelectorAll('.mode-card').forEach(card => {
             card.addEventListener('click', () => {
                 if (!isHost) return;
@@ -327,7 +395,10 @@
             players.forEach(p => {
                 const li = document.createElement('li');
                 li.className = 'player-item';
-                li.innerHTML = `<span>${p.name}</span>${p.id === hostId ? '<span class="badge">Создатель</span>' : ''}`;
+                li.innerHTML = `
+                    <div style="display:flex; align-items:center; gap:6px;">${formatPlayerBadge(p.name)}</div>
+                    ${p.id === hostId ? '<span class="badge">Создатель</span>' : ''}
+                `;
                 list.appendChild(li);
             });
 
@@ -343,7 +414,6 @@
             document.getElementById('lobby-error').textContent = '';
             socket.emit('startGame');
         });
-
         socket.on('nextPhase', (data) => {
             clearInterval(drawTimerInterval);
             submittedCurrentPhase = false;
@@ -400,13 +470,14 @@
         socket.on('waitingStatus', (data) => {
             document.getElementById('wait-counter').textContent = `Готово: ${data.ready}/${data.total}`;
         });
+
         // ==========================================
         // ИНСТРУМЕНТЫ РИСОВАНИЯ: ПАЛИТРА И ЗАЛИВКА
         // ==========================================
         const canvas = document.getElementById('draw-canvas');
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
         let isDrawing = false;
-        let currentTool = 'brush'; // brush, fill, line, rect, circle
+        let currentTool = 'brush';
         let brushColor = '#000000';
         let brushSize = 4;
         let startX = 0, startY = 0;
@@ -467,7 +538,6 @@
         clearCanvas();
         document.getElementById('btn-clear').addEventListener('click', clearCanvas);
 
-        // Алгоритм заливки области (Flood Fill)
         function floodFill(x, y, fillHex) {
             x = Math.floor(x);
             y = Math.floor(y);
@@ -513,7 +583,7 @@
         }
         function getPos(e) {
             const rect = canvas.getBoundingClientRect();
-            const touch = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]);
+            const touch = (e.touches && e.touches) || (e.changedTouches && e.changedTouches);
             const clientX = touch ? touch.clientX : e.clientX;
             const clientY = touch ? touch.clientY : e.clientY;
             return {
@@ -623,15 +693,15 @@
             const container = document.getElementById('album-content');
             container.innerHTML = `
                 <div class="album-step">
-                    <span class="author-tag">Идея (${card.idea.author}):</span>
+                    <span class="author-tag">Идея (${formatPlayerBadge(card.idea.author)}):</span>
                     <div style="font-size: 16px; font-weight: 700;">${card.idea.text}</div>
                 </div>
                 <div class="album-step">
-                    <span class="author-tag">Рисунок (${card.drawing.author}):</span>
+                    <span class="author-tag">Рисунок (${formatPlayerBadge(card.drawing.author)}):</span>
                     <img src="${card.drawing.img}" class="result-img">
                 </div>
                 <div class="album-step">
-                    <span class="author-tag">Описание (${card.comment.author}):</span>
+                    <span class="author-tag">Описание (${formatPlayerBadge(card.comment.author)}):</span>
                     <div style="font-size: 16px; font-weight: 700; color: #34d399;">${card.comment.text}</div>
                 </div>
             `;
