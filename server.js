@@ -1,303 +1,195 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { maxHttpBufferSize: 5e6 });
+const io = new Server(server, { cors: { origin: "*" } });
 
 app.use(express.static(__dirname));
 
-const rooms = {};
-const AFK_TIMEOUT = 10 * 60 * 1000; // 10 минут
+const DB_FILE = path.join(__dirname, 'users.json');
 
-function generateRoomCode() {
-    let code;
-    do {
-        code = Math.floor(1000 + Math.random() * 9000).toString();
-    } while (rooms[code]);
-    return code;
+function loadUsers() {
+    if (!fs.existsSync(DB_FILE)) fs.writeFileSync(DB_FILE, '{}');
+    return JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
 }
 
-// Рассылка списка открытых (без пароля) и незаполненных комнат
-function broadcastPublicRooms() {
-    const publicRooms = [];
-    for (const code in rooms) {
-        const r = rooms[code];
-        if (!r.password && r.state === 'lobby' && r.players.length < 10 && r.players.length > 0) {
-            const host = r.players.find(p => p.id === r.hostId) || r.players;
-            publicRooms.push({
-                code,
-                hostName: host ? host.name : 'Игрок',
-                count: r.players.length,
-                mode: r.mode
-            });
-        }
-    }
-    io.emit('publicRoomsUpdate', publicRooms);
+function saveUsers(users) {
+    fs.writeFileSync(DB_FILE, JSON.stringify(users, null, 2));
 }
 
-function assignCardsWithoutSelf(cards, players) {
-    const n = players.length;
-    const indices = Array.from({ length: n }, (_, i) => i);
+let users = loadUsers();
+let waitingPlayer = null;
+let battles = {};
 
-    for (let attempt = 0; attempt < 200; attempt++) {
-        for (let i = n - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [indices[i], indices[j]] = [indices[j], indices[i]];
-        }
-        let valid = true;
-        for (let i = 0; i < n; i++) {
-            const targetPlayerId = players[indices[i]].id;
-            if (cards[i].touchedBy.includes(targetPlayerId)) {
-                valid = false;
-                break;
-            }
-        }
-        if (valid) return indices;
+// Типы питомцев и шансы выпадения
+const PET_POOL = [
+    { type: 'Ящер', rarity: 'Обычный', chance: 60, hp: 100, atk: 15, emoji: '🦎' },
+    { type: 'Огненный Дракон', rarity: 'Редкий', chance: 30, hp: 130, atk: 22, emoji: '🐉' },
+    { type: 'Теневой Мутант', rarity: 'Мифический', chance: 10, hp: 160, atk: 30, emoji: '👾' }
+];
+
+function rollPet() {
+    const roll = Math.random() * 100;
+    let sum = 0;
+    for (const pet of PET_POOL) {
+        sum += pet.chance;
+        if (roll <= sum) return { ...pet };
     }
-
-    return Array.from({ length: n }, (_, i) => (i + 1) % n);
-}
-
-setInterval(() => {
-    const now = Date.now();
-    for (const code in rooms) {
-        const room = rooms[code];
-        const afkPlayers = room.players.filter(p => now - p.lastActive > AFK_TIMEOUT);
-        afkPlayers.forEach(p => {
-            const targetSocket = io.sockets.sockets.get(p.id);
-            if (targetSocket) {
-                targetSocket.emit('kickedAfk', 'Вы были исключены за бездействие (10 мин)');
-                handlePlayerLeave(targetSocket);
-            }
-        });
-    }
-}, 15000);
-
-function checkPhaseCompletion(roomCode) {
-    const room = rooms[roomCode];
-    if (!room || room.state !== 'playing') return;
-
-    const total = room.players.length;
-    if (total < 2) {
-        room.state = 'lobby';
-        io.to(roomCode).emit('gameError', 'Недостаточно игроков для продолжения (минимум 2)');
-        io.to(roomCode).emit('backToLobby', {
-            players: room.players,
-            hostId: room.hostId,
-            mode: room.mode,
-            drawTime: room.drawTime
-        });
-        broadcastPublicRooms();
-        return;
-    }
-
-    let readyCount = 0;
-    room.players.forEach(p => {
-        const card = room.cards.find(c => c.assignedTo === p.id);
-        if (!card) return;
-        if (room.phase === 0 && card.idea) readyCount++;
-        else if (room.phase === 1 && card.drawing) readyCount++;
-        else if (room.phase === 2 && card.comment) readyCount++;
-    });
-
-    io.to(roomCode).emit('waitingStatus', { ready: readyCount, total });
-
-    if (readyCount >= total) {
-        room.phase++;
-        if (room.phase > 2) {
-            room.state = 'results';
-            const validCards = room.cards.filter(c => c.idea && c.drawing && c.comment);
-            io.to(roomCode).emit('showResults', validCards);
-        } else {
-            room.cards = room.cards.filter(c => room.phase === 1 ? c.idea : c.drawing);
-            const count = Math.min(room.cards.length, room.players.length);
-            const activePlayers = room.players.slice(0, count);
-            const perm = assignCardsWithoutSelf(room.cards, activePlayers);
-
-            for (let i = 0; i < count; i++) {
-                const targetPlayer = activePlayers[perm[i]];
-                room.cards[i].assignedTo = targetPlayer.id;
-                room.cards[i].touchedBy.push(targetPlayer.id);
-
-                const promptData = room.phase === 1 ? room.cards[i].idea.text : room.cards[i].drawing.img;
-                io.to(targetPlayer.id).emit('nextPhase', {
-                    phase: room.phase,
-                    prompt: promptData,
-                    timer: (room.phase === 1 && room.mode === 'timer') ? room.drawTime : 0
-                });
-            }
-        }
-    }
-}
-function handlePlayerLeave(socket) {
-    const currentRoom = socket.data.roomCode;
-    if (!currentRoom || !rooms[currentRoom]) return;
-    const room = rooms[currentRoom];
-
-    socket.leave(currentRoom);
-    socket.data.roomCode = null;
-    room.players = room.players.filter(p => p.id !== socket.id);
-
-    if (room.players.length === 0) {
-        delete rooms[currentRoom];
-    } else {
-        if (room.hostId === socket.id) {
-            room.hostId = room.players.id;
-        }
-        io.to(currentRoom).emit('updatePlayers', {
-            players: room.players,
-            hostId: room.hostId,
-            mode: room.mode,
-            drawTime: room.drawTime
-        });
-        if (room.state === 'playing') {
-            checkPhaseCompletion(currentRoom);
-        }
-    }
-    broadcastPublicRooms();
+    return { ...PET_POOL[0] };
 }
 
 io.on('connection', (socket) => {
-    broadcastPublicRooms();
+    let currentUser = null;
 
-    socket.on('getPublicRooms', () => {
-        broadcastPublicRooms();
-    });
-
-    socket.on('pingActivity', () => {
-        const code = socket.data.roomCode;
-        if (code && rooms[code]) {
-            const p = rooms[code].players.find(pl => pl.id === socket.id);
-            if (p) p.lastActive = Date.now();
+    // Вход игрока по нику
+    socket.on('login', (username) => {
+        if (!username) return;
+        currentUser = username.trim().slice(0, 16);
+        if (!users[currentUser]) {
+            users[currentUser] = {
+                name: currentUser,
+                pet: null,
+                trainingStart: null,
+                wins: 0
+            };
+            saveUsers(users);
         }
+        socket.emit('userData', users[currentUser]);
     });
 
-    socket.on('createRoom', (data, callback) => {
-        const roomCode = generateRoomCode();
-        rooms[roomCode] = {
-            hostId: socket.id,
-            password: (data.password || '').trim(),
-            state: 'lobby',
-            mode: 'normal',
-            drawTime: 60,
-            players: [],
-            phase: 0,
-            cards: []
+    // Открытие яйца
+    socket.on('openEgg', () => {
+        if (!currentUser) return;
+        const dropped = rollPet();
+        users[currentUser].pet = {
+            type: dropped.type,
+            rarity: dropped.rarity,
+            emoji: dropped.emoji,
+            maxHp: dropped.hp,
+            atk: dropped.atk,
+            level: 1
         };
-        joinRoomLogic(socket, roomCode, data.playerName, callback);
+        users[currentUser].trainingStart = null;
+        saveUsers(users);
+        socket.emit('userData', users[currentUser]);
     });
 
-    socket.on('joinRoom', (data, callback) => {
-        const { roomCode, playerName, password } = data;
-        const room = rooms[roomCode];
-        if (!room) return callback({ error: 'Комната с таким кодом не найдена!' });
-        if (room.password && room.password !== (password || '').trim()) {
-            return callback({ error: 'Неверный пароль от комнаты!' });
+    // Старт / Забор AFK-тренировки
+    socket.on('toggleTraining', () => {
+        if (!currentUser || !users[currentUser].pet) return;
+        const user = users[currentUser];
+
+        if (!user.trainingStart) {
+            // Ставим на тренировку
+            user.trainingStart = Date.now();
+        } else {
+            // Забираем награду (1 минута = +1 ATK и +3 HP, минимум 5 секунд для теста)
+            const seconds = Math.floor((Date.now() - user.trainingStart) / 1000);
+            const gain = Math.floor(seconds / 5); // каждые 5 сек = +1 уровень прокачки
+            if (gain > 0) {
+                user.pet.atk += gain;
+                user.pet.maxHp += gain * 3;
+                user.pet.level += Math.floor(gain / 5);
+            }
+            user.trainingStart = null;
         }
-        if (room.state !== 'lobby') return callback({ error: 'В этой комнате уже идёт игра!' });
-        if (room.players.length >= 10) return callback({ error: 'Комната переполнена (макс. 10)!' });
-
-        joinRoomLogic(socket, roomCode, playerName, callback);
+        saveUsers(users);
+        socket.emit('userData', user);
     });
 
-    function joinRoomLogic(socket, roomCode, playerName, callback) {
-        socket.data.roomCode = roomCode;
-        socket.join(roomCode);
-        const name = (playerName || 'Игрок').trim().slice(0, 16) || 'Игрок';
-        const room = rooms[roomCode];
-        room.players.push({ id: socket.id, name, lastActive: Date.now() });
+    // Поиск PvP боя
+    socket.on('findBattle', () => {
+        if (!currentUser || !users[currentUser].pet) return;
+        if (users[currentUser].trainingStart) {
+            return socket.emit('msg', 'Сначала забери питомца с тренировки!');
+        }
 
-        callback({
-            success: true,
-            roomCode,
-            isHost: room.hostId === socket.id,
-            players: room.players,
-            mode: room.mode,
-            drawTime: room.drawTime
-        });
-        io.to(roomCode).emit('updatePlayers', {
-            players: room.players,
-            hostId: room.hostId,
-            mode: room.mode,
-            drawTime: room.drawTime
-        });
-        broadcastPublicRooms();
-    }
+        if (waitingPlayer && waitingPlayer.username !== currentUser && waitingPlayer.socket.connected) {
+            const p1 = waitingPlayer;
+            const p2 = { socket, username: currentUser };
+            waitingPlayer = null;
 
-    socket.on('changeSettings', (data) => {
-        const code = socket.data.roomCode;
-        const room = rooms[code];
-        if (!room || room.hostId !== socket.id) return;
-        if (data.mode) room.mode = data.mode;
-        if (data.drawTime) room.drawTime = Math.max(15, Math.min(300, Number(data.drawTime) || 60));
-        io.to(code).emit('updateSettings', { mode: room.mode, drawTime: room.drawTime });
-        broadcastPublicRooms();
+            const roomId = `battle_${Date.now()}`;
+            p1.socket.join(roomId);
+            p2.socket.join(roomId);
+
+            battles[roomId] = {
+                roomId,
+                p1: { name: p1.username, socketId: p1.socket.id, pet: { ...users[p1.username].pet }, hp: users[p1.username].pet.maxHp, move: null },
+                p2: { name: p2.username, socketId: p2.socket.id, pet: { ...users[p2.username].pet }, hp: users[p2.username].pet.maxHp, move: null }
+            };
+
+            io.to(roomId).emit('battleStart', battles[roomId]);
+        } else {
+            waitingPlayer = { socket, username: currentUser };
+            socket.emit('msg', 'Ищем соперника на арене...');
+        }
     });
 
-    socket.on('leaveRoom', () => handlePlayerLeave(socket));
+    // Ход в бою (flame, shield, power)
+    socket.on('battleMove', ({ roomId, move }) => {
+        const b = battles[roomId];
+        if (!b) return;
 
-    socket.on('startGame', () => {
-        const code = socket.data.roomCode;
-        const room = rooms[code];
-        if (!room || room.hostId !== socket.id) return;
-        if (room.players.length < 2) return socket.emit('gameError', 'Для старта нужно минимум 2 игрока!');
+        if (b.p1.socketId === socket.id) b.p1.move = move;
+        if (b.p2.socketId === socket.id) b.p2.move = move;
 
-        room.state = 'playing';
-        room.phase = 0;
-        room.cards = room.players.map((p) => ({
-            idea: null,
-            drawing: null,
-            comment: null,
-            assignedTo: p.id,
-            touchedBy: [p.id]
-        }));
+        if (b.p1.move && b.p2.move) {
+            let log = `${b.p1.name} (${b.p1.move}) vs ${b.p2.name} (${b.p2.move}). `;
 
-        broadcastPublicRooms();
+            // Логика: flame бьёт power | power пробивает shield | shield блокирует flame и хилит
+            const calcTurn = (attacker, defender) => {
+                if (attacker.move === 'flame') {
+                    if (defender.move === 'shield') return 0; // заблокировано
+                    return attacker.pet.atk;
+                }
+                if (attacker.move === 'power') {
+                    if (defender.move === 'shield') return Math.floor(attacker.pet.atk * 1.5); // крит по щиту!
+                    if (defender.move === 'flame') return Math.floor(attacker.pet.atk * 0.5);
+                    return attacker.pet.atk;
+                }
+                if (attacker.move === 'shield') {
+                    attacker.hp = Math.min(attacker.pet.maxHp, attacker.hp + Math.floor(attacker.pet.maxHp * 0.1));
+                    return 0;
+                }
+                return 0;
+            };
 
-        room.players.forEach((p) => {
-            p.lastActive = Date.now();
-            io.to(p.id).emit('nextPhase', { phase: 0, prompt: null, timer: 0 });
-        });
+            const dmgToP2 = calcTurn(b.p1, b.p2);
+            const dmgToP1 = calcTurn(b.p2, b.p1);
+
+            b.p2.hp = Math.max(0, b.p2.hp - dmgToP2);
+            b.p1.hp = Math.max(0, b.p1.hp - dmgToP1);
+
+            log += `Урон: ${b.p1.name} -${dmgToP1} HP, ${b.p2.name} -${dmgToP2} HP.`;
+
+            b.p1.move = null;
+            b.p2.move = null;
+
+            if (b.p1.hp <= 0 || b.p2.hp <= 0) {
+                const winner = b.p1.hp > b.p2.hp ? b.p1.name : (b.p2.hp > b.p1.hp ? b.p2.name : 'Ничья');
+                if (users[winner]) {
+                    users[winner].wins += 1;
+                    saveUsers(users);
+                }
+                io.to(roomId).emit('battleEnd', { winner, log, battle: b });
+                delete battles[roomId];
+            } else {
+                io.to(roomId).emit('battleUpdate', { log, battle: b });
+            }
+        }
     });
 
-    socket.on('submitStep', (content) => {
-        const code = socket.data.roomCode;
-        const room = rooms[code];
-        if (!room || room.state !== 'playing') return;
-
-        const player = room.players.find(p => p.id === socket.id);
-        if (!player) return;
-        player.lastActive = Date.now();
-
-        const card = room.cards.find(c => c.assignedTo === socket.id);
-        if (!card) return;
-
-        if (room.phase === 0 && !card.idea) card.idea = { author: player.name, text: content || 'Пустая идея' };
-        else if (room.phase === 1 && !card.drawing) card.drawing = { author: player.name, img: content };
-        else if (room.phase === 2 && !card.comment) card.comment = { author: player.name, text: content || 'Без описания' };
-        else return;
-
-        checkPhaseCompletion(code);
+    socket.on('disconnect', () => {
+        if (waitingPlayer && waitingPlayer.socket.id === socket.id) {
+            waitingPlayer = null;
+        }
     });
-
-    socket.on('restartLobby', () => {
-        const code = socket.data.roomCode;
-        const room = rooms[code];
-        if (!room || room.hostId !== socket.id) return;
-        room.state = 'lobby';
-        room.players.forEach(p => p.lastActive = Date.now());
-        io.to(code).emit('backToLobby', {
-            players: room.players,
-            hostId: room.hostId,
-            mode: room.mode,
-            drawTime: room.drawTime
-        });
-        broadcastPublicRooms();
-    });
-
-    socket.on('disconnect', () => handlePlayerLeave(socket));
 });
 
-server.listen(3000, () => console.log('Сервер запущен на порту 3000'));
+const PORT = 3000;
+server.listen(PORT, () => console.log(`InDeathPet сервер запущен на порту ${PORT}`));
