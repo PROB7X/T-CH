@@ -27,7 +27,7 @@ let gameState = {
   ],
   kitchen: { x: 0, z: 3.5 },
   entrance: { x: 0, z: -5.5 },
-  visitors: [], // Посетители, идущие издалека к ларьку
+  visitors: [],
   monsters: []
 };
 
@@ -109,7 +109,7 @@ io.on('connection', (socket) => {
 
   socket.on('selectTool', (toolNum) => {
     const p = activePlayers[socket.id];
-    if (p && [1, 2, 3].includes(toolNum)) {
+    if (p && (toolNum === 1 || toolNum === 2 || toolNum === 3)) {
       p.tool = toolNum;
     }
   });
@@ -130,7 +130,7 @@ io.on('connection', (socket) => {
         if (t.status === 'waiting' && p.holding === 'food') {
           p.holding = null;
           t.status = 'eating';
-          t.timer = 210; // ~7 секунд едят
+          t.timer = 210;
           return;
         }
         if (t.status === 'dirty' && !p.holding) {
@@ -220,7 +220,7 @@ setInterval(() => {
     }
   });
 
-  // Спавн обычных посетителей далеко на дороге (Z = -22), чтобы они долго шли ко входу
+  // Спавн обычных посетителей далеко на дороге (Z = -22)
   const emptyTables = gameState.tables.filter(t => t.status === 'empty');
   if (emptyTables.length > gameState.visitors.length && Math.random() = 0; i--) {
     let v = gameState.visitors[i];
@@ -232,7 +232,6 @@ setInterval(() => {
       v.x += (dx / dist) * v.speed;
       v.z += (dz / dist) * v.speed;
     } else {
-      // Дошёл до входа — садится за свободный столик и ждёт заказ
       const freeTable = gameState.tables.find(t => t.status === 'empty');
       if (freeTable) {
         freeTable.status = 'waiting';
@@ -241,7 +240,7 @@ setInterval(() => {
     }
   }
 
-  // Спавн монстров далеко в лесу (расстояние ~22-25 метров от ларька), идут медленно
+  // Спавн монстров далеко в лесу
   if (gameState.monsters.length = 0; i--) {
     let m = gameState.monsters[i];
     if (m.fear >= 100) {
