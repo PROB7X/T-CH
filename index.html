@@ -3,47 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Остров Выживания</title>
+    <title>Остров Выживания 3D</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
-        body, html { width: 100%; height: 100%; overflow: hidden; background: #1a252f; font-family: sans-serif; color: white; }
+        body, html { width: 100%; height: 100%; overflow: hidden; background: #0f171e; font-family: sans-serif; color: white; }
         
         /* Оверлей полноэкранного режима */
         #fullscreen-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(15, 23, 30, 0.95); z-index: 9999;
+            background: rgba(15, 23, 30, 0.96); z-index: 9999;
             display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 20px;
         }
         #fullscreen-btn {
-            padding: 18px 36px; font-size: 20px; font-weight: bold;
+            padding: 16px 32px; font-size: 18px; font-weight: bold;
             background: #27ae60; color: white; border: none; border-radius: 12px;
-            cursor: pointer; box-shadow: 0 4px 15px rgba(39, 174, 96, 0.4); margin-top: 15px;
+            cursor: pointer; display: flex; align-items: center; gap: 10px; margin-top: 15px;
         }
 
         /* Главное меню */
         #menu-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            background: linear-gradient(135deg, #141e30 0%, #243b55 100%);
             display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100;
         }
         .menu-box {
-            background: rgba(0, 0, 0, 0.5); padding: 25px; border-radius: 16px;
-            display: flex; flex-direction: column; gap: 15px; width: 320px; text-align: center;
+            background: rgba(0, 0, 0, 0.55); padding: 25px; border-radius: 16px;
+            display: flex; flex-direction: column; gap: 14px; width: 320px; text-align: center;
+            border: 1px solid rgba(255,255,255,0.1);
         }
+        .title-row { display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 22px; font-weight: bold; }
         input {
             padding: 12px; font-size: 18px; border-radius: 8px; border: none; text-align: center; letter-spacing: 3px;
         }
         button.action-btn {
             padding: 14px; font-size: 16px; font-weight: bold; border: none; border-radius: 8px;
-            background: #e67e22; color: white; cursor: pointer;
+            background: #e67e22; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
         }
         button.action-btn.create { background: #2ecc71; }
         #error-msg { color: #ff6b6b; font-size: 14px; min-height: 18px; }
 
-        /* Игровой интерфейс */
-        #game-ui { display: none; position: fixed; top: 10px; left: 10px; z-index: 50; pointer-events: none; }
+        /* HUD в игре */
+        #game-ui { display: none; position: fixed; top: 12px; left: 12px; z-index: 50; pointer-events: none; }
         .hud-badge {
-            background: rgba(0, 0, 0, 0.6); padding: 8px 14px; border-radius: 8px; font-size: 16px; font-weight: bold;
+            background: rgba(0, 0, 0, 0.6); padding: 8px 14px; border-radius: 8px; font-size: 15px; font-weight: bold;
+            display: flex; align-items: center; gap: 8px; border: 1px solid rgba(255,255,255,0.15);
         }
 
         /* Мобильный джойстик */
@@ -53,15 +56,25 @@
         }
         #joystick-base {
             width: 120px; height: 120px; background: rgba(255, 255, 255, 0.15);
-            border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.35); border-radius: 50%;
             position: absolute; top: 10px; left: 10px;
         }
         #joystick-stick {
-            width: 50px; height: 50px; background: rgba(255, 255, 255, 0.7);
-            border-radius: 50%; position: absolute; top: 35px; left: 35px;
+            width: 50px; height: 50px; background: rgba(255, 255, 255, 0.8);
+            border-radius: 50%; position: absolute; top: 33px; left: 33px;
+            pointer-events: none;
         }
 
-        canvas { display: block; }
+        /* Кнопка прыжка */
+        #jump-btn {
+            position: fixed; bottom: 35px; right: 35px; width: 80px; height: 80px;
+            background: rgba(255, 255, 255, 0.2); border: 2px solid rgba(255, 255, 255, 0.45);
+            border-radius: 50%; z-index: 60; display: none; justify-content: center; align-items: center;
+            touch-action: none; cursor: pointer;
+        }
+        #jump-btn:active { background: rgba(255, 255, 255, 0.45); transform: scale(0.95); }
+
+        #game-container { width: 100%; height: 100%; display: block; }
     </style>
 </head>
 <body>
@@ -70,24 +83,49 @@
     <div id="fullscreen-overlay">
         <h2>Для игры нужен полноэкранный режим</h2>
         <p style="margin-top: 8px; color: #bdc3c7;">Экран автоматически перевернётся горизонтально</p>
-        <button id="fullscreen-btn">На весь экран</button>
+        <button id="fullscreen-btn">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+            </svg>
+            <span>На весь экран</span>
+        </button>
     </div>
 
     <!-- 2. Главное меню -->
     <div id="menu-screen">
         <div class="menu-box">
-            <h2>🏝 Остров Выживания</h2>
-            <button class="action-btn create" id="btn-create">Создать сервер</button>
-            <hr style="border-color: rgba(255,255,255,0.2);">
+            <div class="title-row">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2ecc71" stroke-width="2">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                </svg>
+                <span>Остров Выживания 3D</span>
+            </div>
+            <button class="action-btn create" id="btn-create">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                <span>Создать сервер</span>
+            </button>
+            <hr style="border-color: rgba(255,255,255,0.15);">
             <input type="number" id="room-input" placeholder="Номер (4 цифры)" maxlength="4">
-            <button class="action-btn" id="btn-join">Войти по номеру</button>
+            <button class="action-btn" id="btn-join">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/>
+                </svg>
+                <span>Войти по номеру</span>
+            </button>
             <div id="error-msg"></div>
         </div>
     </div>
 
     <!-- HUD в игре -->
     <div id="game-ui">
-        <div class="hud-badge">Сервер: <span id="hud-room">----</span> | Игроков: <span id="hud-players">1</span>/10</div>
+        <div class="hud-badge">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2ecc71" stroke-width="2">
+                <rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/>
+            </svg>
+            <span>Сервер: <span id="hud-room">----</span> | Игроков: <span id="hud-players">1</span>/10</span>
+        </div>
     </div>
 
     <!-- Сенсорный джойстик -->
@@ -97,12 +135,18 @@
         </div>
     </div>
 
-    <canvas id="gameCanvas"></canvas>
+    <!-- Кнопка прыжка -->
+    <div id="jump-btn">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 19V5M5 12l7-7 7 7"/>
+        </svg>
+    </div>
+
+    <div id="game-container"></div>
     <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cloudflare.com"></script>
     <script>
         const socket = io();
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
 
         // ==========================================
         // 1. УПРАВЛЕНИЕ ПОЛНЫМ ЭКРАНОМ И ОРИЕНТАЦИЕЙ
@@ -113,46 +157,64 @@
         async function enterFullscreenAndLandscape() {
             try {
                 const elem = document.documentElement;
-                if (elem.requestFullscreen) {
-                    await elem.requestFullscreen();
-                } else if (elem.webkitRequestFullscreen) {
-                    await elem.webkitRequestFullscreen();
-                }
+                if (elem.requestFullscreen) await elem.requestFullscreen();
+                else if (elem.webkitRequestFullscreen) await elem.webkitRequestFullscreen();
                 if (screen.orientation && screen.orientation.lock) {
                     await screen.orientation.lock('landscape').catch(() => {});
                 }
-            } catch (err) {
-                console.log('Ошибка фуллскрина:', err);
-            }
+            } catch (err) {}
         }
 
         function checkFullscreen() {
             const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
             fsOverlay.style.display = isFullscreen ? 'none' : 'flex';
-            resizeCanvas();
+            onWindowResize();
         }
 
         fsBtn.addEventListener('click', enterFullscreenAndLandscape);
         document.addEventListener('fullscreenchange', checkFullscreen);
         document.addEventListener('webkitfullscreenchange', checkFullscreen);
 
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
+        // ==========================================
+        // 2. ИНИЦИАЛИЗАЦИЯ 3D СЦЕНЫ (THREE.JS)
+        // ==========================================
+        const container = document.getElementById('game-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87ceeb);
+        scene.fog = new THREE.Fog(0x87ceeb, 40, 120);
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 150);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        container.appendChild(renderer.domElement);
+
+        // Освещение
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.75);
+        dirLight.position.set(50, 80, 30);
+        scene.add(dirLight);
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
         }
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
+        window.addEventListener('resize', onWindowResize);
 
         // ==========================================
-        // 2. МЕНЮ И ПОДКЛЮЧЕНИЕ К КОМНАТАМ
+        // 3. МЕНЮ И МУЛЬТИПЛЕЕР
         // ==========================================
         const menuScreen = document.getElementById('menu-screen');
         const gameUi = document.getElementById('game-ui');
         const joystickZone = document.getElementById('joystick-zone');
+        const jumpBtn = document.getElementById('jump-btn');
         const errorMsg = document.getElementById('error-msg');
 
         let myId = null;
-        let players = {};
+        let playersData = {};
+        let playerMeshes = {};
         let isPlaying = false;
 
         document.getElementById('btn-create').addEventListener('click', () => {
@@ -171,35 +233,65 @@
                 return;
             }
             myId = res.myId;
-            players = res.players;
+            playersData = res.players;
             document.getElementById('hud-room').textContent = res.roomCode;
             updatePlayerCount();
 
-            generateIsland(res.seed);
+            generate3DIsland(res.seed);
+
+            for (let id in playersData) {
+                createPlayerMesh(playersData[id]);
+            }
 
             menuScreen.style.display = 'none';
             gameUi.style.display = 'block';
             joystickZone.style.display = 'block';
+            jumpBtn.style.display = 'flex';
             isPlaying = true;
             requestAnimationFrame(gameLoop);
         }
 
-        function updatePlayerCount() {
-            document.getElementById('hud-players').textContent = Object.keys(players).length;
+        function createPlayerMesh(p) {
+            const geo = new THREE.BoxGeometry(1.2, 2.2, 1.2);
+            const mat = new THREE.MeshLambertMaterial({ color: p.color });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.set(p.x, p.y + 1.1, p.z);
+            scene.add(mesh);
+            playerMeshes[p.id] = mesh;
         }
 
-        socket.on('playerJoined', (p) => { players[p.id] = p; updatePlayerCount(); });
-        socket.on('playerMoved', (p) => { if (players[p.id]) { players[p.id].x = p.x; players[p.id].y = p.y; } });
-        socket.on('playerLeft', (id) => { delete players[id]; updatePlayerCount(); });
+        function updatePlayerCount() {
+            document.getElementById('hud-players').textContent = Object.keys(playersData).length;
+        }
+
+        socket.on('playerJoined', (p) => {
+            playersData[p.id] = p;
+            createPlayerMesh(p);
+            updatePlayerCount();
+        });
+
+        socket.on('playerMoved', (p) => {
+            if (playersData[p.id]) {
+                playersData[p.id].x = p.x;
+                playersData[p.id].y = p.y;
+                playersData[p.id].z = p.z;
+            }
+        });
+
+        socket.on('playerLeft', (id) => {
+            if (playerMeshes[id]) {
+                scene.remove(playerMeshes[id]);
+                delete playerMeshes[id];
+            }
+            delete playersData[id];
+            updatePlayerCount();
+        });
 
         // ==========================================
-        // 3. ГЕНЕРАЦИЯ ОСТРОВА ПО СИДУ
+        // 4. ГЕНЕРАЦИЯ 3D ОСТРОВА ПО СИДУ
         // ==========================================
-        const WORLD_SIZE = 4000;
-        const TILE_SIZE = 64;
-        const GRID_COUNT = Math.ceil(WORLD_SIZE / TILE_SIZE);
-        let worldGrid = []; // 0: вода, 1: песок, 2: трава
-        let worldObjects = []; // Деревья и камни
+        let worldObjects = [];
+        const ISLAND_RADIUS = 75;
 
         function mulberry32(a) {
             return function() {
@@ -210,73 +302,100 @@
             }
         }
 
-        function generateIsland(seed) {
+        function generate3DIsland(seed) {
             const rand = mulberry32(seed);
-            worldGrid = [];
             worldObjects = [];
-            const center = GRID_COUNT / 2;
 
-            for (let y = 0; y < GRID_COUNT; y++) {
-                let row = [];
-                for (let x = 0; x < GRID_COUNT; x++) {
-                    const dx = x - center;
-                    const dy = y - center;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-                    const noise = (rand() - 0.5) * 4;
+            // Океан
+            const waterGeo = new THREE.PlaneGeometry(600, 600);
+            const waterMat = new THREE.MeshLambertMaterial({ color: 0x1e88e5 });
+            const water = new THREE.Mesh(waterGeo, waterMat);
+            water.rotation.x = -Math.PI / 2;
+            water.position.y = -0.3;
+            scene.add(water);
 
-                    if (dist + noise > center * 0.75) row.push(0);      // Океан
-                    else if (dist + noise > center * 0.62) row.push(1); // Песок
-                    else row.push(2);                                   // Трава
+            // Пляж (песок)
+            const sandGeo = new THREE.CylinderGeometry(ISLAND_RADIUS + 8, ISLAND_RADIUS + 12, 0.5, 48);
+            const sandMat = new THREE.MeshLambertMaterial({ color: 0xf4d03f });
+            const sand = new THREE.Mesh(sandGeo, sandMat);
+            sand.position.y = -0.2;
+            scene.add(sand);
+
+            // Трава (основная часть острова)
+            const grassGeo = new THREE.CylinderGeometry(ISLAND_RADIUS, ISLAND_RADIUS + 2, 0.6, 48);
+            const grassMat = new THREE.MeshLambertMaterial({ color: 0x2ecc71 });
+            const grass = new THREE.Mesh(grassGeo, grassMat);
+            grass.position.y = -0.15;
+            scene.add(grass);
+
+            // Генерация 3D деревьев и камней
+            const trunkGeo = new THREE.CylinderGeometry(0.4, 0.5, 2.5, 8);
+            const trunkMat = new THREE.MeshLambertMaterial({ color: 0x795548 });
+            const leavesGeo = new THREE.ConeGeometry(2.2, 4.5, 8);
+            const leavesMat = new THREE.MeshLambertMaterial({ color: 0x1b5e20 });
+            const rockGeo = new THREE.DodecahedronGeometry(1.4, 0);
+            const rockMat = new THREE.MeshLambertMaterial({ color: 0x7f8c8d });
+
+            for (let i = 0; i < 180; i++) {
+                const angle = rand() * Math.PI * 2;
+                const dist = Math.sqrt(rand()) * (ISLAND_RADIUS - 5);
+                const ox = Math.cos(angle) * dist;
+                const oz = Math.sin(angle) * dist;
+
+                if (Math.abs(ox) < 6 && Math.abs(oz) < 6) continue; // Свободный спавн
+
+                const group = new THREE.Group();
+                if (rand() > 0.3) {
+                    const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+                    trunk.position.y = 1.25;
+                    const leaves = new THREE.Mesh(leavesGeo, leavesMat);
+                    leaves.position.y = 4.2;
+                    group.add(trunk, leaves);
+                } else {
+                    const rock = new THREE.Mesh(rockGeo, rockMat);
+                    rock.position.y = 0.8;
+                    group.add(rock);
                 }
-                worldGrid.push(row);
-            }
-
-            for (let i = 0; i < 400; i++) {
-                const ox = rand() * WORLD_SIZE;
-                const oy = rand() * WORLD_SIZE;
-                const gx = Math.floor(ox / TILE_SIZE);
-                const gy = Math.floor(oy / TILE_SIZE);
-
-                if (worldGrid[gy] && worldGrid[gy][gx] === 2) {
-                    worldObjects.push({
-                        x: ox,
-                        y: oy,
-                        type: rand() > 0.3 ? 'tree' : 'rock',
-                        radius: rand() > 0.3 ? 28 : 20
-                    });
-                }
+                group.position.set(ox, 0, oz);
+                scene.add(group);
+                worldObjects.push(group);
             }
         }
         // ==========================================
-        // 4. МОБИЛЬНОЕ УПРАВЛЕНИЕ (ДЖОЙСТИК + КЛАВИШИ)
+        // 5. ИСПРАВЛЕННЫЙ ДЖОЙСТИК И КНОПКА ПРЫЖКА
         // ==========================================
-        let moveVec = { x: 0, y: 0 };
+        let moveVec = { x: 0, z: 0 };
         const stick = document.getElementById('joystick-stick');
         const base = document.getElementById('joystick-base');
         let touchId = null;
 
         base.addEventListener('touchstart', (e) => {
             e.preventDefault();
-            const touch = e.changedTouches;
-            touchId = touch.identifier;
-            updateJoystick(touch);
-        });
+            if (touchId === null && e.changedTouches.length > 0) {
+                const touch = e.changedTouches[0];
+                touchId = touch.identifier;
+                updateJoystick(touch);
+            }
+        }, { passive: false });
 
         base.addEventListener('touchmove', (e) => {
             e.preventDefault();
             for (let i = 0; i < e.changedTouches.length; i++) {
                 if (e.changedTouches[i].identifier === touchId) {
                     updateJoystick(e.changedTouches[i]);
+                    break;
                 }
             }
-        });
+        }, { passive: false });
 
         const resetJoystick = (e) => {
             for (let i = 0; i < e.changedTouches.length; i++) {
                 if (e.changedTouches[i].identifier === touchId) {
                     touchId = null;
                     stick.style.transform = `translate(0px, 0px)`;
-                    moveVec = { x: 0, y: 0 };
+                    moveVec.x = 0;
+                    moveVec.z = 0;
+                    break;
                 }
             }
         };
@@ -298,125 +417,127 @@
             }
             stick.style.transform = `translate(${dx}px, ${dy}px)`;
             moveVec.x = dx / maxDist;
-            moveVec.y = dy / maxDist;
+            moveVec.z = dy / maxDist;
         }
 
+        // Физика прыжка
+        let velocityY = 0;
+        let isGrounded = true;
+        const GRAVITY = -0.025;
+        const JUMP_FORCE = 0.45;
+
+        function triggerJump() {
+            if (isGrounded) {
+                velocityY = JUMP_FORCE;
+                isGrounded = false;
+            }
+        }
+
+        jumpBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            triggerJump();
+        }, { passive: false });
+        jumpBtn.addEventListener('mousedown', triggerJump);
+
+        // Клавиатура для теста с ПК
         const keys = {};
-        window.addEventListener('keydown', e => keys[e.code] = true);
+        window.addEventListener('keydown', e => {
+            keys[e.code] = true;
+            if (e.code === 'Space') triggerJump();
+        });
         window.addEventListener('keyup', e => keys[e.code] = false);
 
         // ==========================================
-        // 5. ИГРОВОЙ ЦИКЛ И ОПТИМИЗИРОВАННЫЙ РЕНДЕР
+        // 6. ИГРОВОЙ ЦИКЛ, КАМЕРА И 3D FRUSTUM CULLING
         // ==========================================
         let lastEmit = 0;
+        const frustum = new THREE.Frustum();
+        const projScreenMatrix = new THREE.Matrix4();
 
         function gameLoop(timestamp) {
             if (!isPlaying) return;
 
-            const me = players[myId];
+            const me = playersData[myId];
             if (me) {
                 let vx = moveVec.x;
-                let vy = moveVec.y;
-                if (vx === 0 && vy === 0) {
-                    if (keys['KeyW'] || keys['ArrowUp']) vy -= 1;
-                    if (keys['KeyS'] || keys['ArrowDown']) vy += 1;
+                let vz = moveVec.z;
+
+                if (vx === 0 && vz === 0) {
+                    if (keys['KeyW'] || keys['ArrowUp']) vz -= 1;
+                    if (keys['KeyS'] || keys['ArrowDown']) vz += 1;
                     if (keys['KeyA'] || keys['ArrowLeft']) vx -= 1;
                     if (keys['KeyD'] || keys['ArrowRight']) vx += 1;
-                    if (vx !== 0 && vy !== 0) {
-                        const len = Math.sqrt(vx * vx + vy * vy);
-                        vx /= len; vy /= len;
+                    if (vx !== 0 && vz !== 0) {
+                        const len = Math.sqrt(vx * vx + vz * vz);
+                        vx /= len; vz /= len;
                     }
                 }
 
-                if (vx !== 0 || vy !== 0) {
-                    const speed = 4;
-                    me.x = Math.max(0, Math.min(WORLD_SIZE, me.x + vx * speed));
-                    me.y = Math.max(0, Math.min(WORLD_SIZE, me.y + vy * speed));
+                // Горизонтальное движение
+                const speed = 0.25;
+                if (vx !== 0 || vz !== 0) {
+                    me.x += vx * speed;
+                    me.z += vz * speed;
 
-                    if (timestamp - lastEmit > 33) {
-                        socket.emit('move', { x: me.x, y: me.y });
-                        lastEmit = timestamp;
+                    // Ограничение краем острова
+                    const distFromCenter = Math.sqrt(me.x * me.x + me.z * me.z);
+                    if (distFromCenter > ISLAND_RADIUS + 6) {
+                        const angle = Math.atan2(me.z, me.x);
+                        me.x = Math.cos(angle) * (ISLAND_RADIUS + 6);
+                        me.z = Math.sin(angle) * (ISLAND_RADIUS + 6);
                     }
                 }
 
-                render(me);
+                // Вертикальное движение (прыжок и гравитация)
+                if (!isGrounded || velocityY !== 0) {
+                    me.y += velocityY;
+                    velocityY += GRAVITY;
+                    if (me.y <= 0) {
+                        me.y = 0;
+                        velocityY = 0;
+                        isGrounded = true;
+                    }
+                }
+
+                // Отправка координат на сервер
+                if ((vx !== 0 || vz !== 0 || !isGrounded) && timestamp - lastEmit > 33) {
+                    socket.emit('move', { x: me.x, y: me.y, z: me.z });
+                    lastEmit = timestamp;
+                }
+
+                // Обновление позиций всех игроков в 3D
+                for (let id in playersData) {
+                    const p = playersData[id];
+                    const mesh = playerMeshes[id];
+                    if (mesh) {
+                        if (id === myId) {
+                            mesh.position.set(p.x, p.y + 1.1, p.z);
+                        } else {
+                            // Плавная интерполяция других игроков
+                            mesh.position.lerp(new THREE.Vector3(p.x, p.y + 1.1, p.z), 0.3);
+                        }
+                    }
+                }
+
+                // Камера следит за игроком под углом
+                camera.position.set(me.x, me.y + 14, me.z + 18);
+                camera.lookAt(me.x, me.y + 1, me.z);
+
+                // 100% НЕВИДИМОЕ ОТСЕЧЕНИЕ (FRUSTUM CULLING С ЗАПАСОМ)
+                camera.updateMatrixWorld();
+                projScreenMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+                frustum.setFromProjectionMatrix(projScreenMatrix);
+
+                const boundingSphere = new THREE.Sphere(new THREE.Vector3(), 6); // Запас радиуса 6 единиц
+                for (let i = 0; i < worldObjects.length; i++) {
+                    const obj = worldObjects[i];
+                    boundingSphere.center.copy(obj.position);
+                    obj.visible = frustum.intersectsSphere(boundingSphere);
+                }
             }
 
+            renderer.render(scene, camera);
             requestAnimationFrame(gameLoop);
-        }
-
-        function render(cameraTarget) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            const camX = cameraTarget.x - canvas.width / 2;
-            const camY = cameraTarget.y - canvas.height / 2;
-
-            // ЗАПАС ДЛЯ ОТСЕЧЕНИЯ (чтобы края не мигали)
-            const CULL_PADDING = 100;
-            const viewLeft = camX - CULL_PADDING;
-            const viewRight = camX + canvas.width + CULL_PADDING;
-            const viewTop = camY - CULL_PADDING;
-            const viewBottom = camY + canvas.height + CULL_PADDING;
-
-            // 1. Видимые тайлы земли
-            const startCol = Math.max(0, Math.floor(viewLeft / TILE_SIZE));
-            const endCol = Math.min(GRID_COUNT - 1, Math.ceil(viewRight / TILE_SIZE));
-            const startRow = Math.max(0, Math.floor(viewTop / TILE_SIZE));
-            const endRow = Math.min(GRID_COUNT - 1, Math.ceil(viewBottom / TILE_SIZE));
-
-            for (let r = startRow; r <= endRow; r++) {
-                for (let c = startCol; c <= endCol; c++) {
-                    const tile = worldGrid[r][c];
-                    if (tile === 0) ctx.fillStyle = '#2980b9';
-                    else if (tile === 1) ctx.fillStyle = '#f1c40f';
-                    else ctx.fillStyle = '#2ecc71';
-
-                    ctx.fillRect(
-                        Math.floor(c * TILE_SIZE - camX),
-                        Math.floor(r * TILE_SIZE - camY),
-                        TILE_SIZE + 1,
-                        TILE_SIZE + 1
-                    );
-                }
-            }
-
-            // 2. Видимые объекты (деревья и камни)
-            for (let i = 0; i < worldObjects.length; i++) {
-                const obj = worldObjects[i];
-                if (obj.x + obj.radius < viewLeft || obj.x - obj.radius > viewRight ||
-                    obj.y + obj.radius < viewTop || obj.y - obj.radius > viewBottom) {
-                    continue;
-                }
-
-                const screenX = obj.x - camX;
-                const screenY = obj.y - camY;
-
-                ctx.fillStyle = obj.type === 'tree' ? '#1e8449' : '#7f8c8d';
-                ctx.beginPath();
-                ctx.arc(screenX, screenY, obj.radius, 0, Math.PI * 2);
-                ctx.fill();
-            }
-
-            // 3. Видимые игроки
-            for (let id in players) {
-                const p = players[id];
-                const playerRadius = 18;
-                if (p.x + playerRadius < viewLeft || p.x - playerRadius > viewRight ||
-                    p.y + playerRadius < viewTop || p.y - playerRadius > viewBottom) {
-                    continue;
-                }
-
-                const screenX = p.x - camX;
-                const screenY = p.y - camY;
-
-                ctx.fillStyle = p.color;
-                ctx.beginPath();
-                ctx.arc(screenX, screenY, playerRadius, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.lineWidth = 3;
-                ctx.strokeStyle = '#ffffff';
-                ctx.stroke();
-            }
         }
     </script>
 </body>
