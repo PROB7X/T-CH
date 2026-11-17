@@ -3,721 +3,435 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sketch Relay 2D</title>
+    <title>InDeathPet</title>
+    <script src="/socket.io/socket.io.js"></script>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
-        body { background: #1e1b4b; color: #f8fafc; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 14px; }
-        .card { background: #312e81; border: 1px solid #4338ca; border-radius: 16px; padding: 18px; width: 100%; max-width: 450px; box-shadow: 0 10px 25px rgba(0,0,0,0.35); display: flex; flex-direction: column; gap: 12px; }
+        * { box-sizing: border-box; user-select: none; }
+        body {
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            background: #090b10;
+            color: #e2e8f0;
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #fsOverlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(9, 11, 16, 0.96);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .btn-main {
+            background: #111622;
+            color: #00ffaa;
+            border: 2px solid #00ffaa;
+            padding: 14px 28px;
+            font-size: 16px;
+            font-weight: bold;
+            letter-spacing: 1.5px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            text-transform: uppercase;
+            transition: 0.2s;
+        }
+        .btn-main:hover:not(:disabled) { background: #00ffaa; color: #090b10; }
+        .btn-main:disabled { opacity: 0.35; cursor: not-allowed; }
+        .btn-danger { border-color: #f43f5e; color: #f43f5e; }
+        .btn-danger:hover:not(:disabled) { background: #f43f5e; color: #fff; }
+
+        .game-container {
+            width: 96vw;
+            height: 92vh;
+            background: #11151f;
+            border: 1px solid #262f40;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            padding: 14px 20px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #262f40;
+            padding-bottom: 8px;
+            margin-bottom: 10px;
+        }
+        .logo { color: #00ffaa; font-weight: 900; font-size: 20px; letter-spacing: 2px; }
         .hidden { display: none !important; }
-        .header-row { display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 20px; font-weight: 800; color: #a5b4fc; }
-        .top-bar { display: flex; justify-content: space-between; align-items: center; }
-        input[type="text"], input[type="number"] { width: 100%; padding: 10px 12px; border-radius: 10px; border: 2px solid #4f46e5; background: #1e1b4b; color: white; font-size: 15px; outline: none; }
-        input:focus { border-color: #818cf8; }
-        button { width: 100%; padding: 12px; border: none; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; color: white; transition: transform 0.1s; }
-        button:active { transform: scale(0.98); }
-        .btn-green { background: #10b981; }
-        .btn-orange { background: #f59e0b; }
-        .btn-blue { background: #3b82f6; }
-        .btn-red { background: #ef4444; width: auto; padding: 8px 12px; font-size: 13px; }
-        .btn-gray { background: #475569; }
-        .error { color: #fca5a5; font-size: 13px; text-align: center; min-height: 16px; }
-        .player-list { list-style: none; display: flex; flex-direction: column; gap: 6px; max-height: 160px; overflow-y: auto; }
-        .player-item { background: #1e1b4b; padding: 8px 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; font-weight: 600; font-size: 14px; }
-        .badge { background: #4f46e5; padding: 3px 8px; border-radius: 6px; font-size: 11px; }
 
-        /* Особые ники и тег owner */
-        .nick-silver {
-            background: linear-gradient(90deg, #94a3b8, #f8fafc, #94a3b8);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            font-weight: 800; text-shadow: 0 0 8px rgba(226, 232, 240, 0.35);
+        #loginScreen {
+            margin: auto;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            align-items: center;
         }
-        .nick-gold {
-            background: linear-gradient(90deg, #f59e0b, #fef08a, #d97706);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            font-weight: 900; text-shadow: 0 0 10px rgba(250, 204, 21, 0.45);
+        input {
+            background: #090b10;
+            border: 1px solid #262f40;
+            color: #fff;
+            padding: 12px 18px;
+            font-size: 16px;
+            border-radius: 6px;
+            width: 280px;
+            text-align: center;
+            outline: none;
         }
-        .badge-owner {
-            background: linear-gradient(135deg, #f59e0b, #b45309);
-            color: #fef08a; border: 1px solid #fde047;
-            padding: 2px 7px; border-radius: 6px; font-size: 11px; font-weight: 800; text-transform: lowercase;
+        input:focus { border-color: #00ffaa; }
+
+        .lobby-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            flex: 1;
+            align-items: center;
         }
 
-        /* Список открытых комнат внизу меню */
-        .public-rooms-box { background: rgba(30,27,75,0.6); padding: 12px; border-radius: 12px; display: flex; flex-direction: column; gap: 8px; border: 1px solid #4338ca; }
-        .public-room-row { background: #1e1b4b; padding: 8px 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
-        .btn-join-quick { width: auto; padding: 6px 12px; font-size: 12px; background: #10b981; border-radius: 7px; }
+        .panel {
+            background: #0c0f17;
+            border: 1px solid #1e2636;
+            border-radius: 10px;
+            height: 100%;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+        }
 
-        /* Выбор режима в лобби */
-        .modes-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .mode-card { background: #1e1b4b; border: 2px solid #4f46e5; border-radius: 12px; padding: 12px 8px; display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer; text-align: center; transition: 0.15s; }
-        .mode-card.active { border-color: #10b981; background: rgba(16, 185, 129, 0.18); }
-        .mode-card.disabled { pointer-events: none; opacity: 0.85; }
-        .mode-card span { font-size: 13px; font-weight: 700; }
+        .pet-svg-box { width: 130px; height: 130px; }
+        .rarity-ОБЫЧНЫЙ { color: #94a3b8; }
+        .rarity-РЕДКИЙ { color: #38bdf8; }
+        .rarity-МИФИЧЕСКИЙ { color: #f43f5e; }
 
-        /* Холст и инструменты */
-        #draw-canvas { background: #ffffff; border-radius: 12px; width: 100%; aspect-ratio: 4 / 3; touch-action: none; cursor: crosshair; display: block; border: 3px solid #4f46e5; }
-        .tools-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: space-between; align-items: center; }
-        .tool-icon-btn { width: 38px; height: 38px; padding: 0; border-radius: 8px; background: #1e1b4b; border: 1px solid #4f46e5; }
-        .tool-icon-btn.active { background: #4f46e5; border-color: #a5b4fc; }
-        .size-btn { width: auto; padding: 6px 10px; font-size: 12px; background: #1e1b4b; border: 1px solid #4f46e5; }
-        .size-btn.active { background: #4f46e5; }
-
-        /* Палитра: круг, HEX, готовые цвета */
-        .color-controls { display: flex; align-items: center; gap: 6px; background: #1e1b4b; padding: 8px; border-radius: 10px; }
-        input[type="color"] { -webkit-appearance: none; border: none; width: 32px; height: 32px; border-radius: 50%; background: none; cursor: pointer; padding: 0; }
-        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
-        input[type="color"]::-webkit-color-swatch { border: 2px solid #fff; border-radius: 50%; }
-        #hex-input { width: 82px; padding: 6px 8px; font-size: 13px; font-family: monospace; text-transform: uppercase; }
-        .swatches { display: flex; gap: 5px; flex-wrap: wrap; }
-        .color-dot { width: 24px; height: 24px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; }
-        .color-dot.active { border-color: #ffffff; transform: scale(1.15); }
-
-        /* Итоги и таймер */
-        .timer-pill { background: #ef4444; padding: 3px 10px; border-radius: 20px; font-size: 13px; font-weight: 800; color: white; }
-        .prompt-box { background: #1e1b4b; padding: 12px; border-radius: 10px; text-align: center; font-size: 16px; font-weight: 700; border: 1px dashed #818cf8; }
-        .result-img { width: 100%; border-radius: 10px; background: white; border: 2px solid #4f46e5; }
-        .album-step { background: #1e1b4b; padding: 10px; border-radius: 10px; display: flex; flex-direction: column; gap: 6px; }
-        .author-tag { font-size: 12px; color: #a5b4fc; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+        .arena-grid {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            gap: 20px;
+            flex: 1;
+        }
+        .hp-bar { width: 100%; height: 12px; background: #1e2636; border-radius: 6px; overflow: hidden; margin-top: 6px; }
+        .hp-fill { height: 100%; background: #00ffaa; transition: width 0.3s; }
+        .moves-row { display: flex; justify-content: center; gap: 12px; margin-top: 10px; }
+        .status-line { font-size: 13px; color: #94a3b8; text-align: center; min-height: 20px; }
     </style>
 </head>
 <body>
+    <div id="fsOverlay">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#00ffaa" stroke-width="2">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+        </svg>
+        <div style="letter-spacing: 1px; color: #94a3b8;">ДЛЯ ИГРЫ ТРЕБУЕТСЯ ГОРИЗОНТАЛЬНЫЙ ПОЛНОЭКРАННЫЙ РЕЖИМ</div>
+        <button class="btn-main" onclick="enterFullScreen()">НА ВЕСЬ ЭКРАН</button>
+    </div>
 
-    <!-- 1. ГЛАВНОЕ МЕНЮ -->
-    <div id="screen-menu" class="card">
-        <div class="header-row">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/>
+    <div class="game-container">
+        <div class="header">
+            <div class="logo">INDEATHPET</div>
+            <div id="topStats" class="hidden" style="font-size: 14px; color: #94a3b8;">
+                БОЕЦ: <b id="playerName" style="color:#fff;"></b> | ПОБЕД: <b id="playerWins" style="color:#00ffaa;">0</b>
+            </div>
+        </div>
+
+        <div id="loginScreen">
+            <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#00ffaa" stroke-width="1.8">
+                <polygon points="12 2 21 7 21 17 12 22 3 17 3 7 12 2"/>
+                <circle cx="12" cy="12" r="3"/>
             </svg>
-            <span>Sketch Relay 2D</span>
-        </div>
-        <input type="text" id="input-name" placeholder="Твоё имя" maxlength="14">
-        
-        <div style="display: flex; flex-direction: column; gap: 8px; background: rgba(30,27,75,0.5); padding: 12px; border-radius: 12px;">
-            <input type="text" id="create-pass" placeholder="Пароль комнаты (необязательно)" maxlength="16">
-            <button id="btn-create" class="btn-green">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                <span>Создать комнату</span>
-            </button>
+            <div style="font-size: 18px; font-weight: bold; letter-spacing: 1px;">ВВЕДИТЕ ВАШ НИКНЕЙМ</div>
+            <input type="text" id="usernameInput" placeholder="НИКНЕЙМ..." maxlength="16">
+            <button class="btn-main" onclick="login()">ВОЙТИ В СИСТЕМУ</button>
         </div>
 
-        <div style="display: flex; flex-direction: column; gap: 8px; background: rgba(30,27,75,0.5); padding: 12px; border-radius: 12px;">
-            <input type="number" id="input-code" placeholder="Код комнаты (4 цифры)">
-            <input type="text" id="join-pass" placeholder="Пароль (если установлен)" maxlength="16">
-            <button id="btn-join" class="btn-orange">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
-                <span>Войти в комнату</span>
-            </button>
+        <div id="eggScreen" class="hidden" style="margin:auto; text-align:center;">
+            <svg width="100" height="120" viewBox="0 0 100 120">
+                <path d="M50 10 C80 10 90 55 90 80 C90 102 72 112 50 112 C28 112 10 102 10 80 C10 55 20 10 50 10 Z" fill="#161d2b" stroke="#00ffaa" stroke-width="3"/>
+                <polyline points="35,55 48,68 42,82 58,92" fill="none" stroke="#00ffaa" stroke-width="2.5"/>
+            </svg>
+            <p style="color:#94a3b8;">ОБНАРУЖЕНА НЕИЗВЕСТНАЯ КАПСУЛА. ИНИЦИИРУЙТЕ ВЫЛУПЛЕНИЕ.</p>
+            <button class="btn-main" onclick="socket.emit('openEgg')">ОТКРЫТЬ ЯЙЦО</button>
         </div>
-        <div id="menu-error" class="error"></div>
 
-        <!-- Открытые комнаты внизу -->
-        <div class="public-rooms-box">
-            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 700; color: #a5b4fc;">
-                <span>Открытые комнаты:</span>
-                <span id="public-rooms-count">0</span>
+        <div id="lobbyScreen" class="lobby-grid hidden">
+            <div class="panel">
+                <div style="text-align:center;">
+                    <div id="petType" style="font-weight:bold; font-size:18px;"></div>
+                    <div id="petRarity" style="font-size:12px; letter-spacing:1px;"></div>
+                </div>
+
+                <div id="petSvgContainer" class="pet-svg-box"></div>
+
+                <div style="font-size:14px; color:#94a3b8;">
+                    УРОВЕНЬ: <b id="petLvl" style="color:#fff;">1</b> | МАКС. HP: <b id="petHp" style="color:#00ffaa;">100</b>
+                </div>
+
+                <div id="trainStatus" style="font-size:12px; color:#fbbf24; min-height:16px;"></div>
+
+                <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:center;">
+                    <button class="btn-main" id="trainBtn" style="padding:10px 14px; font-size:13px;" onclick="socket.emit('toggleTraining')">AFK-ТРЕНИРОВКА</button>
+                    <button class="btn-main" style="padding:10px 14px; font-size:13px;" onclick="socket.emit('findBattle')">В БОЙ (PVP)</button>
+                    <button class="btn-main btn-danger" style="padding:10px 12px; font-size:12px;" onclick="socket.emit('openEgg')">НОВОЕ ЯЙЦО</button>
+                </div>
             </div>
-            <div id="public-rooms-list" style="display: flex; flex-direction: column; gap: 6px; max-height: 150px; overflow-y: auto;">
-                <div style="font-size: 12px; color: #94a3b8; text-align: center; padding: 6px;">Нет открытых комнат</div>
+
+            <div class="panel">
+                <div style="font-size:13px; letter-spacing:1px; color:#94a3b8;">ШЕСТИГРАННИК ХАРАКТЕРИСТИК</div>
+                <svg id="hexRadar" width="240" height="210" viewBox="0 0 240 210"></svg>
+                <div id="statsLegend" style="font-size:11px; color:#94a3b8; text-align:center;"></div>
             </div>
         </div>
+
+        <div id="battleScreen" class="hidden" style="display:flex; flex-direction:column; flex:1; justify-content:space-between;">
+            <div class="arena-grid">
+                <div class="panel">
+                    <b id="bP1Name">ИГРОК 1</b>
+                    <div id="bP1Svg" style="width:90px; height:90px;"></div>
+                    <div style="width:100%;">
+                        <div style="font-size:12px;">HP: <span id="bP1HpText">100/100</span></div>
+                        <div class="hp-bar"><div id="bP1HpBar" class="hp-fill"></div></div>
+                    </div>
+                </div>
+
+                <div style="font-size:24px; font-weight:900; color:#f43f5e;">VS</div>
+
+                <div class="panel">
+                    <b id="bP2Name">ИГРОК 2</b>
+                    <div id="bP2Svg" style="width:90px; height:90px;"></div>
+                    <div style="width:100%;">
+                        <div style="font-size:12px;">HP: <span id="bP2HpText">100/100</span></div>
+                        <div class="hp-bar"><div id="bP2HpBar" class="hp-fill"></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="moves-row">
+                <button class="btn-main moveBtn" onclick="sendMove('flame')">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2c0 6-6 8-6 14a6 6 0 0 0 12 0c0-6-6-8-6-14z"/></svg>
+                    ПЛАМЯ
+                </button>
+                <button class="btn-main moveBtn" onclick="sendMove('shield')">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    ЩИТ
+                </button>
+                <button class="btn-main moveBtn" onclick="sendMove('power')">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                    СИЛА
+                </button>
+                <button id="backLobbyBtn" class="btn-main hidden" onclick="backToLobby()">В ЛОББИ</button>
+            </div>
+        </div>
+
+        <div class="status-line" id="statusMsg">СИСТЕМА ГОТОВА</div>
     </div>
-
-    <!-- 2. ЛОББИ КОМНАТЫ -->
-    <div id="screen-lobby" class="card hidden">
-        <div class="top-bar">
-            <div style="font-size: 18px; font-weight: 800; color: #a5b4fc;">
-                Код: <span id="lobby-code" style="color: #34d399;">----</span>
-            </div>
-            <button id="btn-leave" class="btn-red">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
-                <span>Выйти</span>
-            </button>
-        </div>
-
-        <div style="font-size: 13px; color: #cbd5e1;">Режим игры:</div>
-        <div class="modes-grid">
-            <div class="mode-card active" id="mode-card-normal" data-mode="normal">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2">
-                    <path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/>
-                </svg>
-                <span>Обычный</span>
-            </div>
-            <div class="mode-card" id="mode-card-timer" data-mode="timer">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2">
-                    <circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M9 2h6"/>
-                </svg>
-                <span>Обычный + таймер</span>
-            </div>
-        </div>
-
-        <div id="timer-setting-box" class="hidden" style="display: flex; align-items: center; justify-content: space-between; background: #1e1b4b; padding: 8px 12px; border-radius: 10px;">
-            <span style="font-size: 13px; font-weight: 600;">Секунд на рисунок:</span>
-            <input type="number" id="input-draw-time" value="60" min="15" max="300" style="width: 80px; padding: 6px; text-align: center;">
-        </div>
-
-        <div style="font-size: 13px; color: #cbd5e1;">Игроки (<span id="lobby-count">1</span>/10):</div>
-        <ul id="lobby-players" class="player-list"></ul>
-
-        <button id="btn-start" class="btn-green hidden">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-            <span>Начать игру</span>
-        </button>
-        <div id="lobby-wait-text" style="text-align: center; color: #a5b4fc; font-size: 13px;">Ждём, пока создатель запустит игру...</div>
-        <div id="lobby-error" class="error"></div>
-    </div>
-    <!-- 3. ИГРОВОЙ ЭКРАН -->
-    <div id="screen-game" class="card hidden">
-        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #a5b4fc; font-weight: 700;">
-            <span id="phase-title">Этап 1 из 3</span>
-            <span id="timer-badge" class="timer-pill hidden">60 сек</span>
-            <span id="wait-counter"></span>
-        </div>
-
-        <div id="mode-write" class="hidden" style="display: flex; flex-direction: column; gap: 12px;">
-            <div id="write-instruction" style="text-align: center; font-weight: 700;"></div>
-            <img id="img-to-guess" class="result-img hidden" alt="Рисунок">
-            <input type="text" id="input-phrase" placeholder="Напиши сюда..." maxlength="70">
-        </div>
-
-        <div id="mode-draw" class="hidden" style="display: flex; flex-direction: column; gap: 8px;">
-            <div id="text-to-draw" class="prompt-box"></div>
-            <canvas id="draw-canvas" width="400" height="300"></canvas>
-            
-            <div class="tools-row">
-                <button type="button" class="tool-icon-btn active" data-tool="brush" title="Кисть">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/></svg>
-                </button>
-                <button type="button" class="tool-icon-btn" data-tool="fill" title="Заливка">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 11l-8-8-8.6 8.6a2 2 0 0 0 0 2.8l5.2 5.2c.8.8 2 .8 2.8 0L19 11z"/><path d="M5 2l5 5"/><path d="M20 16s2 2.2 2 3.5a2 2 0 0 1-4 0c0-1.3 2-3.5 2-3.5z"/></svg>
-                </button>
-                <button type="button" class="tool-icon-btn" data-tool="line" title="Линия">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="19" x2="19" y2="5"/></svg>
-                </button>
-                <button type="button" class="tool-icon-btn" data-tool="rect" title="Квадрат">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="1"/></svg>
-                </button>
-                <button type="button" class="tool-icon-btn" data-tool="circle" title="Круг">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/></svg>
-                </button>
-                <button type="button" id="btn-clear" class="tool-icon-btn" title="Очистить">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fca5a5" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                </button>
-            </div>
-
-            <div class="tools-row">
-                <button type="button" class="size-btn active" data-size="4">Тонко</button>
-                <button type="button" class="size-btn" data-size="10">Средне</button>
-                <button type="button" class="size-btn" data-size="20">Толсто</button>
-            </div>
-
-            <div class="color-controls">
-                <input type="color" id="color-picker" value="#000000" title="Цветовой круг">
-                <input type="text" id="hex-input" value="#000000" maxlength="7" placeholder="#000000">
-                <div class="swatches" id="palette"></div>
-            </div>
-        </div>
-
-        <button id="btn-submit" class="btn-blue">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-            <span>Готово</span>
-        </button>
-        <div id="waiting-overlay" class="hidden" style="text-align: center; padding: 20px; color: #34d399; font-weight: 700;">
-            Ответ отправлен! Ждём остальных игроков...
-        </div>
-    </div>
-
-    <!-- 4. РЕЗУЛЬТАТЫ -->
-    <div id="screen-results" class="card hidden">
-        <div class="header-row">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-            <span>Результаты</span>
-        </div>
-        <div id="album-title" style="text-align: center; font-weight: 700; color: #34d399; font-size: 14px;"></div>
-        <div id="album-content" style="display: flex; flex-direction: column; gap: 10px; max-height: 60vh; overflow-y: auto;"></div>
-        <div style="display: flex; gap: 10px;">
-            <button id="btn-prev-chain" class="btn-gray">Назад</button>
-            <button id="btn-next-chain" class="btn-blue">Далее</button>
-        </div>
-        <button id="btn-back-lobby" class="btn-green hidden">Вернуться в лобби</button>
-    </div>
-    <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        let isHost = false;
-        let inRoom = false;
-        let currentPhase = 0;
-        let allCards = [];
-        let currentCardIdx = 0;
-        let drawTimerInterval = null;
-        let submittedCurrentPhase = false;
+        let userData = null;
+        let currentRoom = null;
+        let trainInterval = null;
 
-        // Особые ники: StardL123 (серебро) и HELM77ZX (золото + тег owner)
-        function formatPlayerBadge(name) {
-            const safeName = String(name || 'Игрок').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-            if (safeName === 'StardL123') {
-                return `<span class="nick-silver">${safeName}</span>`;
-            }
-            if (safeName === 'HELM77ZX') {
-                return `<span class="nick-gold">${safeName}</span> <span class="badge-owner">owner</span>`;
-            }
-            return `<span>${safeName}</span>`;
-        }
-
-        // Обновление списка открытых комнат внизу главного меню
-        socket.on('publicRoomsUpdate', (roomsList) => {
-            const listEl = document.getElementById('public-rooms-list');
-            const countEl = document.getElementById('public-rooms-count');
-            countEl.textContent = roomsList.length;
-
-            if (roomsList.length === 0) {
-                listEl.innerHTML = '<div style="font-size: 12px; color: #94a3b8; text-align: center; padding: 6px;">Нет открытых комнат</div>';
-                return;
-            }
-
-            listEl.innerHTML = '';
-            roomsList.forEach(r => {
-                const row = document.createElement('div');
-                row.className = 'public-room-row';
-                const modeLabel = r.mode === 'timer' ? 'Таймер' : 'Обычный';
-                row.innerHTML = `
-                    <div style="display: flex; flex-direction: column; gap: 2px;">
-                        <div><b>#${r.code}</b> • ${formatPlayerBadge(r.hostName)}</div>
-                        <div style="font-size: 11px; color: #94a3b8;">${modeLabel} • Игроков: ${r.count}/10</div>
-                    </div>
-                    <button type="button" class="btn-join-quick">Войти</button>
-                `;
-                row.querySelector('button').addEventListener('click', () => {
-                    const playerName = document.getElementById('input-name').value;
-                    socket.emit('joinRoom', { roomCode: r.code, playerName, password: '' }, handleJoinResponse);
-                });
-                listEl.appendChild(row);
-            });
-        });
-
-        let lastPing = 0;
-        function reportActivity() {
-            if (!inRoom) return;
-            const now = Date.now();
-            if (now - lastPing > 5000) {
-                socket.emit('pingActivity');
-                lastPing = now;
-            }
-        }
-        ['touchstart', 'touchmove', 'mousedown', 'keydown', 'input'].forEach(evt => {
-            window.addEventListener(evt, reportActivity, { passive: true });
-        });
-
-        socket.on('kickedAfk', (msg) => {
-            inRoom = false;
-            clearInterval(drawTimerInterval);
-            document.getElementById('menu-error').textContent = msg;
-            showScreen('menu');
-        });
-
-        const screens = {
-            menu: document.getElementById('screen-menu'),
-            lobby: document.getElementById('screen-lobby'),
-            game: document.getElementById('screen-game'),
-            results: document.getElementById('screen-results')
+        const PET_SVGS = {
+            lizard: `<svg viewBox="0 0 100 100" width="100%" height="100%">
+                <polygon points="20,75 40,35 75,30 85,50 65,75" fill="#16222f" stroke="#94a3b8" stroke-width="3"/>
+                <polygon points="45,35 52,18 60,33" fill="#94a3b8"/>
+                <circle cx="70" cy="43" r="4" fill="#00ffaa"/>
+            </svg>`,
+            dragon: `<svg viewBox="0 0 100 100" width="100%" height="100%">
+                <polygon points="15,65 35,20 55,40 85,25 75,70 45,80" fill="#122338" stroke="#38bdf8" stroke-width="3"/>
+                <polygon points="35,20 20,10 42,15" fill="#38bdf8"/>
+                <circle cx="68" cy="42" r="4" fill="#f43f5e"/>
+            </svg>`,
+            mutant: `<svg viewBox="0 0 100 100" width="100%" height="100%">
+                <polygon points="50,12 85,35 78,82 22,82 15,35" fill="#261220" stroke="#f43f5e" stroke-width="3"/>
+                <polygon points="35,45 45,38 45,52" fill="#00ffaa"/>
+                <polygon points="65,45 55,38 55,52" fill="#00ffaa"/>
+                <line x1="35" y1="68" x2="65" y2="68" stroke="#f43f5e" stroke-width="3"/>
+            </svg>`
         };
 
-        function showScreen(name) {
-            Object.values(screens).forEach(s => s.classList.add('hidden'));
-            screens[name].classList.remove('hidden');
+        async function enterFullScreen() {
+            const el = document.documentElement;
+            try {
+                if (el.requestFullscreen) await el.requestFullscreen();
+                else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
+
+                if (screen.orientation && screen.orientation.lock) {
+                    await screen.orientation.lock('landscape').catch(() => {});
+                }
+            } catch (e) {}
+            checkFullScreen();
         }
 
-        document.getElementById('btn-create').addEventListener('click', () => {
-            const playerName = document.getElementById('input-name').value;
-            const password = document.getElementById('create-pass').value;
-            socket.emit('createRoom', { playerName, password }, handleJoinResponse);
-        });
-
-        document.getElementById('btn-join').addEventListener('click', () => {
-            const playerName = document.getElementById('input-name').value;
-            const roomCode = document.getElementById('input-code').value.trim();
-            const password = document.getElementById('join-pass').value;
-            if (!roomCode) return document.getElementById('menu-error').textContent = 'Введите код комнаты!';
-            socket.emit('joinRoom', { roomCode, playerName, password }, handleJoinResponse);
-        });
-
-        document.getElementById('btn-leave').addEventListener('click', () => {
-            socket.emit('leaveRoom');
-            inRoom = false;
-            document.getElementById('menu-error').textContent = '';
-            showScreen('menu');
-        });
-
-        function handleJoinResponse(res) {
-            if (res.error) {
-                document.getElementById('menu-error').textContent = res.error;
-                return;
-            }
-            inRoom = true;
-            document.getElementById('menu-error').textContent = '';
-            document.getElementById('lobby-code').textContent = res.roomCode;
-            renderLobby(res.players, res.isHost ? socket.id : null, res.mode, res.drawTime);
-            showScreen('lobby');
+        function checkFullScreen() {
+            const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+            const overlay = document.getElementById('fsOverlay');
+            if (isFs) overlay.classList.add('hidden');
+            else overlay.classList.remove('hidden');
         }
 
-        document.querySelectorAll('.mode-card').forEach(card => {
-            card.addEventListener('click', () => {
-                if (!isHost) return;
-                const mode = card.dataset.mode;
-                const drawTime = document.getElementById('input-draw-time').value;
-                socket.emit('changeSettings', { mode, drawTime });
-            });
-        });
+        document.addEventListener('fullscreenchange', checkFullScreen);
+        document.addEventListener('webkitfullscreenchange', checkFullScreen);
 
-        document.getElementById('input-draw-time').addEventListener('change', (e) => {
-            if (!isHost) return;
-            socket.emit('changeSettings', { drawTime: e.target.value });
-        });
+        function drawHexagonStats(stats) {
+            const svg = document.getElementById('hexRadar');
+            const cx = 120, cy = 105, maxR = 72;
+            const keys = [
+                { k: 'str', label: 'СИЛ' },
+                { k: 'vit', label: 'ЖИВ' },
+                { k: 'def', label: 'БРО' },
+                { k: 'spd', label: 'СКО' },
+                { k: 'int', label: 'ИНТ' },
+                { k: 'rage', label: 'ЯРО' }
+            ];
 
-        function applySettingsUI(mode, drawTime) {
-            document.getElementById('mode-card-normal').classList.toggle('active', mode === 'normal');
-            document.getElementById('mode-card-timer').classList.toggle('active', mode === 'timer');
-            document.getElementById('mode-card-normal').classList.toggle('disabled', !isHost);
-            document.getElementById('mode-card-timer').classList.toggle('disabled', !isHost);
-
-            const timerBox = document.getElementById('timer-setting-box');
-            timerBox.classList.toggle('hidden', mode !== 'timer');
-            document.getElementById('input-draw-time').value = drawTime || 60;
-            document.getElementById('input-draw-time').disabled = !isHost;
-        }
-
-        socket.on('updateSettings', (data) => applySettingsUI(data.mode, data.drawTime));
-
-        function renderLobby(players, hostId, mode = 'normal', drawTime = 60) {
-            isHost = (hostId === socket.id);
-            document.getElementById('lobby-count').textContent = players.length;
-            const list = document.getElementById('lobby-players');
-            list.innerHTML = '';
-            players.forEach(p => {
-                const li = document.createElement('li');
-                li.className = 'player-item';
-                li.innerHTML = `
-                    <div style="display:flex; align-items:center; gap:6px;">${formatPlayerBadge(p.name)}</div>
-                    ${p.id === hostId ? '<span class="badge">Создатель</span>' : ''}
-                `;
-                list.appendChild(li);
+            let html = '';
+            [0.33, 0.66, 1].forEach(scale => {
+                const pts = keys.map((_, i) => {
+                    const angle = (Math.PI / 3) * i - Math.PI / 2;
+                    return `${cx + maxR * scale * Math.cos(angle)},${cy + maxR * scale * Math.sin(angle)}`;
+                }).join(' ');
+                html += `<polygon points="${pts}" fill="none" stroke="#262f40" stroke-width="1"/>`;
             });
 
-            applySettingsUI(mode, drawTime);
-            document.getElementById('btn-start').classList.toggle('hidden', !isHost);
-            document.getElementById('lobby-wait-text').classList.toggle('hidden', isHost);
+            const statPts = keys.map((item, i) => {
+                const angle = (Math.PI / 3) * i - Math.PI / 2;
+                const xEnd = cx + maxR * Math.cos(angle);
+                const yEnd = cy + maxR * Math.sin(angle);
+                const xLbl = cx + (maxR + 22) * Math.cos(angle);
+                const yLbl = cy + (maxR + 16) * Math.sin(angle) + 4;
+
+                html += `<line x1="${cx}" y1="${cy}" x2="${xEnd}" y2="${yEnd}" stroke="#1e2636" stroke-width="1"/>`;
+                html += `<text x="${xLbl}" y="${yLbl}" fill="#94a3b8" font-size="10" text-anchor="middle" font-weight="bold">${item.label}:${stats[item.k]}</text>`;
+
+                const valRatio = Math.min(1, (stats[item.k] || 10) / 100);
+                return `${cx + maxR * valRatio * Math.cos(angle)},${cy + maxR * valRatio * Math.sin(angle)}`;
+            }).join(' ');
+
+            html += `<polygon points="${statPts}" fill="rgba(0, 255, 170, 0.25)" stroke="#00ffaa" stroke-width="2"/>`;
+            svg.innerHTML = html;
         }
 
-        socket.on('updatePlayers', (data) => renderLobby(data.players, data.hostId, data.mode, data.drawTime));
-        socket.on('gameError', (msg) => document.getElementById('lobby-error').textContent = msg);
+        function login() {
+            const name = document.getElementById('usernameInput').value;
+            if (!name.trim()) return;
+            socket.emit('login', name);
+        }
 
-        document.getElementById('btn-start').addEventListener('click', () => {
-            document.getElementById('lobby-error').textContent = '';
-            socket.emit('startGame');
+        socket.on('msg', (text) => {
+            document.getElementById('statusMsg').innerText = text;
         });
-        socket.on('nextPhase', (data) => {
-            clearInterval(drawTimerInterval);
-            submittedCurrentPhase = false;
-            currentPhase = data.phase;
 
-            document.getElementById('phase-title').textContent = `Этап ${data.phase + 1} из 3`;
-            document.getElementById('wait-counter').textContent = '';
-            document.getElementById('waiting-overlay').classList.add('hidden');
-            document.getElementById('btn-submit').classList.remove('hidden');
+        socket.on('userData', (data) => {
+            userData = data;
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('topStats').classList.remove('hidden');
+            document.getElementById('playerName').innerText = data.name;
+            document.getElementById('playerWins').innerText = data.wins;
 
-            const timerBadge = document.getElementById('timer-badge');
-            timerBadge.classList.add('hidden');
+            if (!data.pet) {
+                document.getElementById('eggScreen').classList.remove('hidden');
+                document.getElementById('lobbyScreen').classList.add('hidden');
+            } else {
+                document.getElementById('eggScreen').classList.add('hidden');
+                document.getElementById('lobbyScreen').classList.remove('hidden');
 
-            const modeWrite = document.getElementById('mode-write');
-            const modeDraw = document.getElementById('mode-draw');
-            const imgEl = document.getElementById('img-to-guess');
+                document.getElementById('petType').innerText = data.pet.type;
+                const rar = document.getElementById('petRarity');
+                rar.innerText = data.pet.rarity;
+                rar.className = 'rarity-' + data.pet.rarity;
 
-            if (data.phase === 0) {
-                modeDraw.classList.add('hidden');
-                modeWrite.classList.remove('hidden');
-                imgEl.classList.add('hidden');
-                document.getElementById('input-phrase').value = '';
-                document.getElementById('write-instruction').textContent = 'Напиши идею для другого игрока:';
-            } else if (data.phase === 1) {
-                modeWrite.classList.add('hidden');
-                modeDraw.classList.remove('hidden');
-                document.getElementById('text-to-draw').textContent = data.prompt;
-                clearCanvas();
+                document.getElementById('petSvgContainer').innerHTML = PET_SVGS[data.pet.svgKey];
+                document.getElementById('petLvl').innerText = data.pet.level;
+                document.getElementById('petHp').innerText = data.pet.maxHp;
 
-                if (data.timer && data.timer > 0) {
-                    let timeLeft = data.timer;
-                    timerBadge.textContent = `${timeLeft} сек`;
-                    timerBadge.classList.remove('hidden');
-                    drawTimerInterval = setInterval(() => {
-                        timeLeft--;
-                        timerBadge.textContent = `${timeLeft} сек`;
-                        if (timeLeft <= 0) {
-                            clearInterval(drawTimerInterval);
-                            submitCurrentStep(true);
-                        }
+                drawHexagonStats(data.pet.stats);
+
+                clearInterval(trainInterval);
+                const trainBtn = document.getElementById('trainBtn');
+                const trainStatus = document.getElementById('trainStatus');
+
+                if (data.trainingStart) {
+                    trainBtn.innerText = 'ЗАБРАТЬ С ТРЕНИРОВКИ';
+                    trainInterval = setInterval(() => {
+                        const sec = Math.floor((Date.now() - data.trainingStart) / 1000);
+                        const gain = Math.floor(sec / 5);
+                        trainStatus.innerText = `ТРЕНИРОВКА: ${sec} СЕК (+${gain} КО ВСЕМ ГРАНЯМ)`;
                     }, 1000);
-                }
-            } else if (data.phase === 2) {
-                modeDraw.classList.add('hidden');
-                modeWrite.classList.remove('hidden');
-                document.getElementById('input-phrase').value = '';
-                document.getElementById('write-instruction').textContent = 'Опиши, что изображено на рисунке:';
-                imgEl.src = data.prompt;
-                imgEl.classList.remove('hidden');
-            }
-            showScreen('game');
-        });
-
-        socket.on('waitingStatus', (data) => {
-            document.getElementById('wait-counter').textContent = `Готово: ${data.ready}/${data.total}`;
-        });
-
-        // ==========================================
-        // ИНСТРУМЕНТЫ РИСОВАНИЯ: ПАЛИТРА И ЗАЛИВКА
-        // ==========================================
-        const canvas = document.getElementById('draw-canvas');
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        let isDrawing = false;
-        let currentTool = 'brush';
-        let brushColor = '#000000';
-        let brushSize = 4;
-        let startX = 0, startY = 0;
-        let canvasSnapshot = null;
-
-        const colorPicker = document.getElementById('color-picker');
-        const hexInput = document.getElementById('hex-input');
-
-        function setColor(hex) {
-            if (!/^#[0-9A-Fa-f]{6}$/.test(hex)) return;
-            brushColor = hex.toLowerCase();
-            colorPicker.value = brushColor;
-            hexInput.value = brushColor;
-            document.querySelectorAll('.color-dot').forEach(d => {
-                d.classList.toggle('active', d.dataset.color === brushColor);
-            });
-        }
-
-        colorPicker.addEventListener('input', (e) => setColor(e.target.value));
-        hexInput.addEventListener('input', (e) => {
-            let val = e.target.value.trim();
-            if (!val.startsWith('#')) val = '#' + val;
-            if (/^#[0-9A-Fa-f]{6}$/.test(val)) setColor(val);
-        });
-
-        const quickColors = ['#000000', '#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#a855f7', '#ffffff'];
-        const palette = document.getElementById('palette');
-        quickColors.forEach((c, idx) => {
-            const dot = document.createElement('div');
-            dot.className = 'color-dot' + (idx === 0 ? ' active' : '');
-            dot.dataset.color = c;
-            dot.style.background = c;
-            if (c === '#ffffff') dot.style.border = '2px solid #94a3b8';
-            dot.addEventListener('click', () => setColor(c));
-            palette.appendChild(dot);
-        });
-
-        document.querySelectorAll('[data-tool]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('[data-tool]').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                currentTool = btn.dataset.tool;
-            });
-        });
-
-        document.querySelectorAll('[data-size]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('[data-size]').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                brushSize = Number(btn.dataset.size);
-            });
-        });
-
-        function clearCanvas() {
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-        }
-        clearCanvas();
-        document.getElementById('btn-clear').addEventListener('click', clearCanvas);
-
-        function floodFill(x, y, fillHex) {
-            x = Math.floor(x);
-            y = Math.floor(y);
-            if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) return;
-
-            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const data = imgData.data;
-            const w = canvas.width;
-            const h = canvas.height;
-
-            const startIdx = (y * w + x) * 4;
-            const startR = data[startIdx], startG = data[startIdx + 1], startB = data[startIdx + 2];
-
-            const fillR = parseInt(fillHex.slice(1, 3), 16);
-            const fillG = parseInt(fillHex.slice(3, 5), 16);
-            const fillB = parseInt(fillHex.slice(5, 7), 16);
-
-            if (Math.abs(startR - fillR) < 5 && Math.abs(startG - fillG) < 5 && Math.abs(startB - fillB) < 5) return;
-
-            const stack = [[x, y]];
-            const visited = new Uint8Array(w * h);
-
-            while (stack.length > 0) {
-                const [cx, cy] = stack.pop();
-                const pos = cy * w + cx;
-                if (visited[pos]) continue;
-                visited[pos] = 1;
-
-                const idx = pos * 4;
-                if (Math.abs(data[idx] - startR) <= 25 && Math.abs(data[idx + 1] - startG) <= 25 && Math.abs(data[idx + 2] - startB) <= 25) {
-                    data[idx] = fillR;
-                    data[idx + 1] = fillG;
-                    data[idx + 2] = fillB;
-                    data[idx + 3] = 255;
-
-                    if (cx > 0) stack.push([cx - 1, cy]);
-                    if (cx < w - 1) stack.push([cx + 1, cy]);
-                    if (cy > 0) stack.push([cx, cy - 1]);
-                    if (cy < h - 1) stack.push([cx, cy + 1]);
+                } else {
+                    trainBtn.innerText = 'AFK-ТРЕНИРОВКА';
+                    trainStatus.innerText = 'ГОТОВ К БОЮ';
                 }
             }
-            ctx.putImageData(imgData, 0, 0);
-        }
-        function getPos(e) {
-            const rect = canvas.getBoundingClientRect();
-            const touch = (e.touches && e.touches) || (e.changedTouches && e.changedTouches);
-            const clientX = touch ? touch.clientX : e.clientX;
-            const clientY = touch ? touch.clientY : e.clientY;
-            return {
-                x: (clientX - rect.left) * (canvas.width / rect.width),
-                y: (clientY - rect.top) * (canvas.height / rect.height)
-            };
-        }
-
-        function startDraw(e) {
-            e.preventDefault();
-            reportActivity();
-            const pos = getPos(e);
-
-            if (currentTool === 'fill') {
-                floodFill(pos.x, pos.y, brushColor);
-                return;
-            }
-
-            isDrawing = true;
-            startX = pos.x;
-            startY = pos.y;
-            ctx.strokeStyle = brushColor;
-            ctx.lineWidth = brushSize;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-
-            if (currentTool === 'brush') {
-                ctx.beginPath();
-                ctx.moveTo(pos.x, pos.y);
-                ctx.lineTo(pos.x + 0.1, pos.y + 0.1);
-                ctx.stroke();
-            } else {
-                canvasSnapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            }
-        }
-
-        function moveDraw(e) {
-            if (!isDrawing) return;
-            e.preventDefault();
-            reportActivity();
-            const pos = getPos(e);
-
-            if (currentTool === 'brush') {
-                ctx.lineTo(pos.x, pos.y);
-                ctx.stroke();
-            } else if (canvasSnapshot) {
-                ctx.putImageData(canvasSnapshot, 0, 0);
-                ctx.beginPath();
-                if (currentTool === 'line') {
-                    ctx.moveTo(startX, startY);
-                    ctx.lineTo(pos.x, pos.y);
-                } else if (currentTool === 'rect') {
-                    ctx.strokeRect(startX, startY, pos.x - startX, pos.y - startY);
-                } else if (currentTool === 'circle') {
-                    const radius = Math.hypot(pos.x - startX, pos.y - startY);
-                    ctx.arc(startX, startY, radius, 0, Math.PI * 2);
-                }
-                ctx.stroke();
-            }
-        }
-
-        function endDraw() { isDrawing = false; canvasSnapshot = null; }
-
-        canvas.addEventListener('mousedown', startDraw);
-        canvas.addEventListener('mousemove', moveDraw);
-        window.addEventListener('mouseup', endDraw);
-        canvas.addEventListener('touchstart', startDraw, { passive: false });
-        canvas.addEventListener('touchmove', moveDraw, { passive: false });
-        canvas.addEventListener('touchend', endDraw);
-        canvas.addEventListener('touchcancel', endDraw);
-
-        function submitCurrentStep(force = false) {
-            if (submittedCurrentPhase) return;
-            let content = '';
-            if (currentPhase === 0 || currentPhase === 2) {
-                content = document.getElementById('input-phrase').value.trim();
-                if (!content && !force) return;
-            } else {
-                content = canvas.toDataURL('image/png', 0.85);
-            }
-
-            submittedCurrentPhase = true;
-            clearInterval(drawTimerInterval);
-            document.getElementById('timer-badge').classList.add('hidden');
-            document.getElementById('mode-write').classList.add('hidden');
-            document.getElementById('mode-draw').classList.add('hidden');
-            document.getElementById('btn-submit').classList.add('hidden');
-            document.getElementById('waiting-overlay').classList.remove('hidden');
-
-            socket.emit('submitStep', content);
-        }
-
-        document.getElementById('btn-submit').addEventListener('click', () => submitCurrentStep(false));
-
-        socket.on('showResults', (cards) => {
-            allCards = cards;
-            currentCardIdx = 0;
-            renderCard();
-            document.getElementById('btn-back-lobby').classList.toggle('hidden', !isHost);
-            showScreen('results');
         });
 
-        function renderCard() {
-            const card = allCards[currentCardIdx];
-            if (!card) return;
-            document.getElementById('album-title').textContent = `Карточка ${currentCardIdx + 1} из ${allCards.length}`;
-            const container = document.getElementById('album-content');
-            container.innerHTML = `
-                <div class="album-step">
-                    <span class="author-tag">Идея (${formatPlayerBadge(card.idea.author)}):</span>
-                    <div style="font-size: 16px; font-weight: 700;">${card.idea.text}</div>
-                </div>
-                <div class="album-step">
-                    <span class="author-tag">Рисунок (${formatPlayerBadge(card.drawing.author)}):</span>
-                    <img src="${card.drawing.img}" class="result-img">
-                </div>
-                <div class="album-step">
-                    <span class="author-tag">Описание (${formatPlayerBadge(card.comment.author)}):</span>
-                    <div style="font-size: 16px; font-weight: 700; color: #34d399;">${card.comment.text}</div>
-                </div>
-            `;
+        socket.on('battleStart', (b) => {
+            currentRoom = b.roomId;
+            document.getElementById('lobbyScreen').classList.add('hidden');
+            document.getElementById('battleScreen').classList.remove('hidden');
+            document.getElementById('backLobbyBtn').classList.add('hidden');
+            document.getElementById('statusMsg').innerText = 'БОЙ НАЧАЛСЯ. ВЫБЕРИТЕ СПОСОБНОСТЬ.';
+            enableMoves(true);
+            updateBattleUI(b);
+        });
+
+        socket.on('battleUpdate', ({ log, battle }) => {
+            document.getElementById('statusMsg').innerText = log;
+            enableMoves(true);
+            updateBattleUI(battle);
+        });
+
+        socket.on('battleEnd', ({ winner, log, battle }) => {
+            updateBattleUI(battle);
+            document.getElementById('statusMsg').innerText = `${log} | ПОБЕДИТЕЛЬ: ${winner}`;
+            enableMoves(false);
+            document.getElementById('backLobbyBtn').classList.remove('hidden');
+        });
+
+        function updateBattleUI(b) {
+            document.getElementById('bP1Name').innerText = b.p1.name;
+            document.getElementById('bP1Svg').innerHTML = PET_SVGS[b.p1.pet.svgKey];
+            document.getElementById('bP1HpText').innerText = `${b.p1.hp}/${b.p1.pet.maxHp}`;
+            document.getElementById('bP1HpBar').style.width = `${(b.p1.hp / b.p1.pet.maxHp) * 100}%`;
+
+            document.getElementById('bP2Name').innerText = b.p2.name;
+            document.getElementById('bP2Svg').innerHTML = PET_SVGS[b.p2.pet.svgKey];
+            document.getElementById('bP2HpText').innerText = `${b.p2.hp}/${b.p2.pet.maxHp}`;
+            document.getElementById('bP2HpBar').style.width = `${(b.p2.hp / b.p2.pet.maxHp) * 100}%`;
         }
 
-        document.getElementById('btn-prev-chain').addEventListener('click', () => {
-            if (currentCardIdx > 0) { currentCardIdx--; renderCard(); }
-        });
-        document.getElementById('btn-next-chain').addEventListener('click', () => {
-            if (currentCardIdx < allCards.length - 1) { currentCardIdx++; renderCard(); }
-        });
-        document.getElementById('btn-back-lobby').addEventListener('click', () => socket.emit('restartLobby'));
-        socket.on('backToLobby', (data) => {
-            renderLobby(data.players, data.hostId, data.mode, data.drawTime);
-            showScreen('lobby');
-        });
+        function sendMove(move) {
+            enableMoves(false);
+            document.getElementById('statusMsg').innerText = 'ОЖИДАНИЕ ХОДА ПРОТИВНИКА...';
+            socket.emit('battleMove', { roomId: currentRoom, move });
+        }
+
+        function enableMoves(state) {
+            document.querySelectorAll('.moveBtn').forEach(btn => btn.disabled = !state);
+        }
+
+        function backToLobby() {
+            document.getElementById('battleScreen').classList.add('hidden');
+            document.getElementById('lobbyScreen').classList.remove('hidden');
+            socket.emit('login', userData.name);
+        }
     </script>
 </body>
 </html>
