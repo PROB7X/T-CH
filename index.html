@@ -11,7 +11,7 @@
         .hidden { display: none !important; }
         .header-row { display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 20px; font-weight: 800; color: #a5b4fc; }
         .top-bar { display: flex; justify-content: space-between; align-items: center; }
-        input[type="text"], input[type="number"], input[type="password"] { width: 100%; padding: 11px 14px; border-radius: 10px; border: 2px solid #4f46e5; background: #1e1b4b; color: white; font-size: 15px; outline: none; }
+        input[type="text"], input[type="number"] { width: 100%; padding: 11px 14px; border-radius: 10px; border: 2px solid #4f46e5; background: #1e1b4b; color: white; font-size: 15px; outline: none; }
         input:focus { border-color: #818cf8; }
         button { width: 100%; padding: 12px; border: none; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; color: white; transition: transform 0.1s; }
         button:active { transform: scale(0.98); }
@@ -99,14 +99,12 @@
             <span id="wait-counter"></span>
         </div>
 
-        <!-- Режим написания текста (Этап 1: Идея / Этап 3: Описание) -->
         <div id="mode-write" class="hidden" style="display: flex; flex-direction: column; gap: 12px;">
             <div id="write-instruction" style="text-align: center; font-weight: 700;"></div>
             <img id="img-to-guess" class="result-img hidden" alt="Рисунок">
             <input type="text" id="input-phrase" placeholder="Напиши сюда..." maxlength="70">
         </div>
 
-        <!-- Режим рисования (Этап 2: Рисунок) -->
         <div id="mode-draw" class="hidden" style="display: flex; flex-direction: column; gap: 10px;">
             <div style="font-size: 13px; text-align: center; color: #cbd5e1;">Нарисуй идею другого игрока:</div>
             <div id="text-to-draw" class="prompt-box"></div>
@@ -149,9 +147,30 @@
     <script>
         const socket = io();
         let isHost = false;
-        let currentPhase = 0; // 0: идея, 1: рисунок, 2: описание
+        let inRoom = false;
+        let currentPhase = 0;
         let allCards = [];
         let currentCardIdx = 0;
+
+        // Отправка сигнала активности при любых действиях на экране
+        let lastPing = 0;
+        function reportActivity() {
+            if (!inRoom) return;
+            const now = Date.now();
+            if (now - lastPing > 2000) {
+                socket.emit('pingActivity');
+                lastPing = now;
+            }
+        }
+        ['touchstart', 'touchmove', 'mousedown', 'keydown', 'input'].forEach(evt => {
+            window.addEventListener(evt, reportActivity, { passive: true });
+        });
+
+        socket.on('kickedAfk', (msg) => {
+            inRoom = false;
+            document.getElementById('menu-error').textContent = msg;
+            showScreen('menu');
+        });
 
         const screens = {
             menu: document.getElementById('screen-menu'),
@@ -165,14 +184,12 @@
             screens[name].classList.remove('hidden');
         }
 
-        // Создание комнаты с паролем
         document.getElementById('btn-create').addEventListener('click', () => {
             const playerName = document.getElementById('input-name').value;
             const password = document.getElementById('create-pass').value;
             socket.emit('createRoom', { playerName, password }, handleJoinResponse);
         });
 
-        // Вход в комнату по коду и паролю
         document.getElementById('btn-join').addEventListener('click', () => {
             const playerName = document.getElementById('input-name').value;
             const roomCode = document.getElementById('input-code').value.trim();
@@ -181,9 +198,9 @@
             socket.emit('joinRoom', { roomCode, playerName, password }, handleJoinResponse);
         });
 
-        // Выход из комнаты
         document.getElementById('btn-leave').addEventListener('click', () => {
             socket.emit('leaveRoom');
+            inRoom = false;
             document.getElementById('menu-error').textContent = '';
             showScreen('menu');
         });
@@ -193,6 +210,7 @@
                 document.getElementById('menu-error').textContent = res.error;
                 return;
             }
+            inRoom = true;
             document.getElementById('menu-error').textContent = '';
             isHost = res.isHost;
             document.getElementById('lobby-code').textContent = res.roomCode;
@@ -224,12 +242,10 @@
             socket.emit('startGame');
         });
 
-        // Смена этапов: 0 (Идея) -> 1 (Рисунок) -> 2 (Описание)
         socket.on('nextPhase', (data) => {
             currentPhase = data.phase;
             document.getElementById('phase-title').textContent = `Этап ${data.phase + 1} из 3`;
             document.getElementById('wait-counter').textContent = '';
-
             document.getElementById('waiting-overlay').classList.add('hidden');
             document.getElementById('btn-submit').classList.remove('hidden');
 
@@ -256,7 +272,6 @@
                 imgEl.src = data.prompt;
                 imgEl.classList.remove('hidden');
             }
-
             showScreen('game');
         });
 
@@ -264,7 +279,7 @@
             document.getElementById('wait-counter').textContent = `Готово: ${data.ready}/${data.total}`;
         });
         // ==========================================
-        // ХОЛСТ ДЛЯ РИСОВАНИЯ ПАЛЬЦЕМ И МЫШЬЮ
+        // ИСПРАВЛЕННЫЙ ХОЛСТ ДЛЯ РИСОВАНИЯ ПАЛЬЦЕМ
         // ==========================================
         const canvas = document.getElementById('draw-canvas');
         const ctx = canvas.getContext('2d');
@@ -304,8 +319,9 @@
 
         function getPos(e) {
             const rect = canvas.getBoundingClientRect();
-            const clientX = e.touches ? e.touches.clientX : e.clientX;
-            const clientY = e.touches ? e.touches.clientY : e.clientY;
+            const touch = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]);
+            const clientX = touch ? touch.clientX : e.clientX;
+            const clientY = touch ? touch.clientY : e.clientY;
             return {
                 x: (clientX - rect.left) * (canvas.width / rect.width),
                 y: (clientY - rect.top) * (canvas.height / rect.height)
@@ -314,15 +330,24 @@
 
         function startDraw(e) {
             e.preventDefault();
+            reportActivity();
             isDrawing = true;
             const pos = getPos(e);
             ctx.beginPath();
             ctx.moveTo(pos.x, pos.y);
+            // Ставим точку сразу при касании
+            ctx.lineTo(pos.x + 0.1, pos.y + 0.1);
+            ctx.strokeStyle = brushColor;
+            ctx.lineWidth = brushSize;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.stroke();
         }
 
         function moveDraw(e) {
             if (!isDrawing) return;
             e.preventDefault();
+            reportActivity();
             const pos = getPos(e);
             ctx.lineTo(pos.x, pos.y);
             ctx.strokeStyle = brushColor;
@@ -340,6 +365,7 @@
         canvas.addEventListener('touchstart', startDraw, { passive: false });
         canvas.addEventListener('touchmove', moveDraw, { passive: false });
         canvas.addEventListener('touchend', endDraw);
+        canvas.addEventListener('touchcancel', endDraw);
 
         // Отправка ответа на сервер
         document.getElementById('btn-submit').addEventListener('click', () => {
@@ -359,9 +385,7 @@
             socket.emit('submitStep', content);
         });
 
-        // ==========================================
-        // ПОКАЗ РЕЗУЛЬТАТОВ: ИДЕЯ -> РИСУНОК -> ОПИСАНИЕ
-        // ==========================================
+        // Показ результатов
         socket.on('showResults', (cards) => {
             allCards = cards;
             currentCardIdx = 0;
@@ -372,6 +396,7 @@
 
         function renderCard() {
             const card = allCards[currentCardIdx];
+            if (!card) return;
             document.getElementById('album-title').textContent = `Карточка ${currentCardIdx + 1} из ${allCards.length}`;
             const container = document.getElementById('album-content');
             container.innerHTML = `
