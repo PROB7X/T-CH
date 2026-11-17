@@ -3,505 +3,379 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Остров Выживания 3D</title>
+    <title>Gartic Sketch 2D</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
-        body, html { width: 100%; height: 100%; overflow: hidden; background: #0f171e; font-family: sans-serif; color: white; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+        body { background: #1e1b4b; color: #f8fafc; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 16px; }
+        .card { background: #312e81; border: 1px solid #4338ca; border-radius: 16px; padding: 20px; width: 100%; max-width: 440px; box-shadow: 0 10px 25px rgba(0,0,0,0.35); display: flex; flex-direction: column; gap: 14px; }
+        .hidden { display: none !important; }
+        .header-row { display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 22px; font-weight: 800; color: #a5b4fc; }
+        input[type="text"], input[type="number"] { width: 100%; padding: 12px 14px; border-radius: 10px; border: 2px solid #4f46e5; background: #1e1b4b; color: white; font-size: 16px; outline: none; }
+        input:focus { border-color: #818cf8; }
+        button { width: 100%; padding: 13px; border: none; border-radius: 10px; font-size: 16px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; color: white; transition: transform 0.1s; }
+        button:active { transform: scale(0.98); }
+        .btn-green { background: #10b981; }
+        .btn-orange { background: #f59e0b; }
+        .btn-blue { background: #3b82f6; }
+        .btn-gray { background: #475569; }
+        .error { color: #fca5a5; font-size: 14px; text-align: center; min-height: 18px; }
+        .player-list { list-style: none; display: flex; flex-direction: column; gap: 8px; max-height: 240px; overflow-y: auto; }
+        .player-item { background: #1e1b4b; padding: 10px 14px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; font-weight: 600; }
+        .badge { background: #4f46e5; padding: 3px 8px; border-radius: 6px; font-size: 12px; }
         
-        /* Оверлей полноэкранного режима */
-        #fullscreen-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(15, 23, 30, 0.96); z-index: 9999;
-            display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 20px;
-        }
-        #fullscreen-btn {
-            padding: 16px 32px; font-size: 18px; font-weight: bold;
-            background: #27ae60; color: white; border: none; border-radius: 12px;
-            cursor: pointer; display: flex; align-items: center; gap: 10px; margin-top: 15px;
-        }
+        /* Холст и инструменты рисования */
+        #draw-canvas { background: #ffffff; border-radius: 12px; width: 100%; aspect-ratio: 4 / 3; touch-action: none; cursor: crosshair; display: block; border: 3px solid #4f46e5; }
+        .tools-bar { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: center; }
+        .color-dot { width: 28px; height: 28px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; }
+        .color-dot.active { border-color: #ffffff; transform: scale(1.15); }
+        .tool-btn { width: auto; padding: 8px 12px; font-size: 14px; background: #1e1b4b; border: 1px solid #4f46e5; }
+        .tool-btn.active { background: #4f46e5; }
 
-        /* Главное меню */
-        #menu-screen {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(135deg, #141e30 0%, #243b55 100%);
-            display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100;
-        }
-        .menu-box {
-            background: rgba(0, 0, 0, 0.55); padding: 25px; border-radius: 16px;
-            display: flex; flex-direction: column; gap: 14px; width: 320px; text-align: center;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        .title-row { display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 20px; font-weight: bold; }
-        input {
-            padding: 12px; font-size: 18px; border-radius: 8px; border: none; text-align: center; letter-spacing: 3px;
-            user-select: text; -webkit-user-select: text;
-        }
-        button.action-btn {
-            padding: 14px; font-size: 16px; font-weight: bold; border: none; border-radius: 8px;
-            background: #e67e22; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
-        }
-        button.action-btn.create { background: #2ecc71; }
-        #error-msg { color: #ff6b6b; font-size: 14px; min-height: 18px; }
-
-        /* HUD в игре */
-        #game-ui { display: none; position: fixed; top: 12px; left: 12px; z-index: 50; pointer-events: none; }
-        .hud-badge {
-            background: rgba(0, 0, 0, 0.6); padding: 8px 14px; border-radius: 8px; font-size: 15px; font-weight: bold;
-            display: flex; align-items: center; gap: 8px; border: 1px solid rgba(255,255,255,0.15);
-        }
-
-        /* Мобильный джойстик */
-        #joystick-zone {
-            position: fixed; bottom: 20px; left: 20px; width: 140px; height: 140px;
-            z-index: 60; display: none; touch-action: none;
-        }
-        #joystick-base {
-            width: 120px; height: 120px; background: rgba(255, 255, 255, 0.15);
-            border: 2px solid rgba(255, 255, 255, 0.35); border-radius: 50%;
-            position: absolute; top: 10px; left: 10px;
-        }
-        #joystick-stick {
-            width: 50px; height: 50px; background: rgba(255, 255, 255, 0.8);
-            border-radius: 50%; position: absolute; top: 33px; left: 33px;
-            pointer-events: none;
-        }
-
-        /* Кнопка прыжка */
-        #jump-btn {
-            position: fixed; bottom: 35px; right: 35px; width: 80px; height: 80px;
-            background: rgba(255, 255, 255, 0.2); border: 2px solid rgba(255, 255, 255, 0.45);
-            border-radius: 50%; z-index: 60; display: none; justify-content: center; align-items: center;
-            touch-action: none; cursor: pointer;
-        }
-        #jump-btn:active { background: rgba(255, 255, 255, 0.45); transform: scale(0.95); }
-
-        #game-container { width: 100%; height: 100%; display: block; }
+        /* Альбом результатов */
+        .prompt-box { background: #1e1b4b; padding: 14px; border-radius: 10px; text-align: center; font-size: 18px; font-weight: 700; border: 1px dashed #818cf8; }
+        .result-img { width: 100%; border-radius: 10px; background: white; border: 2px solid #4f46e5; }
+        .album-step { background: #1e1b4b; padding: 12px; border-radius: 10px; display: flex; flex-direction: column; gap: 6px; }
+        .author-tag { font-size: 12px; color: #a5b4fc; font-weight: 700; }
     </style>
 </head>
 <body>
 
-    <!-- 1. Экран требования полного экрана и горизонтали -->
-    <div id="fullscreen-overlay">
-        <h2>Для игры нужен полноэкранный режим</h2>
-        <p style="margin-top: 8px; color: #bdc3c7;">Экран автоматически перевернётся горизонтально</p>
-        <button id="fullscreen-btn">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+    <!-- 1. ГЛАВНОЕ МЕНЮ -->
+    <div id="screen-menu" class="card">
+        <div class="header-row">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/>
             </svg>
-            <span>На весь экран</span>
+            <span>Gartic Sketch 2D</span>
+        </div>
+        <input type="text" id="input-name" placeholder="Твоё имя" maxlength="14">
+        <button id="btn-create" class="btn-green">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <span>Создать комнату</span>
         </button>
+        <hr style="border-color: #4338ca;">
+        <input type="number" id="input-code" placeholder="Код комнаты (4 цифры)">
+        <button id="btn-join" class="btn-orange">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
+            <span>Войти по коду</span>
+        </button>
+        <div id="menu-error" class="error"></div>
     </div>
 
-    <!-- 2. Главное меню -->
-    <div id="menu-screen">
-        <div class="menu-box">
-            <div class="title-row">
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#2ecc71" stroke-width="2">
-                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-                </svg>
-                <span>Остров Выживания 3D</span>
+    <!-- 2. ЛОББИ КОМНАТЫ -->
+    <div id="screen-lobby" class="card hidden">
+        <div class="header-row">
+            <span>Комната: <span id="lobby-code" style="color: #34d399;">----</span></span>
+        </div>
+        <div style="text-align: center; font-size: 14px; color: #cbd5e1;">Игроки (<span id="lobby-count">1</span>/10):</div>
+        <ul id="lobby-players" class="player-list"></ul>
+        <button id="btn-start" class="btn-green hidden">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            <span>Начать игру</span>
+        </button>
+        <div id="lobby-wait-text" style="text-align: center; color: #a5b4fc; font-size: 14px;">Ждём, пока создатель запустит игру...</div>
+        <div id="lobby-error" class="error"></div>
+    </div>
+
+    <!-- 3. ИГРОВОЙ ЭКРАН (ТЕКСТ ИЛИ РИСОВАНИЕ) -->
+    <div id="screen-game" class="card hidden">
+        <div style="display: flex; justify-content: space-between; font-size: 14px; color: #a5b4fc; font-weight: 700;">
+            <span>Этап <span id="round-num">1</span> из <span id="round-max">4</span></span>
+            <span id="wait-counter"></span>
+        </div>
+
+        <!-- Режим написания текста -->
+        <div id="mode-write" class="hidden" style="display: flex; flex-direction: column; gap: 12px;">
+            <div id="write-instruction" style="text-align: center; font-weight: 700;">Придумай смешную фразу:</div>
+            <img id="img-to-guess" class="result-img hidden" alt="Рисунок">
+            <input type="text" id="input-phrase" placeholder="Напиши сюда..." maxlength="60">
+        </div>
+
+        <!-- Режим рисования -->
+        <div id="mode-draw" class="hidden" style="display: flex; flex-direction: column; gap: 10px;">
+            <div style="font-size: 13px; text-align: center; color: #cbd5e1;">Нарисуй это:</div>
+            <div id="text-to-draw" class="prompt-box"></div>
+            <canvas id="draw-canvas" width="400" height="300"></canvas>
+            <div class="tools-bar" id="palette"></div>
+            <div class="tools-bar">
+                <button type="button" class="tool-btn active" data-size="4">Тонко</button>
+                <button type="button" class="tool-btn" data-size="10">Средне</button>
+                <button type="button" class="tool-btn" data-size="22">Толсто</button>
+                <button type="button" id="btn-clear" class="tool-btn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </button>
             </div>
-            <button class="action-btn create" id="btn-create">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-                </svg>
-                <span>Создать сервер</span>
-            </button>
-            <hr style="border-color: rgba(255,255,255,0.15);">
-            <input type="number" id="room-input" placeholder="Номер (4 цифры)" maxlength="4">
-            <button class="action-btn" id="btn-join">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/>
-                </svg>
-                <span>Войти по номеру</span>
-            </button>
-            <div id="error-msg"></div>
+        </div>
+
+        <button id="btn-submit" class="btn-blue">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            <span>Готово</span>
+        </button>
+        <div id="waiting-overlay" class="hidden" style="text-align: center; padding: 20px; color: #34d399; font-weight: 700;">
+            Ответ отправлен! Ждём остальных игроков...
         </div>
     </div>
 
-    <!-- HUD в игре -->
-    <div id="game-ui">
-        <div class="hud-badge">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2ecc71" stroke-width="2">
-                <rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/>
-            </svg>
-            <span>Сервер: <span id="hud-room">----</span> | Игроков: <span id="hud-players">1</span>/10</span>
+    <!-- 4. ФИНАЛЬНЫЙ АЛЬБОМ -->
+    <div id="screen-results" class="card hidden">
+        <div class="header-row">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <span>Альбом игры</span>
         </div>
-    </div>
-
-    <!-- Сенсорный джойстик -->
-    <div id="joystick-zone">
-        <div id="joystick-base">
-            <div id="joystick-stick"></div>
+        <div id="album-title" style="text-align: center; font-weight: 700; color: #34d399;"></div>
+        <div id="album-content" style="display: flex; flex-direction: column; gap: 12px; max-height: 60vh; overflow-y: auto;"></div>
+        <div style="display: flex; gap: 10px;">
+            <button id="btn-prev-chain" class="btn-gray">Назад</button>
+            <button id="btn-next-chain" class="btn-blue">Далее</button>
         </div>
+        <button id="btn-back-lobby" class="btn-green hidden">Сыграть ещё раз</button>
     </div>
-
-    <!-- Кнопка прыжка -->
-    <div id="jump-btn">
-        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 19V5M5 12l7-7 7 7"/>
-        </svg>
-    </div>
-
-    <div id="game-container"></div>
     <script src="/socket.io/socket.io.js"></script>
-    <script src="https://unpkg.com"></script>
     <script>
-        const errorMsg = document.getElementById('error-msg');
-        let socket = null;
+        const socket = io();
+        let isHost = false;
+        let currentRoundType = 'write';
+        let allChains = [];
+        let currentChainIdx = 0;
 
-        if (typeof io !== 'undefined') {
-            socket = io();
-            socket.on('connect_error', () => {
-                errorMsg.textContent = 'Нет связи с сервером!';
-            });
-        } else {
-            errorMsg.textContent = 'Ошибка загрузки Socket.io';
+        const screens = {
+            menu: document.getElementById('screen-menu'),
+            lobby: document.getElementById('screen-lobby'),
+            game: document.getElementById('screen-game'),
+            results: document.getElementById('screen-results')
+        };
+
+        function showScreen(name) {
+            Object.values(screens).forEach(s => s.classList.add('hidden'));
+            screens[name].classList.remove('hidden');
         }
 
-        // ==========================================
-        // 1. УПРАВЛЕНИЕ ПОЛНЫМ ЭКРАНОМ И ОРИЕНТАЦИЕЙ
-        // ==========================================
-        const fsOverlay = document.getElementById('fullscreen-overlay');
-        const fsBtn = document.getElementById('fullscreen-btn');
-
-        async function enterFullscreenAndLandscape() {
-            try {
-                const elem = document.documentElement;
-                if (elem.requestFullscreen) await elem.requestFullscreen();
-                else if (elem.webkitRequestFullscreen) await elem.webkitRequestFullscreen();
-                if (screen.orientation && screen.orientation.lock) {
-                    await screen.orientation.lock('landscape').catch(() => {});
-                }
-            } catch (err) {}
-        }
-
-        function checkFullscreen() {
-            const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
-            fsOverlay.style.display = isFullscreen ? 'none' : 'flex';
-            if (typeof onWindowResize === 'function') onWindowResize();
-        }
-
-        fsBtn.addEventListener('click', enterFullscreenAndLandscape);
-        document.addEventListener('fullscreenchange', checkFullscreen);
-        document.addEventListener('webkitfullscreenchange', checkFullscreen);
-
-        // ==========================================
-        // 2. МЕНЮ И МУЛЬТИПЛЕЕР
-        // ==========================================
-        const menuScreen = document.getElementById('menu-screen');
-        const gameUi = document.getElementById('game-ui');
-        const joystickZone = document.getElementById('joystick-zone');
-        const jumpBtn = document.getElementById('jump-btn');
-
-        let myId = null;
-        let playersData = {};
-        let playerMeshes = {};
-        let isPlaying = false;
-
+        // Создание и вход в комнату
         document.getElementById('btn-create').addEventListener('click', () => {
-            if (!socket) return errorMsg.textContent = 'Сервер не подключен';
-            errorMsg.textContent = 'Создание сервера...';
-            socket.emit('createRoom', handleRoomResponse);
+            const name = document.getElementById('input-name').value;
+            socket.emit('createRoom', name, handleJoinResponse);
         });
 
         document.getElementById('btn-join').addEventListener('click', () => {
-            if (!socket) return errorMsg.textContent = 'Сервер не подключен';
-            const code = document.getElementById('room-input').value.trim();
-            if (!code) return errorMsg.textContent = 'Введите номер сервера!';
-            errorMsg.textContent = 'Подключение...';
-            socket.emit('joinRoom', code, handleRoomResponse);
+            const name = document.getElementById('input-name').value;
+            const roomCode = document.getElementById('input-code').value.trim();
+            if (!roomCode) return document.getElementById('menu-error').textContent = 'Введите код комнаты!';
+            socket.emit('joinRoom', { roomCode, playerName: name }, handleJoinResponse);
         });
 
-        function handleRoomResponse(res) {
-            if (!res || res.error) {
-                errorMsg.textContent = res ? res.error : 'Ошибка ответа сервера';
+        function handleJoinResponse(res) {
+            if (res.error) {
+                document.getElementById('menu-error').textContent = res.error;
                 return;
             }
-            if (typeof THREE === 'undefined') {
-                errorMsg.textContent = 'Ошибка загрузки 3D-движка (проверьте интернет)';
-                return;
+            isHost = res.isHost;
+            document.getElementById('lobby-code').textContent = res.roomCode;
+            renderLobby(res.players, isHost ? socket.id : null);
+            showScreen('lobby');
+        }
+
+        function renderLobby(players, hostId) {
+            isHost = (hostId === socket.id);
+            document.getElementById('lobby-count').textContent = players.length;
+            const list = document.getElementById('lobby-players');
+            list.innerHTML = '';
+            players.forEach(p => {
+                const li = document.createElement('li');
+                li.className = 'player-item';
+                li.innerHTML = `<span>${p.name}</span>${p.id === hostId ? '<span class="badge">Создатель</span>' : ''}`;
+                list.appendChild(li);
+            });
+
+            document.getElementById('btn-start').classList.toggle('hidden', !isHost);
+            document.getElementById('lobby-wait-text').classList.toggle('hidden', isHost);
+        }
+
+        socket.on('updatePlayers', (data) => renderLobby(data.players, data.hostId));
+        socket.on('gameError', (msg) => document.getElementById('lobby-error').textContent = msg);
+
+        document.getElementById('btn-start').addEventListener('click', () => {
+            document.getElementById('lobby-error').textContent = '';
+            socket.emit('startGame');
+        });
+
+        // Переход на новый раунд
+        socket.on('nextRound', (data) => {
+            currentRoundType = data.type;
+            document.getElementById('round-num').textContent = data.round;
+            document.getElementById('round-max').textContent = data.maxRounds;
+            document.getElementById('wait-counter').textContent = '';
+
+            document.getElementById('waiting-overlay').classList.add('hidden');
+            document.getElementById('btn-submit').classList.remove('hidden');
+
+            const modeWrite = document.getElementById('mode-write');
+            const modeDraw = document.getElementById('mode-draw');
+
+            if (data.type === 'write') {
+                modeDraw.classList.add('hidden');
+                modeWrite.classList.remove('hidden');
+                document.getElementById('input-phrase').value = '';
+
+                const imgEl = document.getElementById('img-to-guess');
+                if (data.prompt) {
+                    document.getElementById('write-instruction').textContent = 'Что нарисовано на картинке?';
+                    imgEl.src = data.prompt;
+                    imgEl.classList.remove('hidden');
+                } else {
+                    document.getElementById('write-instruction').textContent = 'Придумай слово или фразу:';
+                    imgEl.classList.add('hidden');
+                }
+            } else {
+                modeWrite.classList.add('hidden');
+                modeDraw.classList.remove('hidden');
+                document.getElementById('text-to-draw').textContent = data.prompt;
+                clearCanvas();
             }
 
-            errorMsg.textContent = '';
-            myId = res.myId;
-            playersData = res.players;
-            document.getElementById('hud-room').textContent = res.roomCode;
-            updatePlayerCount();
+            showScreen('game');
+        });
 
-            init3DScene();
-            generate3DIsland(res.seed);
+        socket.on('waitingStatus', (data) => {
+            document.getElementById('wait-counter').textContent = `Готово: ${data.ready}/${data.total}`;
+        });
+        // ==========================================
+        // ХОЛСТ ДЛЯ РИСОВАНИЯ ПАЛЬЦЕМ И МЫШЬЮ
+        // ==========================================
+        const canvas = document.getElementById('draw-canvas');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        let brushColor = '#000000';
+        let brushSize = 4;
 
-            for (let id in playersData) {
-                createPlayerMesh(playersData[id]);
+        const colors = ['#000000', '#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#a855f7', '#854d0e', '#ffffff'];
+        const palette = document.getElementById('palette');
+        colors.forEach((c, idx) => {
+            const dot = document.createElement('div');
+            dot.className = 'color-dot' + (idx === 0 ? ' active' : '');
+            dot.style.background = c;
+            if (c === '#ffffff') dot.style.border = '2px solid #94a3b8';
+            dot.addEventListener('click', () => {
+                document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('active'));
+                dot.classList.add('active');
+                brushColor = c;
+            });
+            palette.appendChild(dot);
+        });
+
+        document.querySelectorAll('[data-size]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('[data-size]').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                brushSize = Number(btn.dataset.size);
+            });
+        });
+
+        function clearCanvas() {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+        clearCanvas();
+        document.getElementById('btn-clear').addEventListener('click', clearCanvas);
+
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches.clientX : e.clientX;
+            const clientY = e.touches ? e.touches.clientY : e.clientY;
+            return {
+                x: (clientX - rect.left) * (canvas.width / rect.width),
+                y: (clientY - rect.top) * (canvas.height / rect.height)
+            };
+        }
+
+        function startDraw(e) {
+            e.preventDefault();
+            isDrawing = true;
+            const pos = getPos(e);
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+        }
+
+        function moveDraw(e) {
+            if (!isDrawing) return;
+            e.preventDefault();
+            const pos = getPos(e);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.strokeStyle = brushColor;
+            ctx.lineWidth = brushSize;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.stroke();
+        }
+
+        function endDraw() { isDrawing = false; }
+
+        canvas.addEventListener('mousedown', startDraw);
+        canvas.addEventListener('mousemove', moveDraw);
+        window.addEventListener('mouseup', endDraw);
+        canvas.addEventListener('touchstart', startDraw, { passive: false });
+        canvas.addEventListener('touchmove', moveDraw, { passive: false });
+        canvas.addEventListener('touchend', endDraw);
+
+        // Отправка ответа на сервер
+        document.getElementById('btn-submit').addEventListener('click', () => {
+            let content = '';
+            if (currentRoundType === 'write') {
+                content = document.getElementById('input-phrase').value.trim();
+                if (!content) return;
+            } else {
+                content = canvas.toDataURL('image/png', 0.8);
             }
 
-            menuScreen.style.display = 'none';
-            gameUi.style.display = 'block';
-            joystickZone.style.display = 'block';
-            jumpBtn.style.display = 'flex';
-            isPlaying = true;
-            requestAnimationFrame(gameLoop);
-        }
+            document.getElementById('mode-write').classList.add('hidden');
+            document.getElementById('mode-draw').classList.add('hidden');
+            document.getElementById('btn-submit').classList.add('hidden');
+            document.getElementById('waiting-overlay').classList.remove('hidden');
 
-        function updatePlayerCount() {
-            document.getElementById('hud-players').textContent = Object.keys(playersData).length;
-        }
+            socket.emit('submitStep', content);
+        });
 
-        if (socket) {
-            socket.on('playerJoined', (p) => {
-                playersData[p.id] = p;
-                if (isPlaying) createPlayerMesh(p);
-                updatePlayerCount();
-            });
-
-            socket.on('playerMoved', (p) => {
-                if (playersData[p.id]) {
-                    playersData[p.id].x = p.x;
-                    playersData[p.id].y = p.y;
-                    playersData[p.id].z = p.z;
-                }
-            });
-
-            socket.on('playerLeft', (id) => {
-                if (playerMeshes[id] && scene) {
-                    scene.remove(playerMeshes[id]);
-                    delete playerMeshes[id];
-                }
-                delete playersData[id];
-                updatePlayerCount();
-            });
-        }
         // ==========================================
-        // 3. 3D СЦЕНА И ГЕНЕРАЦИЯ ОСТРОВА
+        // АЛЬБОМ РЕЗУЛЬТАТОВ
         // ==========================================
-        let scene, camera, renderer, frustum, projScreenMatrix;
-        let worldObjects = [];
-        const ISLAND_RADIUS = 75;
+        socket.on('showResults', (chains) => {
+            allChains = chains;
+            currentChainIdx = 0;
+            renderChain();
+            document.getElementById('btn-back-lobby').classList.toggle('hidden', !isHost);
+            showScreen('results');
+        });
 
-        function init3DScene() {
-            const container = document.getElementById('game-container');
+        function renderChain() {
+            const chain = allChains[currentChainIdx];
+            document.getElementById('album-title').textContent = `Альбом игрока: ${chain.ownerName} (${currentChainIdx + 1}/${allChains.length})`;
+            const container = document.getElementById('album-content');
             container.innerHTML = '';
 
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x87ceeb);
-            scene.fog = new THREE.Fog(0x87ceeb, 40, 120);
-
-            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 150);
-            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            container.appendChild(renderer.domElement);
-
-            scene.add(new THREE.AmbientLight(0xffffff, 0.65));
-            const dirLight = new THREE.DirectionalLight(0xffffff, 0.75);
-            dirLight.position.set(50, 80, 30);
-            scene.add(dirLight);
-
-            frustum = new THREE.Frustum();
-            projScreenMatrix = new THREE.Matrix4();
-        }
-
-        function onWindowResize() {
-            if (!camera || !renderer) return;
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-        window.addEventListener('resize', onWindowResize);
-
-        function createPlayerMesh(p) {
-            if (!scene) return;
-            const geo = new THREE.BoxGeometry(1.2, 2.2, 1.2);
-            const mat = new THREE.MeshLambertMaterial({ color: p.color });
-            const mesh = new THREE.Mesh(geo, mat);
-            mesh.position.set(p.x, p.y + 1.1, p.z);
-            scene.add(mesh);
-            playerMeshes[p.id] = mesh;
-        }
-
-        function mulberry32(a) {
-            return function() {
-                var t = a += 0x6D2B79F5;
-                t = Math.imul(t ^ t >>> 15, t | 1);
-                t ^= t + Math.imul(t ^ t >>> 7, t | 61);
-                return ((t ^ t >>> 14) >>> 0) / 4294967296;
-            }
-        }
-
-        function generate3DIsland(seed) {
-            const rand = mulberry32(seed);
-            worldObjects = [];
-
-            const water = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), new THREE.MeshLambertMaterial({ color: 0x1e88e5 }));
-            water.rotation.x = -Math.PI / 2;
-            water.position.y = -0.3;
-            scene.add(water);
-
-            const sand = new THREE.Mesh(new THREE.CylinderGeometry(ISLAND_RADIUS + 8, ISLAND_RADIUS + 12, 0.5, 48), new THREE.MeshLambertMaterial({ color: 0xf4d03f }));
-            sand.position.y = -0.2;
-            scene.add(sand);
-
-            const grass = new THREE.Mesh(new THREE.CylinderGeometry(ISLAND_RADIUS, ISLAND_RADIUS + 2, 0.6, 48), new THREE.MeshLambertMaterial({ color: 0x2ecc71 }));
-            grass.position.y = -0.15;
-            scene.add(grass);
-
-            const trunkGeo = new THREE.CylinderGeometry(0.4, 0.5, 2.5, 8);
-            const trunkMat = new THREE.MeshLambertMaterial({ color: 0x795548 });
-            const leavesGeo = new THREE.ConeGeometry(2.2, 4.5, 8);
-            const leavesMat = new THREE.MeshLambertMaterial({ color: 0x1b5e20 });
-            const rockGeo = new THREE.DodecahedronGeometry(1.4, 0);
-            const rockMat = new THREE.MeshLambertMaterial({ color: 0x7f8c8d });
-
-            for (let i = 0; i < 180; i++) {
-                const angle = rand() * Math.PI * 2;
-                const dist = Math.sqrt(rand()) * (ISLAND_RADIUS - 5);
-                const ox = Math.cos(angle) * dist;
-                const oz = Math.sin(angle) * dist;
-                if (Math.abs(ox) < 6 && Math.abs(oz) < 6) continue;
-
-                const group = new THREE.Group();
-                if (rand() > 0.3) {
-                    const trunk = new THREE.Mesh(trunkGeo, trunkMat);
-                    trunk.position.y = 1.25;
-                    const leaves = new THREE.Mesh(leavesGeo, leavesMat);
-                    leaves.position.y = 4.2;
-                    group.add(trunk, leaves);
+            chain.steps.forEach(step => {
+                const div = document.createElement('div');
+                div.className = 'album-step';
+                if (step.type === 'text') {
+                    div.innerHTML = `<span class="author-tag">${step.author} написал(а):</span><div style="font-size: 16px; font-weight: 700;">${step.content}</div>`;
                 } else {
-                    const rock = new THREE.Mesh(rockGeo, rockMat);
-                    rock.position.y = 0.8;
-                    group.add(rock);
+                    div.innerHTML = `<span class="author-tag">${step.author} нарисовал(а):</span><img src="${step.content}" class="result-img">`;
                 }
-                group.position.set(ox, 0, oz);
-                scene.add(group);
-                worldObjects.push(group);
-            }
-        }
-        // ==========================================
-        // 4. ДЖОЙСТИК, ПРЫЖОК И ИГРОВОЙ ЦИКЛ
-        // ==========================================
-        let moveVec = { x: 0, z: 0 };
-        const stick = document.getElementById('joystick-stick');
-        const base = document.getElementById('joystick-base');
-        let touchId = null;
-
-        base.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            if (touchId === null && e.changedTouches.length > 0) {
-                const touch = e.changedTouches[0];
-                touchId = touch.identifier;
-                updateJoystick(touch);
-            }
-        }, { passive: false });
-
-        base.addEventListener('touchmove', (e) => {
-            e.preventDefault();
-            for (let i = 0; i < e.changedTouches.length; i++) {
-                if (e.changedTouches[i].identifier === touchId) {
-                    updateJoystick(e.changedTouches[i]);
-                    break;
-                }
-            }
-        }, { passive: false });
-
-        const resetJoystick = (e) => {
-            for (let i = 0; i < e.changedTouches.length; i++) {
-                if (e.changedTouches[i].identifier === touchId) {
-                    touchId = null;
-                    stick.style.transform = `translate(0px, 0px)`;
-                    moveVec.x = 0;
-                    moveVec.z = 0;
-                    break;
-                }
-            }
-        };
-        base.addEventListener('touchend', resetJoystick);
-        base.addEventListener('touchcancel', resetJoystick);
-
-        function updateJoystick(touch) {
-            const rect = base.getBoundingClientRect();
-            let dx = touch.clientX - (rect.left + rect.width / 2);
-            let dy = touch.clientY - (rect.top + rect.height / 2);
-            const maxDist = 40;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist > maxDist) { dx = (dx / dist) * maxDist; dy = (dy / dist) * maxDist; }
-            stick.style.transform = `translate(${dx}px, ${dy}px)`;
-            moveVec.x = dx / maxDist;
-            moveVec.z = dy / maxDist;
+                container.appendChild(div);
+            });
         }
 
-        let velocityY = 0, isGrounded = true;
-        function triggerJump() { if (isGrounded) { velocityY = 0.45; isGrounded = false; } }
+        document.getElementById('btn-prev-chain').addEventListener('click', () => {
+            if (currentChainIdx > 0) { currentChainIdx--; renderChain(); }
+        });
 
-        jumpBtn.addEventListener('touchstart', (e) => { e.preventDefault(); triggerJump(); }, { passive: false });
-        jumpBtn.addEventListener('mousedown', triggerJump);
+        document.getElementById('btn-next-chain').addEventListener('click', () => {
+            if (currentChainIdx < allChains.length - 1) { currentChainIdx++; renderChain(); }
+        });
 
-        const keys = {};
-        window.addEventListener('keydown', e => { keys[e.code] = true; if (e.code === 'Space') triggerJump(); });
-        window.addEventListener('keyup', e => keys[e.code] = false);
-
-        let lastEmit = 0;
-        function gameLoop(timestamp) {
-            if (!isPlaying) return;
-            const me = playersData[myId];
-            if (me) {
-                let vx = moveVec.x, vz = moveVec.z;
-                if (vx === 0 && vz === 0) {
-                    if (keys['KeyW'] || keys['ArrowUp']) vz -= 1;
-                    if (keys['KeyS'] || keys['ArrowDown']) vz += 1;
-                    if (keys['KeyA'] || keys['ArrowLeft']) vx -= 1;
-                    if (keys['KeyD'] || keys['ArrowRight']) vx += 1;
-                    if (vx !== 0 && vz !== 0) { const len = Math.sqrt(vx * vx + vz * vz); vx /= len; vz /= len; }
-                }
-
-                if (vx !== 0 || vz !== 0) {
-                    me.x += vx * 0.25;
-                    me.z += vz * 0.25;
-                    const distFromCenter = Math.sqrt(me.x * me.x + me.z * me.z);
-                    if (distFromCenter > ISLAND_RADIUS + 6) {
-                        const angle = Math.atan2(me.z, me.x);
-                        me.x = Math.cos(angle) * (ISLAND_RADIUS + 6);
-                        me.z = Math.sin(angle) * (ISLAND_RADIUS + 6);
-                    }
-                }
-
-                if (!isGrounded || velocityY !== 0) {
-                    me.y += velocityY;
-                    velocityY -= 0.025;
-                    if (me.y <= 0) { me.y = 0; velocityY = 0; isGrounded = true; }
-                }
-
-                if ((vx !== 0 || vz !== 0 || !isGrounded) && timestamp - lastEmit > 33) {
-                    socket.emit('move', { x: me.x, y: me.y, z: me.z });
-                    lastEmit = timestamp;
-                }
-
-                for (let id in playersData) {
-                    const p = playersData[id];
-                    const mesh = playerMeshes[id];
-                    if (mesh) {
-                        if (id === myId) mesh.position.set(p.x, p.y + 1.1, p.z);
-                        else mesh.position.lerp(new THREE.Vector3(p.x, p.y + 1.1, p.z), 0.3);
-                    }
-                }
-
-                camera.position.set(me.x, me.y + 14, me.z + 18);
-                camera.lookAt(me.x, me.y + 1, me.z);
-
-                camera.updateMatrixWorld();
-                projScreenMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
-                frustum.setFromProjectionMatrix(projScreenMatrix);
-
-                const boundingSphere = new THREE.Sphere(new THREE.Vector3(), 6);
-                for (let i = 0; i < worldObjects.length; i++) {
-                    const obj = worldObjects[i];
-                    boundingSphere.center.copy(obj.position);
-                    obj.visible = frustum.intersectsSphere(boundingSphere);
-                }
-            }
-            renderer.render(scene, camera);
-            requestAnimationFrame(gameLoop);
-        }
+        document.getElementById('btn-back-lobby').addEventListener('click', () => socket.emit('restartLobby'));
+        socket.on('backToLobby', (data) => {
+            renderLobby(data.players, data.hostId);
+            showScreen('lobby');
+        });
     </script>
 </body>
 </html>
