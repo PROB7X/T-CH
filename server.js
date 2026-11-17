@@ -4,7 +4,7 @@ const { Server } = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, { maxHttpBufferSize: 5e6 }); // Лимит до 5 МБ для рисунков
 
 app.use(express.static(__dirname));
 
@@ -21,74 +21,122 @@ function generateRoomCode() {
 io.on('connection', (socket) => {
     let currentRoom = null;
 
-    socket.on('createRoom', (callback) => {
+    socket.on('createRoom', (playerName, callback) => {
         const roomCode = generateRoomCode();
         rooms[roomCode] = {
-            seed: Math.floor(Math.random() * 1000000),
-            players: {}
+            hostId: socket.id,
+            state: 'lobby',
+            players: [],
+            round: 0,
+            maxRounds: 0,
+            chains: [],
+            submissions: 0
         };
-        joinPlayerToRoom(socket, roomCode, callback);
+        joinRoomLogic(socket, roomCode, playerName, callback);
     });
 
-    socket.on('joinRoom', (roomCode, callback) => {
-        if (!rooms[roomCode]) {
-            return callback({ error: 'Сервер с таким номером не найден!' });
-        }
-        if (Object.keys(rooms[roomCode].players).length >= 10) {
-            return callback({ error: 'Сервер переполнен (макс. 10 игроков)!' });
-        }
-        joinPlayerToRoom(socket, roomCode, callback);
+    socket.on('joinRoom', (data, callback) => {
+        const { roomCode, playerName } = data;
+        const room = rooms[roomCode];
+        if (!room) return callback({ error: 'Комната не найдена!' });
+        if (room.state !== 'lobby') return callback({ error: 'Игра уже началась!' });
+        if (room.players.length >= 10) return callback({ error: 'Комната заполнена (макс. 10)!' });
+        joinRoomLogic(socket, roomCode, playerName, callback);
     });
 
-    function joinPlayerToRoom(socket, roomCode, callback) {
+    function joinRoomLogic(socket, roomCode, playerName, callback) {
         currentRoom = roomCode;
         socket.join(roomCode);
+        const name = (playerName || 'Игрок').trim().slice(0, 16) || 'Игрок';
+        const room = rooms[roomCode];
+        room.players.push({ id: socket.id, name });
 
-        const colors = ['#e74c3c', '#2ecc71', '#3498db', '#9b59b6', '#f1c40f', '#1abc9c', '#e67e22', '#ecf0f1', '#ff7979', '#badc58'];
-        const playerIndex = Object.keys(rooms[roomCode].players).length;
-
-        // В 3D центре острова координаты (0, 0, 0), y — высота
-        rooms[roomCode].players[socket.id] = {
-            id: socket.id,
-            x: (Math.random() * 6 - 3),
-            y: 0,
-            z: (Math.random() * 6 - 3),
-            color: colors[playerIndex % colors.length]
-        };
-
-        callback({
-            success: true,
-            roomCode: roomCode,
-            seed: rooms[roomCode].seed,
-            players: rooms[roomCode].players,
-            myId: socket.id
-        });
-
-        socket.to(roomCode).emit('playerJoined', rooms[roomCode].players[socket.id]);
+        callback({ success: true, roomCode, isHost: room.hostId === socket.id, players: room.players });
+        io.to(roomCode).emit('updatePlayers', { players: room.players, hostId: room.hostId });
     }
 
-    socket.on('move', (data) => {
-        if (currentRoom && rooms[currentRoom] && rooms[currentRoom].players[socket.id]) {
-            const p = rooms[currentRoom].players[socket.id];
-            p.x = data.x;
-            p.y = data.y;
-            p.z = data.z;
-            socket.to(currentRoom).emit('playerMoved', p);
-        }
+    socket.on('startGame', () => {
+        const room = rooms[currentRoom];
+        if (!room || room.hostId !== socket.id) return;
+        if (room.players.length < 2) return socket.emit('gameError', 'Нужно минимум 2 игрока!');
+
+        room.state = 'playing';
+        room.round = 0;
+        room.maxRounds = room.players.length;
+        room.submissions = 0;
+        room.chains = room.players.map(p => ({ ownerName: p.name, steps: [] }));
+
+        room.players.forEach((p) => {
+            io.to(p.id).emit('nextRound', {
+                round: 1,
+                maxRounds: room.maxRounds,
+                type: 'write',
+                prompt: null
+            });
+        });
     });
 
-    socket.on('disconnect', () => {
-        if (currentRoom && rooms[currentRoom]) {
-            delete rooms[currentRoom].players[socket.id];
-            io.to(currentRoom).emit('playerLeft', socket.id);
-            if (Object.keys(rooms[currentRoom].players).length === 0) {
-                delete rooms[currentRoom];
+    socket.on('submitStep', (content) => {
+        const room = rooms[currentRoom];
+        if (!room || room.state !== 'playing') return;
+
+        const pIndex = room.players.findIndex(p => p.id === socket.id);
+        if (pIndex === -1) return;
+
+        const chainIndex = (pIndex + room.round) % room.players.length;
+        if (room.chains[chainIndex].steps.length > room.round) return; // Уже отправил
+
+        room.chains[chainIndex].steps.push({
+            type: room.round % 2 === 0 ? 'text' : 'draw',
+            author: room.players[pIndex].name,
+            content
+        });
+
+        room.submissions++;
+        io.to(currentRoom).emit('waitingStatus', { ready: room.submissions, total: room.players.length });
+
+        if (room.submissions >= room.players.length) {
+            room.round++;
+            room.submissions = 0;
+
+            if (room.round >= room.maxRounds) {
+                room.state = 'results';
+                io.to(currentRoom).emit('showResults', room.chains);
+            } else {
+                const nextType = room.round % 2 === 0 ? 'write' : 'draw';
+                room.players.forEach((p, idx) => {
+                    const targetChainIdx = (idx + room.round) % room.players.length;
+                    const prevStep = room.chains[targetChainIdx].steps[room.round - 1];
+                    io.to(p.id).emit('nextRound', {
+                        round: room.round + 1,
+                        maxRounds: room.maxRounds,
+                        type: nextType,
+                        prompt: prevStep.content
+                    });
+                });
             }
         }
     });
+
+    socket.on('restartLobby', () => {
+        const room = rooms[currentRoom];
+        if (!room || room.hostId !== socket.id) return;
+        room.state = 'lobby';
+        io.to(currentRoom).emit('backToLobby', { players: room.players, hostId: room.hostId });
+    });
+
+    socket.on('disconnect', () => {
+        if (!currentRoom || !rooms[currentRoom]) return;
+        const room = rooms[currentRoom];
+        room.players = room.players.filter(p => p.id !== socket.id);
+
+        if (room.players.length === 0) {
+            delete rooms[currentRoom];
+        } else {
+            if (room.hostId === socket.id) room.hostId = room.players.id;
+            io.to(currentRoom).emit('updatePlayers', { players: room.players, hostId: room.hostId });
+        }
+    });
 });
 
-const PORT = 3000;
-server.listen(PORT, () => {
-    console.log(`3D Сервер запущен на порту ${PORT}`);
-});
+server.listen(3000, () => console.log('Gartic 2D Сервер запущен на порту 3000'));
