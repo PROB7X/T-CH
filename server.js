@@ -25,11 +25,20 @@ let users = loadUsers();
 let waitingPlayer = null;
 let battles = {};
 
-// Типы питомцев и шансы выпадения
+// 6 характеристик для шестигранника: str (Сила), vit (Живучесть), def (Броня), spd (Скорость), int (Интеллект), rage (Ярость)
 const PET_POOL = [
-    { type: 'Ящер', rarity: 'Обычный', chance: 60, hp: 100, atk: 15, emoji: '🦎' },
-    { type: 'Огненный Дракон', rarity: 'Редкий', chance: 30, hp: 130, atk: 22, emoji: '🐉' },
-    { type: 'Теневой Мутант', rarity: 'Мифический', chance: 10, hp: 160, atk: 30, emoji: '👾' }
+    {
+        type: 'БРОНЕЯЩЕР', rarity: 'ОБЫЧНЫЙ', chance: 60, svgKey: 'lizard',
+        stats: { str: 14, vit: 18, def: 16, spd: 12, int: 10, rage: 12 }
+    },
+    {
+        type: 'ПЕПЕЛЬНЫЙ ДРАКОН', rarity: 'РЕДКИЙ', chance: 30, svgKey: 'dragon',
+        stats: { str: 24, vit: 22, def: 18, spd: 20, int: 22, rage: 25 }
+    },
+    {
+        type: 'ТЕНЕВОЙ МУТАНТ', rarity: 'МИФИЧЕСКИЙ', chance: 10, svgKey: 'mutant',
+        stats: { str: 32, vit: 28, def: 24, spd: 30, int: 28, rage: 35 }
+    }
 ];
 
 function rollPet() {
@@ -37,15 +46,18 @@ function rollPet() {
     let sum = 0;
     for (const pet of PET_POOL) {
         sum += pet.chance;
-        if (roll <= sum) return { ...pet };
+        if (roll <= sum) return JSON.parse(JSON.stringify(pet));
     }
-    return { ...PET_POOL[0] };
+    return JSON.parse(JSON.stringify(PET_POOL));
+}
+
+function calcMaxHp(stats) {
+    return 60 + stats.vit * 5 + stats.def * 2;
 }
 
 io.on('connection', (socket) => {
     let currentUser = null;
 
-    // Вход игрока по нику
     socket.on('login', (username) => {
         if (!username) return;
         currentUser = username.trim().slice(0, 16);
@@ -61,16 +73,15 @@ io.on('connection', (socket) => {
         socket.emit('userData', users[currentUser]);
     });
 
-    // Открытие яйца
     socket.on('openEgg', () => {
         if (!currentUser) return;
         const dropped = rollPet();
         users[currentUser].pet = {
             type: dropped.type,
             rarity: dropped.rarity,
-            emoji: dropped.emoji,
-            maxHp: dropped.hp,
-            atk: dropped.atk,
+            svgKey: dropped.svgKey,
+            stats: dropped.stats,
+            maxHp: calcMaxHp(dropped.stats),
             level: 1
         };
         users[currentUser].trainingStart = null;
@@ -78,22 +89,25 @@ io.on('connection', (socket) => {
         socket.emit('userData', users[currentUser]);
     });
 
-    // Старт / Забор AFK-тренировки
     socket.on('toggleTraining', () => {
         if (!currentUser || !users[currentUser].pet) return;
         const user = users[currentUser];
 
         if (!user.trainingStart) {
-            // Ставим на тренировку
             user.trainingStart = Date.now();
         } else {
-            // Забираем награду (1 минута = +1 ATK и +3 HP, минимум 5 секунд для теста)
             const seconds = Math.floor((Date.now() - user.trainingStart) / 1000);
-            const gain = Math.floor(seconds / 5); // каждые 5 сек = +1 уровень прокачки
+            const gain = Math.floor(seconds / 5); // каждые 5 сек = +1 очко ко всем 6 граням
             if (gain > 0) {
-                user.pet.atk += gain;
-                user.pet.maxHp += gain * 3;
-                user.pet.level += Math.floor(gain / 5);
+                const s = user.pet.stats;
+                s.str = Math.min(100, s.str + gain);
+                s.vit = Math.min(100, s.vit + gain);
+                s.def = Math.min(100, s.def + gain);
+                s.spd = Math.min(100, s.spd + gain);
+                s.int = Math.min(100, s.int + gain);
+                s.rage = Math.min(100, s.rage + gain);
+                user.pet.maxHp = calcMaxHp(s);
+                user.pet.level += Math.floor(gain / 3);
             }
             user.trainingStart = null;
         }
@@ -101,11 +115,10 @@ io.on('connection', (socket) => {
         socket.emit('userData', user);
     });
 
-    // Поиск PvP боя
     socket.on('findBattle', () => {
         if (!currentUser || !users[currentUser].pet) return;
         if (users[currentUser].trainingStart) {
-            return socket.emit('msg', 'Сначала забери питомца с тренировки!');
+            return socket.emit('msg', 'ЗАБЕРИТЕ ПИТОМЦА С ТРЕНИРОВКИ ПЕРЕД БОЕМ');
         }
 
         if (waitingPlayer && waitingPlayer.username !== currentUser && waitingPlayer.socket.connected) {
@@ -119,18 +132,17 @@ io.on('connection', (socket) => {
 
             battles[roomId] = {
                 roomId,
-                p1: { name: p1.username, socketId: p1.socket.id, pet: { ...users[p1.username].pet }, hp: users[p1.username].pet.maxHp, move: null },
-                p2: { name: p2.username, socketId: p2.socket.id, pet: { ...users[p2.username].pet }, hp: users[p2.username].pet.maxHp, move: null }
+                p1: { name: p1.username, socketId: p1.socket.id, pet: JSON.parse(JSON.stringify(users[p1.username].pet)), hp: users[p1.username].pet.maxHp, move: null },
+                p2: { name: p2.username, socketId: p2.socket.id, pet: JSON.parse(JSON.stringify(users[p2.username].pet)), hp: users[p2.username].pet.maxHp, move: null }
             };
 
             io.to(roomId).emit('battleStart', battles[roomId]);
         } else {
             waitingPlayer = { socket, username: currentUser };
-            socket.emit('msg', 'Ищем соперника на арене...');
+            socket.emit('msg', 'ПОИСК ПРОТИВНИКА НА АРЕНЕ...');
         }
     });
 
-    // Ход в бою (flame, shield, power)
     socket.on('battleMove', ({ roomId, move }) => {
         const b = battles[roomId];
         if (!b) return;
@@ -139,21 +151,25 @@ io.on('connection', (socket) => {
         if (b.p2.socketId === socket.id) b.p2.move = move;
 
         if (b.p1.move && b.p2.move) {
-            let log = `${b.p1.name} (${b.p1.move}) vs ${b.p2.name} (${b.p2.move}). `;
+            const names = { flame: 'ПЛАМЯ', shield: 'ЩИТ', power: 'СИЛА' };
+            let log = `${b.p1.name} [${names[b.p1.move]}] vs ${b.p2.name} [${names[b.p2.move]}] — `;
 
-            // Логика: flame бьёт power | power пробивает shield | shield блокирует flame и хилит
-            const calcTurn = (attacker, defender) => {
-                if (attacker.move === 'flame') {
-                    if (defender.move === 'shield') return 0; // заблокировано
-                    return attacker.pet.atk;
+            const calcTurn = (att, def) => {
+                const sA = att.pet.stats;
+                const sD = def.pet.stats;
+                if (att.move === 'flame') {
+                    if (def.move === 'shield') return 0;
+                    const dmg = Math.floor((sA.int + sA.rage) * 0.8 - sD.def * 0.2);
+                    return Math.max(5, dmg);
                 }
-                if (attacker.move === 'power') {
-                    if (defender.move === 'shield') return Math.floor(attacker.pet.atk * 1.5); // крит по щиту!
-                    if (defender.move === 'flame') return Math.floor(attacker.pet.atk * 0.5);
-                    return attacker.pet.atk;
+                if (att.move === 'power') {
+                    if (def.move === 'shield') return Math.max(10, Math.floor(sA.str * 1.4));
+                    if (def.move === 'flame') return Math.max(4, Math.floor(sA.str * 0.5));
+                    return Math.max(5, Math.floor(sA.str - sD.def * 0.3));
                 }
-                if (attacker.move === 'shield') {
-                    attacker.hp = Math.min(attacker.pet.maxHp, attacker.hp + Math.floor(attacker.pet.maxHp * 0.1));
+                if (att.move === 'shield') {
+                    const heal = Math.floor(att.pet.maxHp * 0.1 + sA.vit * 0.3);
+                    att.hp = Math.min(att.pet.maxHp, att.hp + heal);
                     return 0;
                 }
                 return 0;
@@ -165,13 +181,13 @@ io.on('connection', (socket) => {
             b.p2.hp = Math.max(0, b.p2.hp - dmgToP2);
             b.p1.hp = Math.max(0, b.p1.hp - dmgToP1);
 
-            log += `Урон: ${b.p1.name} -${dmgToP1} HP, ${b.p2.name} -${dmgToP2} HP.`;
+            log += `УРОН: ${b.p1.name} (-${dmgToP1}) | ${b.p2.name} (-${dmgToP2})`;
 
             b.p1.move = null;
             b.p2.move = null;
 
             if (b.p1.hp <= 0 || b.p2.hp <= 0) {
-                const winner = b.p1.hp > b.p2.hp ? b.p1.name : (b.p2.hp > b.p1.hp ? b.p2.name : 'Ничья');
+                const winner = b.p1.hp > b.p2.hp ? b.p1.name : (b.p2.hp > b.p1.hp ? b.p2.name : 'НИЧЬЯ');
                 if (users[winner]) {
                     users[winner].wins += 1;
                     saveUsers(users);
