@@ -31,9 +31,10 @@
             display: flex; flex-direction: column; gap: 14px; width: 320px; text-align: center;
             border: 1px solid rgba(255,255,255,0.1);
         }
-        .title-row { display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 22px; font-weight: bold; }
+        .title-row { display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 20px; font-weight: bold; }
         input {
             padding: 12px; font-size: 18px; border-radius: 8px; border: none; text-align: center; letter-spacing: 3px;
+            user-select: text; -webkit-user-select: text;
         }
         button.action-btn {
             padding: 14px; font-size: 16px; font-weight: bold; border: none; border-radius: 8px;
@@ -95,7 +96,7 @@
     <div id="menu-screen">
         <div class="menu-box">
             <div class="title-row">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2ecc71" stroke-width="2">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#2ecc71" stroke-width="2">
                     <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
                 </svg>
                 <span>Остров Выживания 3D</span>
@@ -144,9 +145,19 @@
 
     <div id="game-container"></div>
     <script src="/socket.io/socket.io.js"></script>
-    <script src="https://cloudflare.com"></script>
+    <script src="https://unpkg.com"></script>
     <script>
-        const socket = io();
+        const errorMsg = document.getElementById('error-msg');
+        let socket = null;
+
+        if (typeof io !== 'undefined') {
+            socket = io();
+            socket.on('connect_error', () => {
+                errorMsg.textContent = 'Нет связи с сервером!';
+            });
+        } else {
+            errorMsg.textContent = 'Ошибка загрузки Socket.io';
+        }
 
         // ==========================================
         // 1. УПРАВЛЕНИЕ ПОЛНЫМ ЭКРАНОМ И ОРИЕНТАЦИЕЙ
@@ -168,7 +179,7 @@
         function checkFullscreen() {
             const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
             fsOverlay.style.display = isFullscreen ? 'none' : 'flex';
-            onWindowResize();
+            if (typeof onWindowResize === 'function') onWindowResize();
         }
 
         fsBtn.addEventListener('click', enterFullscreenAndLandscape);
@@ -176,41 +187,12 @@
         document.addEventListener('webkitfullscreenchange', checkFullscreen);
 
         // ==========================================
-        // 2. ИНИЦИАЛИЗАЦИЯ 3D СЦЕНЫ (THREE.JS)
-        // ==========================================
-        const container = document.getElementById('game-container');
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x87ceeb);
-        scene.fog = new THREE.Fog(0x87ceeb, 40, 120);
-
-        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 150);
-        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        container.appendChild(renderer.domElement);
-
-        // Освещение
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
-        scene.add(ambientLight);
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.75);
-        dirLight.position.set(50, 80, 30);
-        scene.add(dirLight);
-
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-        window.addEventListener('resize', onWindowResize);
-
-        // ==========================================
-        // 3. МЕНЮ И МУЛЬТИПЛЕЕР
+        // 2. МЕНЮ И МУЛЬТИПЛЕЕР
         // ==========================================
         const menuScreen = document.getElementById('menu-screen');
         const gameUi = document.getElementById('game-ui');
         const joystickZone = document.getElementById('joystick-zone');
         const jumpBtn = document.getElementById('jump-btn');
-        const errorMsg = document.getElementById('error-msg');
 
         let myId = null;
         let playersData = {};
@@ -218,25 +200,36 @@
         let isPlaying = false;
 
         document.getElementById('btn-create').addEventListener('click', () => {
+            if (!socket) return errorMsg.textContent = 'Сервер не подключен';
+            errorMsg.textContent = 'Создание сервера...';
             socket.emit('createRoom', handleRoomResponse);
         });
 
         document.getElementById('btn-join').addEventListener('click', () => {
+            if (!socket) return errorMsg.textContent = 'Сервер не подключен';
             const code = document.getElementById('room-input').value.trim();
             if (!code) return errorMsg.textContent = 'Введите номер сервера!';
+            errorMsg.textContent = 'Подключение...';
             socket.emit('joinRoom', code, handleRoomResponse);
         });
 
         function handleRoomResponse(res) {
-            if (res.error) {
-                errorMsg.textContent = res.error;
+            if (!res || res.error) {
+                errorMsg.textContent = res ? res.error : 'Ошибка ответа сервера';
                 return;
             }
+            if (typeof THREE === 'undefined') {
+                errorMsg.textContent = 'Ошибка загрузки 3D-движка (проверьте интернет)';
+                return;
+            }
+
+            errorMsg.textContent = '';
             myId = res.myId;
             playersData = res.players;
             document.getElementById('hud-room').textContent = res.roomCode;
             updatePlayerCount();
 
+            init3DScene();
             generate3DIsland(res.seed);
 
             for (let id in playersData) {
@@ -251,7 +244,74 @@
             requestAnimationFrame(gameLoop);
         }
 
+        function updatePlayerCount() {
+            document.getElementById('hud-players').textContent = Object.keys(playersData).length;
+        }
+
+        if (socket) {
+            socket.on('playerJoined', (p) => {
+                playersData[p.id] = p;
+                if (isPlaying) createPlayerMesh(p);
+                updatePlayerCount();
+            });
+
+            socket.on('playerMoved', (p) => {
+                if (playersData[p.id]) {
+                    playersData[p.id].x = p.x;
+                    playersData[p.id].y = p.y;
+                    playersData[p.id].z = p.z;
+                }
+            });
+
+            socket.on('playerLeft', (id) => {
+                if (playerMeshes[id] && scene) {
+                    scene.remove(playerMeshes[id]);
+                    delete playerMeshes[id];
+                }
+                delete playersData[id];
+                updatePlayerCount();
+            });
+        }
+        // ==========================================
+        // 3. 3D СЦЕНА И ГЕНЕРАЦИЯ ОСТРОВА
+        // ==========================================
+        let scene, camera, renderer, frustum, projScreenMatrix;
+        let worldObjects = [];
+        const ISLAND_RADIUS = 75;
+
+        function init3DScene() {
+            const container = document.getElementById('game-container');
+            container.innerHTML = '';
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87ceeb);
+            scene.fog = new THREE.Fog(0x87ceeb, 40, 120);
+
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 150);
+            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+
+            scene.add(new THREE.AmbientLight(0xffffff, 0.65));
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.75);
+            dirLight.position.set(50, 80, 30);
+            scene.add(dirLight);
+
+            frustum = new THREE.Frustum();
+            projScreenMatrix = new THREE.Matrix4();
+        }
+
+        function onWindowResize() {
+            if (!camera || !renderer) return;
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        window.addEventListener('resize', onWindowResize);
+
         function createPlayerMesh(p) {
+            if (!scene) return;
             const geo = new THREE.BoxGeometry(1.2, 2.2, 1.2);
             const mat = new THREE.MeshLambertMaterial({ color: p.color });
             const mesh = new THREE.Mesh(geo, mat);
@@ -259,39 +319,6 @@
             scene.add(mesh);
             playerMeshes[p.id] = mesh;
         }
-
-        function updatePlayerCount() {
-            document.getElementById('hud-players').textContent = Object.keys(playersData).length;
-        }
-
-        socket.on('playerJoined', (p) => {
-            playersData[p.id] = p;
-            createPlayerMesh(p);
-            updatePlayerCount();
-        });
-
-        socket.on('playerMoved', (p) => {
-            if (playersData[p.id]) {
-                playersData[p.id].x = p.x;
-                playersData[p.id].y = p.y;
-                playersData[p.id].z = p.z;
-            }
-        });
-
-        socket.on('playerLeft', (id) => {
-            if (playerMeshes[id]) {
-                scene.remove(playerMeshes[id]);
-                delete playerMeshes[id];
-            }
-            delete playersData[id];
-            updatePlayerCount();
-        });
-
-        // ==========================================
-        // 4. ГЕНЕРАЦИЯ 3D ОСТРОВА ПО СИДУ
-        // ==========================================
-        let worldObjects = [];
-        const ISLAND_RADIUS = 75;
 
         function mulberry32(a) {
             return function() {
@@ -306,29 +333,19 @@
             const rand = mulberry32(seed);
             worldObjects = [];
 
-            // Океан
-            const waterGeo = new THREE.PlaneGeometry(600, 600);
-            const waterMat = new THREE.MeshLambertMaterial({ color: 0x1e88e5 });
-            const water = new THREE.Mesh(waterGeo, waterMat);
+            const water = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), new THREE.MeshLambertMaterial({ color: 0x1e88e5 }));
             water.rotation.x = -Math.PI / 2;
             water.position.y = -0.3;
             scene.add(water);
 
-            // Пляж (песок)
-            const sandGeo = new THREE.CylinderGeometry(ISLAND_RADIUS + 8, ISLAND_RADIUS + 12, 0.5, 48);
-            const sandMat = new THREE.MeshLambertMaterial({ color: 0xf4d03f });
-            const sand = new THREE.Mesh(sandGeo, sandMat);
+            const sand = new THREE.Mesh(new THREE.CylinderGeometry(ISLAND_RADIUS + 8, ISLAND_RADIUS + 12, 0.5, 48), new THREE.MeshLambertMaterial({ color: 0xf4d03f }));
             sand.position.y = -0.2;
             scene.add(sand);
 
-            // Трава (основная часть острова)
-            const grassGeo = new THREE.CylinderGeometry(ISLAND_RADIUS, ISLAND_RADIUS + 2, 0.6, 48);
-            const grassMat = new THREE.MeshLambertMaterial({ color: 0x2ecc71 });
-            const grass = new THREE.Mesh(grassGeo, grassMat);
+            const grass = new THREE.Mesh(new THREE.CylinderGeometry(ISLAND_RADIUS, ISLAND_RADIUS + 2, 0.6, 48), new THREE.MeshLambertMaterial({ color: 0x2ecc71 }));
             grass.position.y = -0.15;
             scene.add(grass);
 
-            // Генерация 3D деревьев и камней
             const trunkGeo = new THREE.CylinderGeometry(0.4, 0.5, 2.5, 8);
             const trunkMat = new THREE.MeshLambertMaterial({ color: 0x795548 });
             const leavesGeo = new THREE.ConeGeometry(2.2, 4.5, 8);
@@ -341,8 +358,7 @@
                 const dist = Math.sqrt(rand()) * (ISLAND_RADIUS - 5);
                 const ox = Math.cos(angle) * dist;
                 const oz = Math.sin(angle) * dist;
-
-                if (Math.abs(ox) < 6 && Math.abs(oz) < 6) continue; // Свободный спавн
+                if (Math.abs(ox) < 6 && Math.abs(oz) < 6) continue;
 
                 const group = new THREE.Group();
                 if (rand() > 0.3) {
@@ -362,7 +378,7 @@
             }
         }
         // ==========================================
-        // 5. ИСПРАВЛЕННЫЙ ДЖОЙСТИК И КНОПКА ПРЫЖКА
+        // 4. ДЖОЙСТИК, ПРЫЖОК И ИГРОВОЙ ЦИКЛ
         // ==========================================
         let moveVec = { x: 0, z: 0 };
         const stick = document.getElementById('joystick-stick');
@@ -404,82 +420,43 @@
 
         function updateJoystick(touch) {
             const rect = base.getBoundingClientRect();
-            const centerX = rect.left + rect.width / 2;
-            const centerY = rect.top + rect.height / 2;
-            let dx = touch.clientX - centerX;
-            let dy = touch.clientY - centerY;
+            let dx = touch.clientX - (rect.left + rect.width / 2);
+            let dy = touch.clientY - (rect.top + rect.height / 2);
             const maxDist = 40;
             const dist = Math.sqrt(dx * dx + dy * dy);
-
-            if (dist > maxDist) {
-                dx = (dx / dist) * maxDist;
-                dy = (dy / dist) * maxDist;
-            }
+            if (dist > maxDist) { dx = (dx / dist) * maxDist; dy = (dy / dist) * maxDist; }
             stick.style.transform = `translate(${dx}px, ${dy}px)`;
             moveVec.x = dx / maxDist;
             moveVec.z = dy / maxDist;
         }
 
-        // Физика прыжка
-        let velocityY = 0;
-        let isGrounded = true;
-        const GRAVITY = -0.025;
-        const JUMP_FORCE = 0.45;
+        let velocityY = 0, isGrounded = true;
+        function triggerJump() { if (isGrounded) { velocityY = 0.45; isGrounded = false; } }
 
-        function triggerJump() {
-            if (isGrounded) {
-                velocityY = JUMP_FORCE;
-                isGrounded = false;
-            }
-        }
-
-        jumpBtn.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            triggerJump();
-        }, { passive: false });
+        jumpBtn.addEventListener('touchstart', (e) => { e.preventDefault(); triggerJump(); }, { passive: false });
         jumpBtn.addEventListener('mousedown', triggerJump);
 
-        // Клавиатура для теста с ПК
         const keys = {};
-        window.addEventListener('keydown', e => {
-            keys[e.code] = true;
-            if (e.code === 'Space') triggerJump();
-        });
+        window.addEventListener('keydown', e => { keys[e.code] = true; if (e.code === 'Space') triggerJump(); });
         window.addEventListener('keyup', e => keys[e.code] = false);
 
-        // ==========================================
-        // 6. ИГРОВОЙ ЦИКЛ, КАМЕРА И 3D FRUSTUM CULLING
-        // ==========================================
         let lastEmit = 0;
-        const frustum = new THREE.Frustum();
-        const projScreenMatrix = new THREE.Matrix4();
-
         function gameLoop(timestamp) {
             if (!isPlaying) return;
-
             const me = playersData[myId];
             if (me) {
-                let vx = moveVec.x;
-                let vz = moveVec.z;
-
+                let vx = moveVec.x, vz = moveVec.z;
                 if (vx === 0 && vz === 0) {
                     if (keys['KeyW'] || keys['ArrowUp']) vz -= 1;
                     if (keys['KeyS'] || keys['ArrowDown']) vz += 1;
                     if (keys['KeyA'] || keys['ArrowLeft']) vx -= 1;
                     if (keys['KeyD'] || keys['ArrowRight']) vx += 1;
-                    if (vx !== 0 && vz !== 0) {
-                        const len = Math.sqrt(vx * vx + vz * vz);
-                        vx /= len; vz /= len;
-                    }
+                    if (vx !== 0 && vz !== 0) { const len = Math.sqrt(vx * vx + vz * vz); vx /= len; vz /= len; }
                 }
 
-                // Горизонтальное движение
-                const speed = 0.25;
                 if (vx !== 0 || vz !== 0) {
-                    me.x += vx * speed;
-                    me.z += vz * speed;
-
-                    // Ограничение краем острова
+                    me.x += vx * 0.25;
+                    me.z += vz * 0.25;
                     const distFromCenter = Math.sqrt(me.x * me.x + me.z * me.z);
                     if (distFromCenter > ISLAND_RADIUS + 6) {
                         const angle = Math.atan2(me.z, me.x);
@@ -488,54 +465,40 @@
                     }
                 }
 
-                // Вертикальное движение (прыжок и гравитация)
                 if (!isGrounded || velocityY !== 0) {
                     me.y += velocityY;
-                    velocityY += GRAVITY;
-                    if (me.y <= 0) {
-                        me.y = 0;
-                        velocityY = 0;
-                        isGrounded = true;
-                    }
+                    velocityY -= 0.025;
+                    if (me.y <= 0) { me.y = 0; velocityY = 0; isGrounded = true; }
                 }
 
-                // Отправка координат на сервер
                 if ((vx !== 0 || vz !== 0 || !isGrounded) && timestamp - lastEmit > 33) {
                     socket.emit('move', { x: me.x, y: me.y, z: me.z });
                     lastEmit = timestamp;
                 }
 
-                // Обновление позиций всех игроков в 3D
                 for (let id in playersData) {
                     const p = playersData[id];
                     const mesh = playerMeshes[id];
                     if (mesh) {
-                        if (id === myId) {
-                            mesh.position.set(p.x, p.y + 1.1, p.z);
-                        } else {
-                            // Плавная интерполяция других игроков
-                            mesh.position.lerp(new THREE.Vector3(p.x, p.y + 1.1, p.z), 0.3);
-                        }
+                        if (id === myId) mesh.position.set(p.x, p.y + 1.1, p.z);
+                        else mesh.position.lerp(new THREE.Vector3(p.x, p.y + 1.1, p.z), 0.3);
                     }
                 }
 
-                // Камера следит за игроком под углом
                 camera.position.set(me.x, me.y + 14, me.z + 18);
                 camera.lookAt(me.x, me.y + 1, me.z);
 
-                // 100% НЕВИДИМОЕ ОТСЕЧЕНИЕ (FRUSTUM CULLING С ЗАПАСОМ)
                 camera.updateMatrixWorld();
                 projScreenMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
                 frustum.setFromProjectionMatrix(projScreenMatrix);
 
-                const boundingSphere = new THREE.Sphere(new THREE.Vector3(), 6); // Запас радиуса 6 единиц
+                const boundingSphere = new THREE.Sphere(new THREE.Vector3(), 6);
                 for (let i = 0; i < worldObjects.length; i++) {
                     const obj = worldObjects[i];
                     boundingSphere.center.copy(obj.position);
                     obj.visible = frustum.intersectsSphere(boundingSphere);
                 }
             }
-
             renderer.render(scene, camera);
             requestAnimationFrame(gameLoop);
         }
