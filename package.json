@@ -1,7 +1,7 @@
 {
-  "name": "twitch-style-chat",
+  "name": "night-kiosk-coop",
   "version": "1.0.0",
-  "description": "Чат в стиле Twitch с ролями и тегами",
+  "description": "Co-op kiosk waiter game against monsters",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
