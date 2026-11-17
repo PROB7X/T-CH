@@ -19,12 +19,28 @@ function generateRoomCode() {
     return code;
 }
 
-// Подбор распределения карточек так, чтобы игроку не попалось своё (ни идея, ни рисунок)
+// Рассылка списка открытых (без пароля) и незаполненных комнат
+function broadcastPublicRooms() {
+    const publicRooms = [];
+    for (const code in rooms) {
+        const r = rooms[code];
+        if (!r.password && r.state === 'lobby' && r.players.length < 10 && r.players.length > 0) {
+            const host = r.players.find(p => p.id === r.hostId) || r.players;
+            publicRooms.push({
+                code,
+                hostName: host ? host.name : 'Игрок',
+                count: r.players.length,
+                mode: r.mode
+            });
+        }
+    }
+    io.emit('publicRoomsUpdate', publicRooms);
+}
+
 function assignCardsWithoutSelf(cards, players) {
     const n = players.length;
     const indices = Array.from({ length: n }, (_, i) => i);
 
-    // Пытаемся найти случайную перестановку без совпадений с touchedBy
     for (let attempt = 0; attempt < 200; attempt++) {
         for (let i = n - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -41,11 +57,9 @@ function assignCardsWithoutSelf(cards, players) {
         if (valid) return indices;
     }
 
-    // Резервный гарантированный циклический сдвиг
     return Array.from({ length: n }, (_, i) => (i + 1) % n);
 }
 
-// Проверка AFK каждые 15 секунд (кик только через 10 минут)
 setInterval(() => {
     const now = Date.now();
     for (const code in rooms) {
@@ -75,6 +89,7 @@ function checkPhaseCompletion(roomCode) {
             mode: room.mode,
             drawTime: room.drawTime
         });
+        broadcastPublicRooms();
         return;
     }
 
@@ -116,7 +131,6 @@ function checkPhaseCompletion(roomCode) {
         }
     }
 }
-
 function handlePlayerLeave(socket) {
     const currentRoom = socket.data.roomCode;
     if (!currentRoom || !rooms[currentRoom]) return;
@@ -130,7 +144,7 @@ function handlePlayerLeave(socket) {
         delete rooms[currentRoom];
     } else {
         if (room.hostId === socket.id) {
-            room.hostId = room.players[0].id;
+            room.hostId = room.players.id;
         }
         io.to(currentRoom).emit('updatePlayers', {
             players: room.players,
@@ -142,9 +156,16 @@ function handlePlayerLeave(socket) {
             checkPhaseCompletion(currentRoom);
         }
     }
+    broadcastPublicRooms();
 }
 
 io.on('connection', (socket) => {
+    broadcastPublicRooms();
+
+    socket.on('getPublicRooms', () => {
+        broadcastPublicRooms();
+    });
+
     socket.on('pingActivity', () => {
         const code = socket.data.roomCode;
         if (code && rooms[code]) {
@@ -159,7 +180,7 @@ io.on('connection', (socket) => {
             hostId: socket.id,
             password: (data.password || '').trim(),
             state: 'lobby',
-            mode: 'normal', // 'normal' или 'timer'
+            mode: 'normal',
             drawTime: 60,
             players: [],
             phase: 0,
@@ -202,6 +223,7 @@ io.on('connection', (socket) => {
             mode: room.mode,
             drawTime: room.drawTime
         });
+        broadcastPublicRooms();
     }
 
     socket.on('changeSettings', (data) => {
@@ -211,6 +233,7 @@ io.on('connection', (socket) => {
         if (data.mode) room.mode = data.mode;
         if (data.drawTime) room.drawTime = Math.max(15, Math.min(300, Number(data.drawTime) || 60));
         io.to(code).emit('updateSettings', { mode: room.mode, drawTime: room.drawTime });
+        broadcastPublicRooms();
     });
 
     socket.on('leaveRoom', () => handlePlayerLeave(socket));
@@ -230,6 +253,8 @@ io.on('connection', (socket) => {
             assignedTo: p.id,
             touchedBy: [p.id]
         }));
+
+        broadcastPublicRooms();
 
         room.players.forEach((p) => {
             p.lastActive = Date.now();
@@ -269,6 +294,7 @@ io.on('connection', (socket) => {
             mode: room.mode,
             drawTime: room.drawTime
         });
+        broadcastPublicRooms();
     });
 
     socket.on('disconnect', () => handlePlayerLeave(socket));
