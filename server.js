@@ -9,7 +9,7 @@ const io = new Server(server, { maxHttpBufferSize: 5e6 });
 app.use(express.static(__dirname));
 
 const rooms = {};
-const AFK_TIMEOUT = 30000; // 30 секунд
+const AFK_TIMEOUT = 10 * 60 * 1000; // 10 минут
 
 function generateRoomCode() {
     let code;
@@ -19,16 +19,33 @@ function generateRoomCode() {
     return code;
 }
 
-function getDerangement(n) {
-    const arr = Array.from({ length: n }, (_, i) => i);
-    for (let i = n - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * i);
-        [arr[i], arr[j]] = [arr[j], arr[i]];
+// Подбор распределения карточек так, чтобы игроку не попалось своё (ни идея, ни рисунок)
+function assignCardsWithoutSelf(cards, players) {
+    const n = players.length;
+    const indices = Array.from({ length: n }, (_, i) => i);
+
+    // Пытаемся найти случайную перестановку без совпадений с touchedBy
+    for (let attempt = 0; attempt < 200; attempt++) {
+        for (let i = n - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [indices[i], indices[j]] = [indices[j], indices[i]];
+        }
+        let valid = true;
+        for (let i = 0; i < n; i++) {
+            const targetPlayerId = players[indices[i]].id;
+            if (cards[i].touchedBy.includes(targetPlayerId)) {
+                valid = false;
+                break;
+            }
+        }
+        if (valid) return indices;
     }
-    return arr;
+
+    // Резервный гарантированный циклический сдвиг
+    return Array.from({ length: n }, (_, i) => (i + 1) % n);
 }
 
-// Проверка неактивных игроков каждые 3 секунды
+// Проверка AFK каждые 15 секунд (кик только через 10 минут)
 setInterval(() => {
     const now = Date.now();
     for (const code in rooms) {
@@ -37,12 +54,12 @@ setInterval(() => {
         afkPlayers.forEach(p => {
             const targetSocket = io.sockets.sockets.get(p.id);
             if (targetSocket) {
-                targetSocket.emit('kickedAfk', 'Вы были исключены за бездействие (30 сек)');
+                targetSocket.emit('kickedAfk', 'Вы были исключены за бездействие (10 мин)');
                 handlePlayerLeave(targetSocket);
             }
         });
     }
-}, 3000);
+}, 15000);
 
 function checkPhaseCompletion(roomCode) {
     const room = rooms[roomCode];
@@ -52,11 +69,15 @@ function checkPhaseCompletion(roomCode) {
     if (total < 2) {
         room.state = 'lobby';
         io.to(roomCode).emit('gameError', 'Недостаточно игроков для продолжения (минимум 2)');
-        io.to(roomCode).emit('backToLobby', { players: room.players, hostId: room.hostId });
+        io.to(roomCode).emit('backToLobby', {
+            players: room.players,
+            hostId: room.hostId,
+            mode: room.mode,
+            drawTime: room.drawTime
+        });
         return;
     }
 
-    // Считаем, сколько активных игроков уже сдали текущий этап
     let readyCount = 0;
     room.players.forEach(p => {
         const card = room.cards.find(c => c.assignedTo === p.id);
@@ -72,22 +93,24 @@ function checkPhaseCompletion(roomCode) {
         room.phase++;
         if (room.phase > 2) {
             room.state = 'results';
-            // Показываем только полностью заполненные карточки
             const validCards = room.cards.filter(c => c.idea && c.drawing && c.comment);
             io.to(roomCode).emit('showResults', validCards);
         } else {
-            // Оставляем только карточки, заполненные на прошлом этапе
             room.cards = room.cards.filter(c => room.phase === 1 ? c.idea : c.drawing);
             const count = Math.min(room.cards.length, room.players.length);
-            const perm = getDerangement(count);
+            const activePlayers = room.players.slice(0, count);
+            const perm = assignCardsWithoutSelf(room.cards, activePlayers);
 
             for (let i = 0; i < count; i++) {
-                const targetPlayer = room.players[perm[i]];
+                const targetPlayer = activePlayers[perm[i]];
                 room.cards[i].assignedTo = targetPlayer.id;
+                room.cards[i].touchedBy.push(targetPlayer.id);
+
                 const promptData = room.phase === 1 ? room.cards[i].idea.text : room.cards[i].drawing.img;
                 io.to(targetPlayer.id).emit('nextPhase', {
                     phase: room.phase,
-                    prompt: promptData
+                    prompt: promptData,
+                    timer: (room.phase === 1 && room.mode === 'timer') ? room.drawTime : 0
                 });
             }
         }
@@ -109,7 +132,12 @@ function handlePlayerLeave(socket) {
         if (room.hostId === socket.id) {
             room.hostId = room.players[0].id;
         }
-        io.to(currentRoom).emit('updatePlayers', { players: room.players, hostId: room.hostId });
+        io.to(currentRoom).emit('updatePlayers', {
+            players: room.players,
+            hostId: room.hostId,
+            mode: room.mode,
+            drawTime: room.drawTime
+        });
         if (room.state === 'playing') {
             checkPhaseCompletion(currentRoom);
         }
@@ -131,6 +159,8 @@ io.on('connection', (socket) => {
             hostId: socket.id,
             password: (data.password || '').trim(),
             state: 'lobby',
+            mode: 'normal', // 'normal' или 'timer'
+            drawTime: 60,
             players: [],
             phase: 0,
             cards: []
@@ -162,10 +192,26 @@ io.on('connection', (socket) => {
             success: true,
             roomCode,
             isHost: room.hostId === socket.id,
-            players: room.players
+            players: room.players,
+            mode: room.mode,
+            drawTime: room.drawTime
         });
-        io.to(roomCode).emit('updatePlayers', { players: room.players, hostId: room.hostId });
+        io.to(roomCode).emit('updatePlayers', {
+            players: room.players,
+            hostId: room.hostId,
+            mode: room.mode,
+            drawTime: room.drawTime
+        });
     }
+
+    socket.on('changeSettings', (data) => {
+        const code = socket.data.roomCode;
+        const room = rooms[code];
+        if (!room || room.hostId !== socket.id) return;
+        if (data.mode) room.mode = data.mode;
+        if (data.drawTime) room.drawTime = Math.max(15, Math.min(300, Number(data.drawTime) || 60));
+        io.to(code).emit('updateSettings', { mode: room.mode, drawTime: room.drawTime });
+    });
 
     socket.on('leaveRoom', () => handlePlayerLeave(socket));
 
@@ -177,12 +223,17 @@ io.on('connection', (socket) => {
 
         room.state = 'playing';
         room.phase = 0;
-        room.cards = room.players.map(() => ({ idea: null, drawing: null, comment: null, assignedTo: null }));
+        room.cards = room.players.map((p) => ({
+            idea: null,
+            drawing: null,
+            comment: null,
+            assignedTo: p.id,
+            touchedBy: [p.id]
+        }));
 
-        room.players.forEach((p, idx) => {
+        room.players.forEach((p) => {
             p.lastActive = Date.now();
-            room.cards[idx].assignedTo = p.id;
-            io.to(p.id).emit('nextPhase', { phase: 0, prompt: null });
+            io.to(p.id).emit('nextPhase', { phase: 0, prompt: null, timer: 0 });
         });
     });
 
@@ -198,9 +249,9 @@ io.on('connection', (socket) => {
         const card = room.cards.find(c => c.assignedTo === socket.id);
         if (!card) return;
 
-        if (room.phase === 0 && !card.idea) card.idea = { author: player.name, text: content };
+        if (room.phase === 0 && !card.idea) card.idea = { author: player.name, text: content || 'Пустая идея' };
         else if (room.phase === 1 && !card.drawing) card.drawing = { author: player.name, img: content };
-        else if (room.phase === 2 && !card.comment) card.comment = { author: player.name, text: content };
+        else if (room.phase === 2 && !card.comment) card.comment = { author: player.name, text: content || 'Без описания' };
         else return;
 
         checkPhaseCompletion(code);
@@ -212,7 +263,12 @@ io.on('connection', (socket) => {
         if (!room || room.hostId !== socket.id) return;
         room.state = 'lobby';
         room.players.forEach(p => p.lastActive = Date.now());
-        io.to(code).emit('backToLobby', { players: room.players, hostId: room.hostId });
+        io.to(code).emit('backToLobby', {
+            players: room.players,
+            hostId: room.hostId,
+            mode: room.mode,
+            drawTime: room.drawTime
+        });
     });
 
     socket.on('disconnect', () => handlePlayerLeave(socket));
