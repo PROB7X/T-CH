@@ -9,6 +9,7 @@ const io = new Server(server, { maxHttpBufferSize: 5e6 });
 app.use(express.static(__dirname));
 
 const rooms = {};
+const AFK_TIMEOUT = 30000; // 30 секунд
 
 function generateRoomCode() {
     let code;
@@ -18,18 +19,111 @@ function generateRoomCode() {
     return code;
 }
 
-// Перемешивание без неподвижных точек (никто не получит свой индекс)
 function getDerangement(n) {
     const arr = Array.from({ length: n }, (_, i) => i);
     for (let i = n - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * i); // строго меньше i, гарантирует сдвиг
+        const j = Math.floor(Math.random() * i);
         [arr[i], arr[j]] = [arr[j], arr[i]];
     }
     return arr;
 }
 
+// Проверка неактивных игроков каждые 3 секунды
+setInterval(() => {
+    const now = Date.now();
+    for (const code in rooms) {
+        const room = rooms[code];
+        const afkPlayers = room.players.filter(p => now - p.lastActive > AFK_TIMEOUT);
+        afkPlayers.forEach(p => {
+            const targetSocket = io.sockets.sockets.get(p.id);
+            if (targetSocket) {
+                targetSocket.emit('kickedAfk', 'Вы были исключены за бездействие (30 сек)');
+                handlePlayerLeave(targetSocket);
+            }
+        });
+    }
+}, 3000);
+
+function checkPhaseCompletion(roomCode) {
+    const room = rooms[roomCode];
+    if (!room || room.state !== 'playing') return;
+
+    const total = room.players.length;
+    if (total < 2) {
+        room.state = 'lobby';
+        io.to(roomCode).emit('gameError', 'Недостаточно игроков для продолжения (минимум 2)');
+        io.to(roomCode).emit('backToLobby', { players: room.players, hostId: room.hostId });
+        return;
+    }
+
+    // Считаем, сколько активных игроков уже сдали текущий этап
+    let readyCount = 0;
+    room.players.forEach(p => {
+        const card = room.cards.find(c => c.assignedTo === p.id);
+        if (!card) return;
+        if (room.phase === 0 && card.idea) readyCount++;
+        else if (room.phase === 1 && card.drawing) readyCount++;
+        else if (room.phase === 2 && card.comment) readyCount++;
+    });
+
+    io.to(roomCode).emit('waitingStatus', { ready: readyCount, total });
+
+    if (readyCount >= total) {
+        room.phase++;
+        if (room.phase > 2) {
+            room.state = 'results';
+            // Показываем только полностью заполненные карточки
+            const validCards = room.cards.filter(c => c.idea && c.drawing && c.comment);
+            io.to(roomCode).emit('showResults', validCards);
+        } else {
+            // Оставляем только карточки, заполненные на прошлом этапе
+            room.cards = room.cards.filter(c => room.phase === 1 ? c.idea : c.drawing);
+            const count = Math.min(room.cards.length, room.players.length);
+            const perm = getDerangement(count);
+
+            for (let i = 0; i < count; i++) {
+                const targetPlayer = room.players[perm[i]];
+                room.cards[i].assignedTo = targetPlayer.id;
+                const promptData = room.phase === 1 ? room.cards[i].idea.text : room.cards[i].drawing.img;
+                io.to(targetPlayer.id).emit('nextPhase', {
+                    phase: room.phase,
+                    prompt: promptData
+                });
+            }
+        }
+    }
+}
+
+function handlePlayerLeave(socket) {
+    const currentRoom = socket.data.roomCode;
+    if (!currentRoom || !rooms[currentRoom]) return;
+    const room = rooms[currentRoom];
+
+    socket.leave(currentRoom);
+    socket.data.roomCode = null;
+    room.players = room.players.filter(p => p.id !== socket.id);
+
+    if (room.players.length === 0) {
+        delete rooms[currentRoom];
+    } else {
+        if (room.hostId === socket.id) {
+            room.hostId = room.players[0].id;
+        }
+        io.to(currentRoom).emit('updatePlayers', { players: room.players, hostId: room.hostId });
+        if (room.state === 'playing') {
+            checkPhaseCompletion(currentRoom);
+        }
+    }
+}
+
 io.on('connection', (socket) => {
-    let currentRoom = null;
+    socket.on('pingActivity', () => {
+        const code = socket.data.roomCode;
+        if (code && rooms[code]) {
+            const p = rooms[code].players.find(pl => pl.id === socket.id);
+            if (p) p.lastActive = Date.now();
+        }
+    });
 
     socket.on('createRoom', (data, callback) => {
         const roomCode = generateRoomCode();
@@ -38,9 +132,8 @@ io.on('connection', (socket) => {
             password: (data.password || '').trim(),
             state: 'lobby',
             players: [],
-            phase: 0, // 0: идея, 1: рисунок, 2: описание
-            cards: [],
-            submissions: 0
+            phase: 0,
+            cards: []
         };
         joinRoomLogic(socket, roomCode, data.playerName, callback);
     });
@@ -59,125 +152,68 @@ io.on('connection', (socket) => {
     });
 
     function joinRoomLogic(socket, roomCode, playerName, callback) {
-        currentRoom = roomCode;
+        socket.data.roomCode = roomCode;
         socket.join(roomCode);
         const name = (playerName || 'Игрок').trim().slice(0, 16) || 'Игрок';
         const room = rooms[roomCode];
-        room.players.push({ id: socket.id, name });
+        room.players.push({ id: socket.id, name, lastActive: Date.now() });
 
         callback({
             success: true,
             roomCode,
-            hasPassword: Boolean(room.password),
             isHost: room.hostId === socket.id,
             players: room.players
         });
         io.to(roomCode).emit('updatePlayers', { players: room.players, hostId: room.hostId });
     }
 
-    socket.on('leaveRoom', () => {
-        handlePlayerLeave(socket);
-    });
+    socket.on('leaveRoom', () => handlePlayerLeave(socket));
 
     socket.on('startGame', () => {
-        const room = rooms[currentRoom];
+        const code = socket.data.roomCode;
+        const room = rooms[code];
         if (!room || room.hostId !== socket.id) return;
         if (room.players.length < 2) return socket.emit('gameError', 'Для старта нужно минимум 2 игрока!');
 
         room.state = 'playing';
         room.phase = 0;
-        room.submissions = 0;
-        // Создаём пустую карточку на каждого игрока
-        room.cards = room.players.map(() => ({
-            idea: null,
-            drawing: null,
-            comment: null,
-            assignedTo: null
-        }));
+        room.cards = room.players.map(() => ({ idea: null, drawing: null, comment: null, assignedTo: null }));
 
         room.players.forEach((p, idx) => {
+            p.lastActive = Date.now();
             room.cards[idx].assignedTo = p.id;
-            io.to(p.id).emit('nextPhase', {
-                phase: 0,
-                prompt: null
-            });
+            io.to(p.id).emit('nextPhase', { phase: 0, prompt: null });
         });
     });
 
     socket.on('submitStep', (content) => {
-        const room = rooms[currentRoom];
+        const code = socket.data.roomCode;
+        const room = rooms[code];
         if (!room || room.state !== 'playing') return;
 
         const player = room.players.find(p => p.id === socket.id);
         if (!player) return;
+        player.lastActive = Date.now();
 
         const card = room.cards.find(c => c.assignedTo === socket.id);
         if (!card) return;
 
-        if (room.phase === 0 && !card.idea) {
-            card.idea = { author: player.name, text: content };
-        } else if (room.phase === 1 && !card.drawing) {
-            card.drawing = { author: player.name, img: content };
-        } else if (room.phase === 2 && !card.comment) {
-            card.comment = { author: player.name, text: content };
-        } else {
-            return; // Уже отправил в этом этапе
-        }
+        if (room.phase === 0 && !card.idea) card.idea = { author: player.name, text: content };
+        else if (room.phase === 1 && !card.drawing) card.drawing = { author: player.name, img: content };
+        else if (room.phase === 2 && !card.comment) card.comment = { author: player.name, text: content };
+        else return;
 
-        room.submissions++;
-        io.to(currentRoom).emit('waitingStatus', { ready: room.submissions, total: room.players.length });
-
-        if (room.submissions >= room.players.length) {
-            room.phase++;
-            room.submissions = 0;
-
-            if (room.phase > 2) {
-                room.state = 'results';
-                io.to(currentRoom).emit('showResults', room.cards);
-            } else {
-                // Распределяем карточки случайным образом так, чтобы никто не получил свою предыдущую
-                const n = room.players.length;
-                const perm = getDerangement(n);
-                const prevAssignees = room.cards.map(c => c.assignedTo);
-
-                room.cards.forEach((c, idx) => {
-                    // Находим нового игрока по перестановке
-                    const targetPlayer = room.players[perm[idx]];
-                    c.assignedTo = targetPlayer.id;
-
-                    const promptData = room.phase === 1 ? c.idea.text : c.drawing.img;
-                    io.to(targetPlayer.id).emit('nextPhase', {
-                        phase: room.phase,
-                        prompt: promptData
-                    });
-                });
-            }
-        }
+        checkPhaseCompletion(code);
     });
 
     socket.on('restartLobby', () => {
-        const room = rooms[currentRoom];
+        const code = socket.data.roomCode;
+        const room = rooms[code];
         if (!room || room.hostId !== socket.id) return;
         room.state = 'lobby';
-        io.to(currentRoom).emit('backToLobby', { players: room.players, hostId: room.hostId });
+        room.players.forEach(p => p.lastActive = Date.now());
+        io.to(code).emit('backToLobby', { players: room.players, hostId: room.hostId });
     });
-
-    function handlePlayerLeave(socket) {
-        if (!currentRoom || !rooms[currentRoom]) return;
-        const room = rooms[currentRoom];
-        socket.leave(currentRoom);
-        room.players = room.players.filter(p => p.id !== socket.id);
-
-        if (room.players.length === 0) {
-            delete rooms[currentRoom];
-        } else {
-            if (room.hostId === socket.id) {
-                room.hostId = room.players.id;
-            }
-            io.to(currentRoom).emit('updatePlayers', { players: room.players, hostId: room.hostId });
-        }
-        currentRoom = null;
-    }
 
     socket.on('disconnect', () => handlePlayerLeave(socket));
 });
