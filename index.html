@@ -1,585 +1,423 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>3D Ларёк на Окраине — Кооп Выживание</title>
-  <style>
-    * {
-      box-sizing: border-box;
-      font-family: 'Segoe UI', Tahoma, sans-serif;
-      user-select: none;
-      -webkit-user-select: none;
-      touch-action: manipulation;
-    }
-    body {
-      margin: 0;
-      background: #090d16;
-      color: #f8fafc;
-      overflow: hidden;
-      width: 100vw;
-      height: 100vh;
-    }
-    #loginScreen, #queueScreen {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: rgba(30, 41, 59, 0.95);
-      padding: 25px;
-      border-radius: 14px;
-      text-align: center;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.7);
-      border: 1px solid #334155;
-      width: 90%;
-      max-width: 400px;
-      z-index: 100;
-    }
-    input {
-      padding: 12px;
-      border-radius: 6px;
-      border: 1px solid #475569;
-      background: #0f172a;
-      color: #fff;
-      font-size: 16px;
-      width: 100%;
-      margin-bottom: 12px;
-    }
-    button {
-      padding: 12px 18px;
-      border-radius: 6px;
-      border: none;
-      background: #2563eb;
-      color: #fff;
-      font-size: 15px;
-      font-weight: bold;
-      cursor: pointer;
-    }
-    button:active { transform: scale(0.96); }
-    #hudOverlay {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      padding: 8px 12px;
-      background: rgba(15, 23, 42, 0.85);
-      border-bottom: 1px solid #334155;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 6px;
-      z-index: 20;
-    }
-    .stats {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      font-weight: bold;
-      font-size: 13px;
-    }
-    .shop {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 4px;
-    }
-    .shop button {
-      padding: 6px 8px;
-      font-size: 12px;
-      background: #059669;
-    }
-    .tool-bar {
-      display: none;
-      position: fixed;
-      bottom: 15px;
-      left: 50%;
-      transform: translateX(-50%);
-      gap: 8px;
-      z-index: 20;
-      background: rgba(15, 23, 42, 0.8);
-      padding: 6px 10px;
-      border-radius: 10px;
-      border: 1px solid #334155;
-    }
-    .tool-btn {
-      padding: 7px 11px;
-      background: #334155;
-      border-radius: 7px;
-      font-size: 12px;
-      cursor: pointer;
-      border: 2px solid transparent;
-    }
-    .tool-btn.active {
-      background: #eab308;
-      color: #0f172a;
-      font-weight: bold;
-      border-color: #fef08a;
-    }
-    #labelsLayer {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-      z-index: 10;
-    }
-    .world-label {
-      position: absolute;
-      transform: translate(-50%, -100%);
-      background: rgba(15, 23, 42, 0.78);
-      padding: 2px 7px;
-      border-radius: 5px;
-      font-size: 11px;
-      font-weight: bold;
-      white-space: nowrap;
-      border: 1px solid rgba(255,255,255,0.15);
-    }
-    .mobile-controls {
-      position: fixed;
-      bottom: 18px;
-      left: 0;
-      right: 0;
-      padding: 0 20px;
-      display: none;
-      justify-content: space-between;
-      align-items: flex-end;
-      pointer-events: none;
-      z-index: 50;
-    }
-    @media (pointer: coarse) {
-      .mobile-controls.active-game { display: flex; }
-      .tool-bar { bottom: 135px; }
-    }
-    #joystickZone {
-      width: 115px;
-      height: 115px;
-      background: rgba(255, 255, 255, 0.1);
-      border: 2px solid rgba(255, 255, 255, 0.3);
-      border-radius: 50%;
-      position: relative;
-      pointer-events: auto;
-      touch-action: none;
-    }
-    #joystickKnob {
-      width: 46px;
-      height: 46px;
-      background: rgba(56, 189, 248, 0.8);
-      border: 2px solid #fff;
-      border-radius: 50%;
-      position: absolute;
-      top: 32px;
-      left: 32px;
-      pointer-events: none;
-    }
-    #actionBtn {
-      width: 85px;
-      height: 85px;
-      border-radius: 50%;
-      background: rgba(234, 179, 8, 0.9);
-      border: 3px solid #fef08a;
-      color: #0f172a;
-      font-weight: bold;
-      font-size: 13px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      pointer-events: auto;
-      touch-action: none;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Остров Выживания</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+        body, html { width: 100%; height: 100%; overflow: hidden; background: #1a252f; font-family: sans-serif; color: white; }
+        
+        /* Оверлей полноэкранного режима */
+        #fullscreen-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 30, 0.95); z-index: 9999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 20px;
+        }
+        #fullscreen-btn {
+            padding: 18px 36px; font-size: 20px; font-weight: bold;
+            background: #27ae60; color: white; border: none; border-radius: 12px;
+            cursor: pointer; box-shadow: 0 4px 15px rgba(39, 174, 96, 0.4); margin-top: 15px;
+        }
+
+        /* Главное меню */
+        #menu-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100;
+        }
+        .menu-box {
+            background: rgba(0, 0, 0, 0.5); padding: 25px; border-radius: 16px;
+            display: flex; flex-direction: column; gap: 15px; width: 320px; text-align: center;
+        }
+        input {
+            padding: 12px; font-size: 18px; border-radius: 8px; border: none; text-align: center; letter-spacing: 3px;
+        }
+        button.action-btn {
+            padding: 14px; font-size: 16px; font-weight: bold; border: none; border-radius: 8px;
+            background: #e67e22; color: white; cursor: pointer;
+        }
+        button.action-btn.create { background: #2ecc71; }
+        #error-msg { color: #ff6b6b; font-size: 14px; min-height: 18px; }
+
+        /* Игровой интерфейс */
+        #game-ui { display: none; position: fixed; top: 10px; left: 10px; z-index: 50; pointer-events: none; }
+        .hud-badge {
+            background: rgba(0, 0, 0, 0.6); padding: 8px 14px; border-radius: 8px; font-size: 16px; font-weight: bold;
+        }
+
+        /* Мобильный джойстик */
+        #joystick-zone {
+            position: fixed; bottom: 20px; left: 20px; width: 140px; height: 140px;
+            z-index: 60; display: none; touch-action: none;
+        }
+        #joystick-base {
+            width: 120px; height: 120px; background: rgba(255, 255, 255, 0.15);
+            border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 50%;
+            position: absolute; top: 10px; left: 10px;
+        }
+        #joystick-stick {
+            width: 50px; height: 50px; background: rgba(255, 255, 255, 0.7);
+            border-radius: 50%; position: absolute; top: 35px; left: 35px;
+        }
+
+        canvas { display: block; }
+    </style>
 </head>
 <body>
 
-  <div id="loginScreen">
-    <h2>🌙 3D Ларёк на Окраине</h2>
-    <p style="font-size:13px; color:#cbd5e1;">Жди гостей у входа, подавай заказы и прогоняй монстров из леса (до 6 игроков)</p>
-    <input type="text" id="nickname" placeholder="Твой никнейм" maxlength="14">
-    <button style="width:100%;" onclick="join()">Выйти на смену</button>
-  </div>
-
-  <div id="queueScreen" style="display:none;">
-    <h2>⏳ Все 6 мест в ларьке заняты</h2>
-    <p>Ваше место в очереди: <b id="queuePos" style="font-size:24px; color:#38bdf8;">1</b></p>
-    <p style="color:#94a3b8; font-size:13px;">Вы зайдёте автоматически, как только освободится место.</p>
-  </div>
-
-  <div id="hudOverlay">
-    <div class="stats">
-      <span>💰 <b id="money" style="color:#4ade80;">50</b>₽</span>
-      <span>🏠 <b id="hp" style="color:#f87171;">100/100</b></span>
-      <span>👥 <b id="playersCount">1</b>/6</span>
-      <span>⏳ <b id="queueCount">0</b></span>
-      <span>🚶 Идут гости: <b id="visitorsCount" style="color:#facc15;">0</b></span>
+    <!-- 1. Экран требования полного экрана и горизонтали -->
+    <div id="fullscreen-overlay">
+        <h2>Для игры нужен полноэкранный режим</h2>
+        <p style="margin-top: 8px; color: #bdc3c7;">Экран автоматически перевернётся горизонтально</p>
+        <button id="fullscreen-btn">На весь экран</button>
     </div>
-    <div class="shop">
-      <button onclick="buy('speed')" id="btnSpeed">👟 Бег (60₽)</button>
-      <button onclick="buy('weapon')" id="btnWeapon">🔦 Защита (75₽)</button>
-      <button onclick="buy('armor')" id="btnArmor">🛡️ Стены (50₽)</button>
-      <button onclick="buy('repair')">🔧 Ремонт (30₽)</button>
+
+    <!-- 2. Главное меню -->
+    <div id="menu-screen">
+        <div class="menu-box">
+            <h2>🏝 Остров Выживания</h2>
+            <button class="action-btn create" id="btn-create">Создать сервер</button>
+            <hr style="border-color: rgba(255,255,255,0.2);">
+            <input type="number" id="room-input" placeholder="Номер (4 цифры)" maxlength="4">
+            <button class="action-btn" id="btn-join">Войти по номеру</button>
+            <div id="error-msg"></div>
+        </div>
     </div>
-  </div>
 
-  <div class="tool-bar" id="toolBar">
-    <div class="tool-btn active" id="t1" onclick="selectTool(1)"> 🔦 Фонарик</div>
-    <div class="tool-btn" id="t2" onclick="selectTool(2)"> 🧹 Швабра</div>
-    <div class="tool-btn" id="t3" onclick="selectTool(3)"> 🧨 Петарда</div>
-  </div>
+    <!-- HUD в игре -->
+    <div id="game-ui">
+        <div class="hud-badge">Сервер: <span id="hud-room">----</span> | Игроков: <span id="hud-players">1</span>/10</div>
+    </div>
 
-  <div id="labelsLayer"></div>
+    <!-- Сенсорный джойстик -->
+    <div id="joystick-zone">
+        <div id="joystick-base">
+            <div id="joystick-stick"></div>
+        </div>
+    </div>
 
-  <div class="mobile-controls" id="mobileControls">
-    <div id="joystickZone"><div id="joystickKnob"></div></div>
-    <div id="actionBtn">ДЕЙСТВИЕ</div>
-  </div>
+    <canvas id="gameCanvas"></canvas>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
 
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="https://cloudflare.com"></script>
-  <script>
-    const socket = io();
-    let state = null;
-    const keys = { up: false, down: false, left: false, right: false };
+        // ==========================================
+        // 1. УПРАВЛЕНИЕ ПОЛНЫМ ЭКРАНОМ И ОРИЕНТАЦИЕЙ
+        // ==========================================
+        const fsOverlay = document.getElementById('fullscreen-overlay');
+        const fsBtn = document.getElementById('fullscreen-btn');
 
-    function join() { socket.emit('joinGame', document.getElementById('nickname').value); }
-    function buy(type) { socket.emit('buyUpgrade', type); }
-    function selectTool(num) { socket.emit('selectTool', num); }
-    function triggerInteract() { socket.emit('interact'); }
-
-    // --- НАСТРОЙКА 3D СЦЕНЫ THREE.JS ---
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x090d16);
-    scene.fog = new THREE.FogExp2(0x090d16, 0.032); // Ночной туман на окраине
-
-    const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 100);
-    camera.position.set(0, 14, 15);
-    camera.lookAt(0, 0, -1);
-
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.shadowMap.enabled = true;
-    document.body.appendChild(renderer.domElement);
-
-    window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    });
-
-    // Освещение
-    const ambientLight = new THREE.AmbientLight(0x334155, 1.1);
-    scene.add(ambientLight);
-
-    const kioskLamp = new THREE.PointLight(0xffedd5, 2.2, 22);
-    kioskLamp.position.set(0, 5, 0);
-    kioskLamp.castShadow = true;
-    scene.add(kioskLamp);
-
-    // Земля и тропинка для посетителей
-    const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(80, 80),
-      new THREE.MeshStandardMaterial({ color: 0x131c29 })
-    );
-    ground.rotation.x = -Math.PI / 2;
-    ground.receiveShadow = true;
-    scene.add(ground);
-
-    // Пол ларька (освещённая площадка)
-    const floor = new THREE.Mesh(
-      new THREE.BoxGeometry(13, 0.2, 10),
-      new THREE.MeshStandardMaterial({ color: 0x263244 })
-    );
-    floor.position.set(0, 0.1, -0.5);
-    floor.receiveShadow = true;
-    scene.add(floor);
-
-    // Дорога с окраины, по которой долго идут посетители
-    const road = new THREE.Mesh(
-      new THREE.PlaneGeometry(3.5, 22),
-      new THREE.MeshStandardMaterial({ color: 0x1e293b })
-    );
-    road.rotation.x = -Math.PI / 2;
-    road.position.set(0, 0.05, -16);
-    scene.add(road);
-
-    // Арка входа (где ждём посетителей)
-    const archMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 0.4 });
-    const postL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 2.5, 0.3), archMat);
-    postL.position.set(-1.6, 1.25, -5.5);
-    const postR = postL.clone();
-    postR.position.set(1.6, 1.25, -5.5);
-    const archTop = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.3, 0.4), archMat);
-    archTop.position.set(0, 2.5, -5.5);
-    scene.add(postL, postR, archTop);
-
-    // Кухня (стойка выдачи еды)
-    const kitchenMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(3.2, 1.2, 1.2),
-      new THREE.MeshStandardMaterial({ color: 0xd97706 })
-    );
-    kitchenMesh.position.set(0, 0.7, 3.5);
-    scene.add(kitchenMesh);
-
-    // Деревья вокруг поляны (лес, откуда идут монстры)
-    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x3f2e21 });
-    const leavesMat = new THREE.MeshStandardMaterial({ color: 0x0f291e });
-    for (let i = 0; i < 28; i++) {
-      const angle = (i / 28) * Math.PI * 2;
-      if (Math.abs(Math.sin(angle) + 1) < 0.25 && Math.cos(angle) > -0.3) continue;
-      const r = 13 + (i % 3) * 3.5;
-      const tree = new THREE.Group();
-      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.35, 2), trunkMat);
-      trunk.position.y = 1;
-      const crown = new THREE.Mesh(new THREE.ConeGeometry(1.4, 3.5, 7), leavesMat);
-      crown.position.y = 3.2;
-      tree.add(trunk, crown);
-      tree.position.set(Math.cos(angle) * r, 0, Math.sin(angle) * r);
-      scene.add(tree);
-    }
-
-    // 3D Столики
-    const tableMeshes = {};
-    [-4.5, 0, 4.5].forEach((tx, idx) => {
-      const grp = new THREE.Group();
-      const top = new THREE.Mesh(
-        new THREE.CylinderGeometry(1.0, 1.0, 0.15, 16),
-        new THREE.MeshStandardMaterial({ color: 0x64748b })
-      );
-      top.position.y = 0.9;
-      const leg = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.15, 0.2, 0.9, 8),
-        new THREE.MeshStandardMaterial({ color: 0x334155 })
-      );
-      leg.position.y = 0.45;
-      const guest = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.3, 0.35, 1.1, 12),
-        new THREE.MeshStandardMaterial({ color: 0xfacc15 })
-      );
-      guest.position.set(0, 0.75, -1.1);
-      guest.visible = false;
-
-      grp.add(top, leg, guest);
-      grp.position.set(tx, 0.1, -2.5);
-      scene.add(grp);
-      tableMeshes[idx + 1] = { group: grp, top, guest };
-    });
-
-    const playerMeshes = {};
-    const visitorMeshes = {};
-    const monsterMeshes = {};
-
-    function createCharacterMesh(colorHex, isMonster = false) {
-      const grp = new THREE.Group();
-      const body = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.35, 0.42, isMonster ? 1.5 : 1.2, 12),
-        new THREE.MeshStandardMaterial({ color: colorHex })
-      );
-      body.position.y = isMonster ? 0.85 : 0.7;
-      const head = new THREE.Mesh(
-        new THREE.SphereGeometry(isMonster ? 0.38 : 0.3, 12, 12),
-        new THREE.MeshStandardMaterial({ color: isMonster ? 0x991b1b : 0xfde68a })
-      );
-      head.position.y = isMonster ? 1.75 : 1.5;
-      grp.add(body, head);
-
-      if (!isMonster) {
-        const food = new THREE.Mesh(
-          new THREE.SphereGeometry(0.22, 8, 8),
-          new THREE.MeshStandardMaterial({ color: 0xf97316 })
-        );
-        food.position.set(0, 1.1, 0.55);
-        food.visible = false;
-        grp.add(food);
-        grp.userData.food = food;
-      }
-      scene.add(grp);
-      return grp;
-    }
-    const labelsLayer = document.getElementById('labelsLayer');
-    function updateLabels() {
-      if (!state) return;
-      let html = '';
-      const addLabel = (x, y, z, text, color = '#fff') => {
-        const vec = new THREE.Vector3(x, y, z);
-        vec.project(camera);
-        if (vec.z > 1) return;
-        const sx = (vec.x * 0.5 + 0.5) * window.innerWidth;
-        const sy = (-(vec.y * 0.5) + 0.5) * window.innerHeight;
-        html += `<div class="world-label" style="left:${sx}px; top:${sy}px; color:${color};">${text}</div>`;
-      };
-
-      addLabel(0, 1.8, 3.5, '🍔 КУХНЯ [E]', '#fbbf24');
-      addLabel(0, 2.8, -5.5, '🚪 ВХОД (Ждём гостей)', '#38bdf8');
-
-      state.game.tables.forEach(t => {
-        let lbl = 'Свободно', col = '#94a3b8';
-        if (t.status === 'waiting') { lbl = '🙋 Ждёт еду!'; col = '#facc15'; }
-        if (t.status === 'eating')  { lbl = '😋 Ест...'; col = '#4ade80'; }
-        if (t.status === 'dirty')   { lbl = '🍽️ Убрать! (+30₽)'; col = '#f87171'; }
-        addLabel(t.x, 1.8, t.z, lbl, col);
-      });
-
-      state.game.visitors.forEach(v => {
-        addLabel(v.x, 2.0, v.z, '🚶 Посетитель идёт...', '#fde047');
-      });
-
-      state.game.monsters.forEach(m => {
-        addLabel(m.x, 2.3, m.z, `👾 Страх: ${Math.min(100, Math.round(m.fear))}%`, '#f87171');
-      });
-
-      for (let id in state.players) {
-        const p = state.players[id];
-        addLabel(p.x, 2.1, p.z, p.name, id === socket.id ? '#38bdf8' : '#e2e8f0');
-      }
-      labelsLayer.innerHTML = html;
-    }
-
-    socket.on('joinedRoom', () => {
-      document.getElementById('loginScreen').style.display = 'none';
-      document.getElementById('queueScreen').style.display = 'none';
-      document.getElementById('hudOverlay').style.display = 'flex';
-      document.getElementById('toolBar').style.display = 'flex';
-      document.getElementById('mobileControls').classList.add('active-game');
-    });
-
-    socket.on('inQueue', (pos) => {
-      document.getElementById('loginScreen').style.display = 'none';
-      document.getElementById('hudOverlay').style.display = 'none';
-      document.getElementById('toolBar').style.display = 'none';
-      document.getElementById('mobileControls').classList.remove('active-game');
-      document.getElementById('queueScreen').style.display = 'block';
-      document.getElementById('queuePos').textContent = pos;
-    });
-
-    socket.on('state', (serverState) => {
-      state = serverState;
-      const g = state.game;
-      document.getElementById('money').textContent = g.money;
-      document.getElementById('hp').textContent = `${Math.ceil(g.kioskHp)}/${g.maxHp}`;
-      document.getElementById('playersCount').textContent = Object.keys(state.players).length;
-      document.getElementById('queueCount').textContent = state.queueCount;
-      document.getElementById('visitorsCount').textContent = g.visitors.length;
-
-      document.getElementById('btnSpeed').textContent = `👟 Бег ур.${g.upgrades.speed} (${g.upgrades.speed * 60}₽)`;
-      document.getElementById('btnWeapon').textContent = `🔦 Защита ур.${g.upgrades.weapon} (${g.upgrades.weapon * 75}₽)`;
-      document.getElementById('btnArmor').textContent = `🛡️ Стены ур.${g.upgrades.armor} (${g.upgrades.armor * 50}₽)`;
-
-      const me = state.players[socket.id];
-      if (me) {
-       .forEach(n => document.getElementById('t' + n).classList.toggle('active', me.tool === n));
-        camera.position.x += (me.x * 0.45 - camera.position.x) * 0.08;
-      }
-
-      g.tables.forEach(t => {
-        const tm = tableMeshes[t.id];
-        if (tm) {
-          tm.guest.visible = (t.status === 'waiting' || t.status === 'eating');
-          tm.top.material.color.setHex(t.status === 'dirty' ? 0xef4444 : 0x64748b);
+        async function enterFullscreenAndLandscape() {
+            try {
+                const elem = document.documentElement;
+                if (elem.requestFullscreen) {
+                    await elem.requestFullscreen();
+                } else if (elem.webkitRequestFullscreen) {
+                    await elem.webkitRequestFullscreen();
+                }
+                if (screen.orientation && screen.orientation.lock) {
+                    await screen.orientation.lock('landscape').catch(() => {});
+                }
+            } catch (err) {
+                console.log('Ошибка фуллскрина:', err);
+            }
         }
-      });
 
-      for (let id in playerMeshes) {
-        if (!state.players[id]) { scene.remove(playerMeshes[id]); delete playerMeshes[id]; }
-      }
-      for (let id in state.players) {
-        const p = state.players[id];
-        if (!playerMeshes[id]) playerMeshes[id] = createCharacterMesh(p.color, false);
-        playerMeshes[id].position.set(p.x, 0.1, p.z);
-        playerMeshes[id].rotation.y = p.rotY || 0;
-        playerMeshes[id].userData.food.visible = (p.holding === 'food');
-      }
+        function checkFullscreen() {
+            const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
+            fsOverlay.style.display = isFullscreen ? 'none' : 'flex';
+            resizeCanvas();
+        }
 
-      const activeVisIds = new Set(g.visitors.map(v => v.id));
-      for (let id in visitorMeshes) {
-        if (!activeVisIds.has(Number(id))) { scene.remove(visitorMeshes[id]); delete visitorMeshes[id]; }
-      }
-      g.visitors.forEach(v => {
-        if (!visitorMeshes[v.id]) visitorMeshes[v.id] = createCharacterMesh(0xfacc15, false);
-        visitorMeshes[v.id].position.set(v.x, 0, v.z);
-      });
+        fsBtn.addEventListener('click', enterFullscreenAndLandscape);
+        document.addEventListener('fullscreenchange', checkFullscreen);
+        document.addEventListener('webkitfullscreenchange', checkFullscreen);
 
-      const activeMonIds = new Set(g.monsters.map(m => m.id));
-      for (let id in monsterMeshes) {
-        if (!activeMonIds.has(Number(id))) { scene.remove(monsterMeshes[id]); delete monsterMeshes[id]; }
-      }
-      g.monsters.forEach(m => {
-        if (!monsterMeshes[m.id]) monsterMeshes[m.id] = createCharacterMesh(0x7f1d1d, true);
-        monsterMeshes[m.id].position.set(m.x, 0, m.z);
-        monsterMeshes[m.id].lookAt(0, 0, 0);
-      });
-    });
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
 
-    window.addEventListener('keydown', (e) => {
-      if (document.activeElement.tagName === 'INPUT') return;
-      if (e.code === 'KeyW' || e.code === 'ArrowUp') keys.up = true;
-      if (e.code === 'KeyS' || e.code === 'ArrowDown') keys.down = true;
-      if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = true;
-      if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = true;
-      if (e.code === 'Space' || e.code === 'KeyE') { e.preventDefault(); triggerInteract(); }
-      if (e.key === '1') selectTool(1);
-      if (e.key === '2') selectTool(2);
-      if (e.key === '3') selectTool(3);
-    });
+        // ==========================================
+        // 2. МЕНЮ И ПОДКЛЮЧЕНИЕ К КОМНАТАМ
+        // ==========================================
+        const menuScreen = document.getElementById('menu-screen');
+        const gameUi = document.getElementById('game-ui');
+        const joystickZone = document.getElementById('joystick-zone');
+        const errorMsg = document.getElementById('error-msg');
 
-    window.addEventListener('keyup', (e) => {
-      if (e.code === 'KeyW' || e.code === 'ArrowUp') keys.up = false;
-      if (e.code === 'KeyS' || e.code === 'ArrowDown') keys.down = false;
-      if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = false;
-      if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = false;
-    });
+        let myId = null;
+        let players = {};
+        let isPlaying = false;
 
-    const joyZone = document.getElementById('joystickZone');
-    const joyKnob = document.getElementById('joystickKnob');
-    let joyTouchId = null;
+        document.getElementById('btn-create').addEventListener('click', () => {
+            socket.emit('createRoom', handleRoomResponse);
+        });
 
-    function handleJoystickMove(touch) {
-      const rect = joyZone.getBoundingClientRect();
-      let dx = touch.clientX - (rect.left + rect.width / 2);
-      let dy = touch.clientY - (rect.top + rect.height / 2);
-      const dist = Math.hypot(dx, dy);
-      if (dist > 34) { dx = (dx / dist) * 34; dy = (dy / dist) * 34; }
-      joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
-      keys.left = dx < -10; keys.right = dx > 10;
-      keys.up = dy < -10; keys.down = dy > 10;
-    }
+        document.getElementById('btn-join').addEventListener('click', () => {
+            const code = document.getElementById('room-input').value.trim();
+            if (!code) return errorMsg.textContent = 'Введите номер сервера!';
+            socket.emit('joinRoom', code, handleRoomResponse);
+        });
 
-    function resetJoystick() {
-      joyTouchId = null;
-      joyKnob.style.transform = `translate(0px, 0px)`;
-      keys.up = keys.down = keys.left = keys.right = false;
-    }
+        function handleRoomResponse(res) {
+            if (res.error) {
+                errorMsg.textContent = res.error;
+                return;
+            }
+            myId = res.myId;
+            players = res.players;
+            document.getElementById('hud-room').textContent = res.roomCode;
+            updatePlayerCount();
 
-    joyZone.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      if (joyTouchId === null) {
-        joyTouchId = e.changedTouches.identifier;
-        handleJoystickMove(e.changedTouches);
-      }
-    }, { passive: false });
+            generateIsland(res.seed);
 
-    joyZone.addEventListener('touchmove', (e) => {
-      e.preventDefault();
-      for (let t of e.changedTouches) if (t.identifier === joyTouchId) handleJoystickMove(t);
-    }, { passive: false });
+            menuScreen.style.display = 'none';
+            gameUi.style.display = 'block';
+            joystickZone.style.display = 'block';
+            isPlaying = true;
+            requestAnimationFrame(gameLoop);
+        }
 
-    joyZone.addEventListener('touchend', (e) => {
-      for (let t of e.changedTouches) if (t.identifier === joyTouchId) resetJoystick();
-    });
-    joyZone.addEventListener('touchcancel', resetJoystick);
+        function updatePlayerCount() {
+            document.getElementById('hud-players').textContent = Object.keys(players).length;
+        }
 
-    const actionBtn = document.getElementById('actionBtn');
-    actionBtn.addEventListener('touchstart', (e) => { e.preventDefault(); triggerInteract(); }, { passive: false });
-    actionBtn.addEventListener('mousedown', (e) => { e.preventDefault(); triggerInteract(); });
+        socket.on('playerJoined', (p) => { players[p.id] = p; updatePlayerCount(); });
+        socket.on('playerMoved', (p) => { if (players[p.id]) { players[p.id].x = p.x; players[p.id].y = p.y; } });
+        socket.on('playerLeft', (id) => { delete players[id]; updatePlayerCount(); });
 
-    setInterval(() => {
-      if (keys.up || keys.down || keys.left || keys.right) socket.emit('move', keys);
-    }, 1000 / 30);
+        // ==========================================
+        // 3. ГЕНЕРАЦИЯ ОСТРОВА ПО СИДУ
+        // ==========================================
+        const WORLD_SIZE = 4000;
+        const TILE_SIZE = 64;
+        const GRID_COUNT = Math.ceil(WORLD_SIZE / TILE_SIZE);
+        let worldGrid = []; // 0: вода, 1: песок, 2: трава
+        let worldObjects = []; // Деревья и камни
 
-    function animate() {
-      requestAnimationFrame(animate);
-      updateLabels();
-      renderer.render(scene, camera);
-    }
-    animate();
-  </script>
+        function mulberry32(a) {
+            return function() {
+                var t = a += 0x6D2B79F5;
+                t = Math.imul(t ^ t >>> 15, t | 1);
+                t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+                return ((t ^ t >>> 14) >>> 0) / 4294967296;
+            }
+        }
+
+        function generateIsland(seed) {
+            const rand = mulberry32(seed);
+            worldGrid = [];
+            worldObjects = [];
+            const center = GRID_COUNT / 2;
+
+            for (let y = 0; y < GRID_COUNT; y++) {
+                let row = [];
+                for (let x = 0; x < GRID_COUNT; x++) {
+                    const dx = x - center;
+                    const dy = y - center;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const noise = (rand() - 0.5) * 4;
+
+                    if (dist + noise > center * 0.75) row.push(0);      // Океан
+                    else if (dist + noise > center * 0.62) row.push(1); // Песок
+                    else row.push(2);                                   // Трава
+                }
+                worldGrid.push(row);
+            }
+
+            for (let i = 0; i < 400; i++) {
+                const ox = rand() * WORLD_SIZE;
+                const oy = rand() * WORLD_SIZE;
+                const gx = Math.floor(ox / TILE_SIZE);
+                const gy = Math.floor(oy / TILE_SIZE);
+
+                if (worldGrid[gy] && worldGrid[gy][gx] === 2) {
+                    worldObjects.push({
+                        x: ox,
+                        y: oy,
+                        type: rand() > 0.3 ? 'tree' : 'rock',
+                        radius: rand() > 0.3 ? 28 : 20
+                    });
+                }
+            }
+        }
+        // ==========================================
+        // 4. МОБИЛЬНОЕ УПРАВЛЕНИЕ (ДЖОЙСТИК + КЛАВИШИ)
+        // ==========================================
+        let moveVec = { x: 0, y: 0 };
+        const stick = document.getElementById('joystick-stick');
+        const base = document.getElementById('joystick-base');
+        let touchId = null;
+
+        base.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.changedTouches;
+            touchId = touch.identifier;
+            updateJoystick(touch);
+        });
+
+        base.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                if (e.changedTouches[i].identifier === touchId) {
+                    updateJoystick(e.changedTouches[i]);
+                }
+            }
+        });
+
+        const resetJoystick = (e) => {
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                if (e.changedTouches[i].identifier === touchId) {
+                    touchId = null;
+                    stick.style.transform = `translate(0px, 0px)`;
+                    moveVec = { x: 0, y: 0 };
+                }
+            }
+        };
+        base.addEventListener('touchend', resetJoystick);
+        base.addEventListener('touchcancel', resetJoystick);
+
+        function updateJoystick(touch) {
+            const rect = base.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            let dx = touch.clientX - centerX;
+            let dy = touch.clientY - centerY;
+            const maxDist = 40;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist > maxDist) {
+                dx = (dx / dist) * maxDist;
+                dy = (dy / dist) * maxDist;
+            }
+            stick.style.transform = `translate(${dx}px, ${dy}px)`;
+            moveVec.x = dx / maxDist;
+            moveVec.y = dy / maxDist;
+        }
+
+        const keys = {};
+        window.addEventListener('keydown', e => keys[e.code] = true);
+        window.addEventListener('keyup', e => keys[e.code] = false);
+
+        // ==========================================
+        // 5. ИГРОВОЙ ЦИКЛ И ОПТИМИЗИРОВАННЫЙ РЕНДЕР
+        // ==========================================
+        let lastEmit = 0;
+
+        function gameLoop(timestamp) {
+            if (!isPlaying) return;
+
+            const me = players[myId];
+            if (me) {
+                let vx = moveVec.x;
+                let vy = moveVec.y;
+                if (vx === 0 && vy === 0) {
+                    if (keys['KeyW'] || keys['ArrowUp']) vy -= 1;
+                    if (keys['KeyS'] || keys['ArrowDown']) vy += 1;
+                    if (keys['KeyA'] || keys['ArrowLeft']) vx -= 1;
+                    if (keys['KeyD'] || keys['ArrowRight']) vx += 1;
+                    if (vx !== 0 && vy !== 0) {
+                        const len = Math.sqrt(vx * vx + vy * vy);
+                        vx /= len; vy /= len;
+                    }
+                }
+
+                if (vx !== 0 || vy !== 0) {
+                    const speed = 4;
+                    me.x = Math.max(0, Math.min(WORLD_SIZE, me.x + vx * speed));
+                    me.y = Math.max(0, Math.min(WORLD_SIZE, me.y + vy * speed));
+
+                    if (timestamp - lastEmit > 33) {
+                        socket.emit('move', { x: me.x, y: me.y });
+                        lastEmit = timestamp;
+                    }
+                }
+
+                render(me);
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function render(cameraTarget) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const camX = cameraTarget.x - canvas.width / 2;
+            const camY = cameraTarget.y - canvas.height / 2;
+
+            // ЗАПАС ДЛЯ ОТСЕЧЕНИЯ (чтобы края не мигали)
+            const CULL_PADDING = 100;
+            const viewLeft = camX - CULL_PADDING;
+            const viewRight = camX + canvas.width + CULL_PADDING;
+            const viewTop = camY - CULL_PADDING;
+            const viewBottom = camY + canvas.height + CULL_PADDING;
+
+            // 1. Видимые тайлы земли
+            const startCol = Math.max(0, Math.floor(viewLeft / TILE_SIZE));
+            const endCol = Math.min(GRID_COUNT - 1, Math.ceil(viewRight / TILE_SIZE));
+            const startRow = Math.max(0, Math.floor(viewTop / TILE_SIZE));
+            const endRow = Math.min(GRID_COUNT - 1, Math.ceil(viewBottom / TILE_SIZE));
+
+            for (let r = startRow; r <= endRow; r++) {
+                for (let c = startCol; c <= endCol; c++) {
+                    const tile = worldGrid[r][c];
+                    if (tile === 0) ctx.fillStyle = '#2980b9';
+                    else if (tile === 1) ctx.fillStyle = '#f1c40f';
+                    else ctx.fillStyle = '#2ecc71';
+
+                    ctx.fillRect(
+                        Math.floor(c * TILE_SIZE - camX),
+                        Math.floor(r * TILE_SIZE - camY),
+                        TILE_SIZE + 1,
+                        TILE_SIZE + 1
+                    );
+                }
+            }
+
+            // 2. Видимые объекты (деревья и камни)
+            for (let i = 0; i < worldObjects.length; i++) {
+                const obj = worldObjects[i];
+                if (obj.x + obj.radius < viewLeft || obj.x - obj.radius > viewRight ||
+                    obj.y + obj.radius < viewTop || obj.y - obj.radius > viewBottom) {
+                    continue;
+                }
+
+                const screenX = obj.x - camX;
+                const screenY = obj.y - camY;
+
+                ctx.fillStyle = obj.type === 'tree' ? '#1e8449' : '#7f8c8d';
+                ctx.beginPath();
+                ctx.arc(screenX, screenY, obj.radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // 3. Видимые игроки
+            for (let id in players) {
+                const p = players[id];
+                const playerRadius = 18;
+                if (p.x + playerRadius < viewLeft || p.x - playerRadius > viewRight ||
+                    p.y + playerRadius < viewTop || p.y - playerRadius > viewBottom) {
+                    continue;
+                }
+
+                const screenX = p.x - camX;
+                const screenY = p.y - camY;
+
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(screenX, screenY, playerRadius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = '#ffffff';
+                ctx.stroke();
+            }
+        }
+    </script>
 </body>
 </html>
