@@ -2,250 +2,486 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Общий Чат</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Ларёк на Окраине — Кооп Выживание</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, sans-serif; }
-    body { background-color: #0e0e10; color: #efeff1; height: 100vh; display: flex; flex-direction: column; }
-
-    #login-screen {
-      position: fixed; inset: 0; background: #0e0e10; display: flex;
-      align-items: center; justify-content: center; z-index: 100; padding: 20px;
+    * {
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
     }
-    .login-box {
-      background: #18181b; padding: 30px; border-radius: 10px; width: 100%; max-width: 360px;
-      border: 1px solid #2f2f35; text-align: center;
+    body {
+      margin: 0;
+      background: #0f172a;
+      color: #f8fafc;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overflow: hidden;
     }
-    .login-box h2 { margin-bottom: 15px; color: #bf94ff; }
-    .login-box input {
-      width: 100%; padding: 12px; border-radius: 6px; border: 1px solid #3a3a3d;
-      background: #0e0e10; color: #fff; font-size: 16px; margin-bottom: 12px; outline: none;
+    #loginScreen, #queueScreen {
+      background: #1e293b;
+      padding: 25px;
+      border-radius: 12px;
+      text-align: center;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      border: 1px solid #334155;
+      width: 90%;
+      max-width: 400px;
     }
-    .login-box input:focus { border-color: #9147ff; }
-    #pass-input { display: none; border-color: #e91916; }
-    .login-box button {
-      width: 100%; padding: 12px; border-radius: 6px; border: none; background: #9147ff;
-      color: #fff; font-size: 16px; font-weight: bold; cursor: pointer;
+    input {
+      padding: 12px;
+      border-radius: 6px;
+      border: 1px solid #475569;
+      background: #0f172a;
+      color: #fff;
+      font-size: 16px;
+      width: 100%;
+      margin-bottom: 12px;
     }
-    .login-box button:hover { background: #772ce8; }
-    #login-error { color: #ff4f4d; font-size: 14px; margin-top: 10px; }
-
-    header {
-      background: #18181b; padding: 12px 16px; border-bottom: 1px solid #2f2f35;
-      display: flex; justify-content: space-between; align-items: center;
+    button {
+      padding: 12px 18px;
+      border-radius: 6px;
+      border: none;
+      background: #2563eb;
+      color: #fff;
+      font-size: 15px;
+      font-weight: bold;
+      cursor: pointer;
     }
-    .header-title { font-weight: bold; font-size: 16px; display: flex; align-items: center; gap: 8px; }
-    .online-badge { background: #2f2f35; padding: 4px 10px; border-radius: 12px; font-size: 13px; color: #00f593; }
-
-    #admin-bar {
-      display: none; background: #26171a; padding: 8px 16px; border-bottom: 1px solid #5c1e24;
-      gap: 8px; align-items: center; flex-wrap: wrap; font-size: 13px;
+    button:active { transform: scale(0.96); }
+    #gameContainer {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 900px;
+      padding: 5px;
     }
-    .admin-btn {
-      background: #e91916; color: #fff; border: none; padding: 4px 10px;
-      border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px;
+    .hud {
+      width: 100%;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      background: #1e293b;
+      padding: 8px 12px;
+      border-radius: 8px 8px 0 0;
+      border: 1px solid #334155;
+      border-bottom: none;
+      gap: 6px;
     }
-
-    #messages {
-      flex: 1; overflow-y: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px;
+    .stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      font-weight: bold;
+      font-size: 13px;
     }
-    .msg { line-height: 1.4; font-size: 14px; word-wrap: break-word; }
-    .msg-time { color: #adadb8; font-size: 11px; margin-right: 6px; }
-    .badge {
-      display: inline-block; padding: 1px 5px; border-radius: 3px; font-size: 11px;
-      font-weight: bold; color: #fff; margin-right: 5px; vertical-align: middle;
+    .shop {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
     }
-    .nick { font-weight: bold; margin-right: 6px; cursor: pointer; }
-    .sys-msg { color: #adadb8; font-style: italic; font-size: 13px; }
-
-    .input-area {
-      background: #18181b; padding: 12px 16px; border-top: 1px solid #2f2f35;
-      display: flex; flex-direction: column; gap: 8px;
+    .shop button {
+      padding: 6px 8px;
+      font-size: 12px;
+      background: #059669;
     }
-    .emotes { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
-    .emote-btn {
-      background: #2f2f35; border: none; border-radius: 4px; padding: 4px 8px;
-      font-size: 16px; cursor: pointer;
+    canvas {
+      width: 100%;
+      height: auto;
+      max-height: 62vh;
+      background: #182232;
+      border: 2px solid #334155;
+      border-radius: 0 0 8px 8px;
+      touch-action: none;
     }
-    .form-row { display: flex; gap: 8px; }
-    #msg-input {
-      flex: 1; padding: 10px 12px; border-radius: 6px; border: 1px solid #3a3a3d;
-      background: #0e0e10; color: #fff; font-size: 14px; outline: none;
+    .tool-bar {
+      margin-top: 8px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
     }
-    #msg-input:focus { border-color: #9147ff; }
-    #send-btn {
-      padding: 10px 18px; border-radius: 6px; border: none; background: #9147ff;
-      color: #fff; font-weight: bold; cursor: pointer;
+    .tool-btn {
+      padding: 8px 12px;
+      background: #334155;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      border: 2px solid transparent;
+    }
+    .tool-btn.active {
+      background: #eab308;
+      color: #0f172a;
+      font-weight: bold;
+      border-color: #fef08a;
+    }
+    .controls-hint {
+      margin-top: 6px;
+      font-size: 12px;
+      color: #94a3b8;
+      text-align: center;
+    }
+    .mobile-controls {
+      position: fixed;
+      bottom: 15px;
+      left: 0;
+      right: 0;
+      padding: 0 20px;
+      display: none;
+      justify-content: space-between;
+      align-items: flex-end;
+      pointer-events: none;
+      z-index: 50;
+    }
+    @media (pointer: coarse) {
+      .mobile-controls.active-game {
+        display: flex;
+      }
+    }
+    #joystickZone {
+      width: 120px;
+      height: 120px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 2px solid rgba(255, 255, 255, 0.25);
+      border-radius: 50%;
+      position: relative;
+      pointer-events: auto;
+      touch-action: none;
+    }
+    #joystickKnob {
+      width: 50px;
+      height: 50px;
+      background: rgba(56, 189, 248, 0.75);
+      border: 2px solid #fff;
+      border-radius: 50%;
+      position: absolute;
+      top: 33px;
+      left: 33px;
+      pointer-events: none;
+    }
+    #actionBtn {
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      background: rgba(234, 179, 8, 0.85);
+      border: 3px solid #fef08a;
+      color: #0f172a;
+      font-weight: bold;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: auto;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+      touch-action: none;
+    }
+    #actionBtn:active {
+      background: #facc15;
+      transform: scale(0.92);
     }
   </style>
 </head>
 <body>
 
-  <div id="login-screen">
-    <div class="login-box">
-      <h2>Вход в чат</h2>
-      <input type="text" id="nick-input" placeholder="Введите ваш ник..." maxlength="20">
-      <input type="password" id="pass-input" placeholder="Секретный код владельца...">
-      <button onclick="login()">Войти</button>
-      <div id="login-error"></div>
+  <div id="loginScreen">
+    <h2>🌙 Ночной Ларёк на Окраине</h2>
+    <p style="font-size:14px; color:#cbd5e1;">Подавай еду, убирай столы и отгоняй монстров (до 6 игроков)</p>
+    <input type="text" id="nickname" placeholder="Твой никнейм" maxlength="14">
+    <button style="width:100%;" onclick="join()">Выйти на смену</button>
+  </div>
+
+  <div id="queueScreen" style="display:none;">
+    <h2>⏳ Все 6 мест в ларьке заняты</h2>
+    <p>Ваше место в очереди: <b id="queuePos" style="font-size:24px; color:#38bdf8;">1</b></p>
+    <p style="color:#94a3b8; font-size:13px;">Вы зайдёте автоматически, как только освободится место.</p>
+  </div>
+
+  <div id="gameContainer">
+    <div class="hud">
+      <div class="stats">
+        <span>💰 <b id="money" style="color:#4ade80;">50</b>₽</span>
+        <span>🏠 <b id="hp" style="color:#f87171;">100/100</b></span>
+        <span>👥 <b id="playersCount">1</b>/6</span>
+        <span>⏳ <b id="queueCount">0</b></span>
+      </div>
+      <div class="shop">
+        <button onclick="buy('speed')" id="btnSpeed">👟 Бег (60₽)</button>
+        <button onclick="buy('weapon')" id="btnWeapon">🔦 Защита (75₽)</button>
+        <button onclick="buy('armor')" id="btnArmor">🛡️ Стены (50₽)</button>
+        <button onclick="buy('repair')">🔧 Ремонт (30₽)</button>
+      </div>
+    </div>
+
+    <canvas id="canvas" width="900" height="550"></canvas>
+
+    <div class="tool-bar">
+      <div class="tool-btn active" id="t1" onclick="selectTool(1)"> 🔦 Фонарик</div>
+      <div class="tool-btn" id="t2" onclick="selectTool(2)"> 🧹 Швабра</div>
+      <div class="tool-btn" id="t3" onclick="selectTool(3)"> 🧨 Петарда</div>
+    </div>
+    <div class="controls-hint">
+      ПК: <b>WASD</b> + <b>Пробел / E</b> + <b>1, 2, 3</b> | Телефон: джойстик слева и кнопка действия справа
     </div>
   </div>
 
-  <header>
-    <div class="header-title">💬 Чат сообщества</div>
-    <div class="online-badge">Онлайн: <span id="online-count">0</span></div>
-  </header>
-
-  <div id="admin-bar">
-    <span>👑 Админ-панель:</span>
-    <button class="admin-btn" onclick="sendCmd('/clear')">Очистить чат</button>
-    <span style="color:#adadb8">Клик по нику — вставить /ban</span>
-  </div>
-
-  <div id="messages"></div>
-
-  <div class="input-area">
-    <div class="emotes">
-      <button class="emote-btn" onclick="addEmote('🔥')">🔥</button>
-      <button class="emote-btn" onclick="addEmote('😂')">😂</button>
-      <button class="emote-btn" onclick="addEmote('❤️')">❤️</button>
-      <button class="emote-btn" onclick="addEmote('👏')">👏</button>
-      <button class="emote-btn" onclick="addEmote('💀')">💀</button>
-      <button class="emote-btn" onclick="addEmote('👑')">👑</button>
-      <button class="emote-btn" onclick="addEmote('🚀')">🚀</button>
+  <div class="mobile-controls" id="mobileControls">
+    <div id="joystickZone">
+      <div id="joystickKnob"></div>
     </div>
-    <form class="form-row" onsubmit="sendMessage(event)">
-      <input type="text" id="msg-input" placeholder="Отправить сообщение..." autocomplete="off" maxlength="500">
-      <button type="submit" id="send-btn">Чат</button>
-    </form>
+    <div id="actionBtn">ДЕЙСТВИЕ</div>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
-    let me = null;
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
 
-    const nickInput = document.getElementById('nick-input');
-    const passInput = document.getElementById('pass-input');
-    const errorBox = document.getElementById('login-error');
+    let state = null;
+    const keys = { up: false, down: false, left: false, right: false };
 
-    const savedNick = localStorage.getItem('chat_nick');
-    if (savedNick) nickInput.value = savedNick;
-
-    nickInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') login();
-    });
-    passInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') login();
-    });
-
-    function login() {
-      const nick = nickInput.value.trim();
-      const password = passInput.value;
-      if (!nick) return;
-      errorBox.innerText = '';
-      socket.emit('login', { nick, password });
+    function join() {
+      const nick = document.getElementById('nickname').value;
+      socket.emit('joinGame', nick);
     }
 
-    socket.on('need_password', (msg) => {
-      passInput.style.display = 'block';
-      passInput.focus();
-      errorBox.style.color = '#ffb31a';
-      errorBox.innerText = msg;
+    function buy(type) {
+      socket.emit('buyUpgrade', type);
+    }
+
+    function selectTool(num) {
+      socket.emit('selectTool', num);
+    }
+
+    function triggerInteract() {
+      socket.emit('interact');
+    }
+    socket.on('joinedRoom', () => {
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('queueScreen').style.display = 'none';
+      document.getElementById('gameContainer').style.display = 'flex';
+      document.getElementById('mobileControls').classList.add('active-game');
     });
 
-    socket.on('login_error', (err) => {
-      errorBox.style.color = '#ff4f4d';
-      errorBox.innerText = err;
+    socket.on('inQueue', (pos) => {
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('gameContainer').style.display = 'none';
+      document.getElementById('mobileControls').classList.remove('active-game');
+      document.getElementById('queueScreen').style.display = 'block';
+      document.getElementById('queuePos').textContent = pos;
     });
 
-    socket.on('login_success', (data) => {
-      me = data.user;
-      localStorage.setItem('chat_nick', me.nick);
-      document.getElementById('login-screen').style.display = 'none';
-      if (me.isAdmin) {
-        document.getElementById('admin-bar').style.display = 'flex';
+    socket.on('state', (serverState) => {
+      state = serverState;
+      const g = state.game;
+      document.getElementById('money').textContent = g.money;
+      document.getElementById('hp').textContent = `${Math.ceil(g.kioskHp)}/${g.maxHp}`;
+      document.getElementById('playersCount').textContent = Object.keys(state.players).length;
+      document.getElementById('queueCount').textContent = state.queueCount;
+
+      document.getElementById('btnSpeed').textContent = `👟 Бег ур.${g.upgrades.speed} (${g.upgrades.speed * 60}₽)`;
+      document.getElementById('btnWeapon').textContent = `🔦 Защита ур.${g.upgrades.weapon} (${g.upgrades.weapon * 75}₽)`;
+      document.getElementById('btnArmor').textContent = `🛡️ Стены ур.${g.upgrades.armor} (${g.upgrades.armor * 50}₽)`;
+
+      const me = state.players[socket.id];
+      if (me) {
+        [1, 2, 3].forEach(n => {
+          document.getElementById('t' + n).classList.toggle('active', me.tool === n);
+        });
       }
-      data.history.forEach(renderMessage);
     });
 
-    socket.on('online_count', (count) => {
-      document.getElementById('online-count').innerText = count;
+    window.addEventListener('keydown', (e) => {
+      if (document.activeElement.tagName === 'INPUT') return;
+      if (e.code === 'KeyW' || e.code === 'ArrowUp') keys.up = true;
+      if (e.code === 'KeyS' || e.code === 'ArrowDown') keys.down = true;
+      if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = true;
+      if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = true;
+
+      if (e.code === 'Space' || e.code === 'KeyE') {
+        e.preventDefault();
+        triggerInteract();
+      }
+      if (e.key === '1') selectTool(1);
+      if (e.key === '2') selectTool(2);
+      if (e.key === '3') selectTool(3);
     });
 
-    socket.on('chat_message', (msg) => {
-      renderMessage(msg);
+    window.addEventListener('keyup', (e) => {
+      if (e.code === 'KeyW' || e.code === 'ArrowUp') keys.up = false;
+      if (e.code === 'KeyS' || e.code === 'ArrowDown') keys.down = false;
+      if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = false;
+      if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = false;
     });
 
-    socket.on('system_message', (text) => {
-      const box = document.getElementById('messages');
-      const div = document.createElement('div');
-      div.className = 'sys-msg';
-      div.innerText = text;
-      box.appendChild(div);
-      box.scrollTop = box.scrollHeight;
-    });
+    const joyZone = document.getElementById('joystickZone');
+    const joyKnob = document.getElementById('joystickKnob');
+    let joyTouchId = null;
 
-    socket.on('clear_chat', () => {
-      document.getElementById('messages').innerHTML = '';
-    });
+    function handleJoystickMove(touch) {
+      const rect = joyZone.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      const maxDist = 35;
 
-    socket.on('kicked', (reason) => {
-      alert(reason);
-      location.reload();
-    });
+      let dx = touch.clientX - centerX;
+      let dy = touch.clientY - centerY;
+      const dist = Math.hypot(dx, dy);
 
-    function renderMessage(msg) {
-      const box = document.getElementById('messages');
-      const div = document.createElement('div');
-      div.className = 'msg';
+      if (dist > maxDist) {
+        dx = (dx / dist) * maxDist;
+        dy = (dy / dist) * maxDist;
+      }
 
-      const timeSpan = `<span class="msg-time">${msg.time}</span>`;
-      const badgeSpan = msg.badge
-        ? `<span class="badge" style="background:${msg.badgeColor}">${escapeHtml(msg.badge)}</span>`
-        : '';
-      const nickSpan = `<span class="nick" style="color:${msg.nickColor}" onclick="clickNick('${escapeHtml(msg.nick)}')">${escapeHtml(msg.nick)}:</span>`;
-      const textSpan = `<span>${escapeHtml(msg.text)}</span>`;
+      joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
 
-      div.innerHTML = timeSpan + badgeSpan + nickSpan + textSpan;
-      box.appendChild(div);
-      box.scrollTop = box.scrollHeight;
+      const threshold = 10;
+      keys.left = dx < -threshold;
+      keys.right = dx > threshold;
+      keys.up = dy < -threshold;
+      keys.down = dy > threshold;
     }
 
-    function sendMessage(e) {
+    function resetJoystick() {
+      joyTouchId = null;
+      joyKnob.style.transform = `translate(0px, 0px)`;
+      keys.up = keys.down = keys.left = keys.right = false;
+    }
+
+    joyZone.addEventListener('touchstart', (e) => {
       e.preventDefault();
-      const input = document.getElementById('msg-input');
-      const text = input.value.trim();
-      if (!text) return;
-      socket.emit('chat_message', text);
-      input.value = '';
-    }
-
-    function sendCmd(cmd) {
-      socket.emit('chat_message', cmd);
-    }
-
-    function addEmote(emote) {
-      const input = document.getElementById('msg-input');
-      input.value += emote;
-      input.focus();
-    }
-
-    function clickNick(nick) {
-      const input = document.getElementById('msg-input');
-      if (me && me.isAdmin) {
-        input.value = `/ban ${nick}`;
-      } else {
-        input.value = `@${nick}, `;
+      if (joyTouchId === null) {
+        const t = e.changedTouches[0];
+        joyTouchId = t.identifier;
+        handleJoystickMove(t);
       }
-      input.focus();
-    }
+    }, { passive: false });
 
-    function escapeHtml(str) {
-      return String(str).replace(/[&<>"']/g, m => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-      })[m]);
+    joyZone.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === joyTouchId) {
+          handleJoystickMove(e.changedTouches[i]);
+          break;
+        }
+      }
+    }, { passive: false });
+
+    joyZone.addEventListener('touchend', (e) => {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === joyTouchId) {
+          resetJoystick();
+          break;
+        }
+      }
+    });
+
+    joyZone.addEventListener('touchcancel', resetJoystick);
+
+    const actionBtn = document.getElementById('actionBtn');
+    actionBtn.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      triggerInteract();
+    }, { passive: false });
+    actionBtn.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      triggerInteract();
+    });
+
+    setInterval(() => {
+      if (keys.up || keys.down || keys.left || keys.right) {
+        socket.emit('move', keys);
+      }
+    }, 1000 / 30);
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (state) {
+        const g = state.game;
+
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(160, 70, 580, 430);
+
+        ctx.fillStyle = '#d97706';
+        ctx.fillRect(g.kitchen.x - 60, g.kitchen.y - 25, 120, 50);
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('🍔 КУХНЯ', g.kitchen.x, g.kitchen.y + 5);
+
+        g.tables.forEach(t => {
+          ctx.fillStyle = '#475569';
+          ctx.beginPath();
+          ctx.arc(t.x, t.y, 35, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = '#fff';
+          ctx.font = '13px sans-serif';
+          let label = 'Свободно';
+          if (t.status === 'waiting') { label = '🙋 Ждёт еду!'; ctx.fillStyle = '#facc15'; }
+          if (t.status === 'eating')  { label = '😋 Ест...'; ctx.fillStyle = '#4ade80'; }
+          if (t.status === 'dirty')   { label = '🍽️ Убрать! (+25₽)'; ctx.fillStyle = '#f87171'; }
+          ctx.fillText(label, t.x, t.y - 45);
+        });
+
+        g.monsters.forEach(m => {
+          ctx.fillStyle = '#ef4444';
+          ctx.beginPath();
+          ctx.arc(m.x, m.y, 18, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#fff';
+          ctx.fillText('👾', m.x, m.y + 5);
+
+          ctx.fillStyle = '#334155';
+          ctx.fillRect(m.x - 18, m.y - 28, 36, 5);
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillRect(m.x - 18, m.y - 28, 36 * Math.min(1, m.fear / 100), 5);
+        });
+
+        for (let id in state.players) {
+          const p = state.players[id];
+
+          if (p.actionAnim > 0) {
+            ctx.beginPath();
+            const rad = p.tool === 3 ? 180 : (p.tool === 1 ? 110 : 70);
+            ctx.arc(p.x, p.y, rad, 0, Math.PI * 2);
+            ctx.fillStyle = p.tool === 3 ? 'rgba(239, 68, 68, 0.25)' : 'rgba(250, 204, 21, 0.25)';
+            ctx.fill();
+          }
+
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 16, 0, Math.PI * 2);
+          ctx.fillStyle = p.color;
+          ctx.fill();
+
+          if (id === socket.id) {
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#fff';
+            ctx.stroke();
+          }
+
+          if (p.holding === 'food') {
+            ctx.fillText('🍔', p.x + 15, p.y - 10);
+          }
+
+          ctx.fillStyle = '#e2e8f0';
+          ctx.font = '12px sans-serif';
+          ctx.fillText(p.name, p.x, p.y - 22);
+        }
+      }
+
+      requestAnimationFrame(draw);
     }
+    draw();
   </script>
 </body>
 </html>
