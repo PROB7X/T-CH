@@ -3,434 +3,561 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>InDeathPet</title>
-    <script src="/socket.io/socket.io.js"></script>
+    <title>2D Survival</title>
+    <script src="https://socket.io"></script>
     <style>
-        * { box-sizing: border-box; user-select: none; }
-        body {
-            font-family: 'Segoe UI', Roboto, sans-serif;
-            background: #090b10;
-            color: #e2e8f0;
-            margin: 0;
-            padding: 0;
-            width: 100vw;
-            height: 100vh;
-            overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        #fsOverlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(9, 11, 16, 0.96);
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 20px;
-        }
-
-        .btn-main {
-            background: #111622;
-            color: #00ffaa;
-            border: 2px solid #00ffaa;
-            padding: 14px 28px;
-            font-size: 16px;
-            font-weight: bold;
-            letter-spacing: 1.5px;
-            border-radius: 6px;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            text-transform: uppercase;
-            transition: 0.2s;
-        }
-        .btn-main:hover:not(:disabled) { background: #00ffaa; color: #090b10; }
-        .btn-main:disabled { opacity: 0.35; cursor: not-allowed; }
-        .btn-danger { border-color: #f43f5e; color: #f43f5e; }
-        .btn-danger:hover:not(:disabled) { background: #f43f5e; color: #fff; }
-
-        .game-container {
-            width: 96vw;
-            height: 92vh;
-            background: #11151f;
-            border: 1px solid #262f40;
-            border-radius: 12px;
-            display: flex;
-            flex-direction: column;
-            padding: 14px 20px;
-        }
-
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #262f40;
-            padding-bottom: 8px;
-            margin-bottom: 10px;
-        }
-        .logo { color: #00ffaa; font-weight: 900; font-size: 20px; letter-spacing: 2px; }
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body, html { width: 100%; height: 100%; background: #0f172a; color: #f8fafc; overflow: hidden; }
+        .screen { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #0f172a; z-index: 10; padding: 20px; }
         .hidden { display: none !important; }
-
-        #loginScreen {
-            margin: auto;
-            text-align: center;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-            align-items: center;
+        
+        /* Оверлей полноэкранного режима */
+        #fullscreen-overlay { z-index: 9999; background: rgba(15, 23, 42, 0.98); text-align: center; }
+        
+        button {
+            display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+            background: #2563eb; color: #fff; border: none; padding: 14px 28px;
+            font-size: 16px; font-weight: 600; border-radius: 8px; cursor: pointer;
+            margin: 8px; transition: background 0.2s; min-width: 220px;
         }
-        input {
-            background: #090b10;
-            border: 1px solid #262f40;
-            color: #fff;
-            padding: 12px 18px;
-            font-size: 16px;
-            border-radius: 6px;
-            width: 280px;
-            text-align: center;
-            outline: none;
-        }
-        input:focus { border-color: #00ffaa; }
+        button:hover { background: #1d4ed8; }
+        button.secondary { background: #334155; }
+        button.secondary:hover { background: #475569; }
+        button.admin-btn { background: #dc2626; }
 
-        .lobby-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-            flex: 1;
-            align-items: center;
+        input, select {
+            background: #1e293b; border: 1px solid #475569; color: #fff;
+            padding: 12px 16px; border-radius: 8px; font-size: 16px; margin: 8px 0; width: 280px;
         }
 
-        .panel {
-            background: #0c0f17;
-            border: 1px solid #1e2636;
-            border-radius: 10px;
-            height: 100%;
-            padding: 14px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: space-between;
+        /* Игровой интерфейс и сенсорное управление */
+        #game-canvas { display: block; width: 100%; height: 100%; background: #1e293b; }
+        #hud { position: fixed; top: 15px; left: 15px; right: 15px; display: flex; justify-content: space-between; pointer-events: none; z-index: 5; }
+        .hud-box { background: rgba(15, 23, 42, 0.8); padding: 10px 16px; border-radius: 8px; border: 1px solid #334155; display: flex; gap: 15px; align-items: center; pointer-events: auto; }
+        
+        #touch-controls { position: fixed; inset: 0; pointer-events: none; z-index: 6; }
+        .dpad { position: absolute; bottom: 25px; left: 25px; width: 140px; height: 140px; pointer-events: auto; }
+        .action-pads { position: absolute; bottom: 25px; right: 25px; display: flex; gap: 15px; pointer-events: auto; }
+        .touch-btn {
+            position: absolute; width: 46px; height: 46px; background: rgba(255, 255, 255, 0.15);
+            border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; color: white;
         }
-
-        .pet-svg-box { width: 130px; height: 130px; }
-        .rarity-ОБЫЧНЫЙ { color: #94a3b8; }
-        .rarity-РЕДКИЙ { color: #38bdf8; }
-        .rarity-МИФИЧЕСКИЙ { color: #f43f5e; }
-
-        .arena-grid {
-            display: grid;
-            grid-template-columns: 1fr auto 1fr;
-            align-items: center;
-            gap: 20px;
-            flex: 1;
-        }
-        .hp-bar { width: 100%; height: 12px; background: #1e2636; border-radius: 6px; overflow: hidden; margin-top: 6px; }
-        .hp-fill { height: 100%; background: #00ffaa; transition: width 0.3s; }
-        .moves-row { display: flex; justify-content: center; gap: 12px; margin-top: 10px; }
-        .status-line { font-size: 13px; color: #94a3b8; text-align: center; min-height: 20px; }
+        .touch-btn:active { background: rgba(37, 99, 235, 0.6); }
+        .action-circle { position: static; width: 64px; height: 64px; }
+        
+        .settings-panel { background: #1e293b; padding: 24px; border-radius: 12px; width: 100%; max-width: 450px; border: 1px solid #334155; }
+        .setting-row { display: flex; justify-content: space-between; align-items: center; margin: 12px 0; }
+        .world-list { max-height: 180px; overflow-y: auto; width: 300px; margin: 10px 0; }
+        .world-item { background: #1e293b; padding: 10px; margin: 5px 0; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #334155; }
     </style>
 </head>
 <body>
-    <div id="fsOverlay">
-        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#00ffaa" stroke-width="2">
+
+    <!-- 1. ЭКРАН ПОЛНОЭКРАННОГО РЕЖИМА -->
+    <div id="fullscreen-overlay" class="screen">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" style="margin-bottom: 16px;">
             <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
         </svg>
-        <div style="letter-spacing: 1px; color: #94a3b8;">ДЛЯ ИГРЫ ТРЕБУЕТСЯ ГОРИЗОНТАЛЬНЫЙ ПОЛНОЭКРАННЫЙ РЕЖИМ</div>
-        <button class="btn-main" onclick="enterFullScreen()">НА ВЕСЬ ЭКРАН</button>
+        <h2 style="margin-bottom: 10px;">ТРЕБУЕТСЯ ПОЛНЫЙ ЭКРАН</h2>
+        <p style="color: #94a3b8; margin-bottom: 20px; max-width: 400px;">Для корректного управления игра автоматически перейдет в горизонтальный полноэкранный режим.</p>
+        <button id="btn-fullscreen">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
+                <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
+            </svg>
+            На весь экран
+        </button>
     </div>
 
-    <div class="game-container">
-        <div class="header">
-            <div class="logo">INDEATHPET</div>
-            <div id="topStats" class="hidden" style="font-size: 14px; color: #94a3b8;">
-                БОЕЦ: <b id="playerName" style="color:#fff;"></b> | ПОБЕД: <b id="playerWins" style="color:#00ffaa;">0</b>
-            </div>
-        </div>
-
-        <div id="loginScreen">
-            <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#00ffaa" stroke-width="1.8">
-                <polygon points="12 2 21 7 21 17 12 22 3 17 3 7 12 2"/>
-                <circle cx="12" cy="12" r="3"/>
+    <!-- 2. ЭКРАН АВТОРИЗАЦИИ -->
+    <div id="login-screen" class="screen hidden">
+        <h1 style="margin-bottom: 20px;">ВХОД В СИСТЕМУ</h1>
+        <input type="text" id="input-nick" placeholder="Введите ваш никнейм" autocomplete="off">
+        <input type="password" id="input-pass" class="hidden" placeholder="Пароль администратора">
+        <p id="login-error" style="color: #ef4444; font-size: 14px; min-height: 20px;"></p>
+        <button id="btn-login">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/>
             </svg>
-            <div style="font-size: 18px; font-weight: bold; letter-spacing: 1px;">ВВЕДИТЕ ВАШ НИКНЕЙМ</div>
-            <input type="text" id="usernameInput" placeholder="НИКНЕЙМ..." maxlength="16">
-            <button class="btn-main" onclick="login()">ВОЙТИ В СИСТЕМУ</button>
-        </div>
-
-        <div id="eggScreen" class="hidden" style="margin:auto; text-align:center;">
-            <svg width="100" height="120" viewBox="0 0 100 120">
-                <path d="M50 10 C80 10 90 55 90 80 C90 102 72 112 50 112 C28 112 10 102 10 80 C10 55 20 10 50 10 Z" fill="#161d2b" stroke="#00ffaa" stroke-width="3"/>
-                <polyline points="35,55 48,68 42,82 58,92" fill="none" stroke="#00ffaa" stroke-width="2.5"/>
+            Продолжить
+        </button>
+    </div>
+    <!-- 3. ГЛАВНОЕ МЕНЮ -->
+    <div id="menu-screen" class="screen hidden">
+        <h1 style="margin-bottom: 5px;">SURVIVAL 2D</h1>
+        <p id="player-badge" style="color: #38bdf8; margin-bottom: 25px; font-weight: bold;"></p>
+        
+        <button id="btn-singleplayer">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="5 3 19 12 5 21 5 3"/>
             </svg>
-            <p style="color:#94a3b8;">ОБНАРУЖЕНА НЕИЗВЕСТНАЯ КАПСУЛА. ИНИЦИИРУЙТЕ ВЫЛУПЛЕНИЕ.</p>
-            <button class="btn-main" onclick="socket.emit('openEgg')">ОТКРЫТЬ ЯЙЦО</button>
+            Одиночная игра
+        </button>
+        <button id="btn-multiplayer" class="secondary">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/>
+                <line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/>
+            </svg>
+            Сервера
+        </button>
+        <button id="btn-settings" class="secondary">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+            Настройки
+        </button>
+    </div>
+
+    <!-- 4. ВЫБОР / СОЗДАНИЕ МИРА (ОДИНОЧНАЯ ИГРА) -->
+    <div id="worlds-screen" class="screen hidden">
+        <h2 style="margin-bottom: 15px;">МОИ МИРЫ</h2>
+        <div style="display: flex; gap: 8px;">
+            <input type="text" id="new-world-name" placeholder="Название нового мира" style="width: 200px;">
+            <button id="btn-create-world" style="min-width: auto; padding: 12px 18px;">Создать</button>
         </div>
+        <div id="world-list" class="world-list"></div>
+        <button class="secondary" onclick="showScreen('menu-screen')">Назад</button>
+    </div>
 
-        <div id="lobbyScreen" class="lobby-grid hidden">
-            <div class="panel">
-                <div style="text-align:center;">
-                    <div id="petType" style="font-weight:bold; font-size:18px;"></div>
-                    <div id="petRarity" style="font-size:12px; letter-spacing:1px;"></div>
-                </div>
-
-                <div id="petSvgContainer" class="pet-svg-box"></div>
-
-                <div style="font-size:14px; color:#94a3b8;">
-                    УРОВЕНЬ: <b id="petLvl" style="color:#fff;">1</b> | МАКС. HP: <b id="petHp" style="color:#00ffaa;">100</b>
-                </div>
-
-                <div id="trainStatus" style="font-size:12px; color:#fbbf24; min-height:16px;"></div>
-
-                <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:center;">
-                    <button class="btn-main" id="trainBtn" style="padding:10px 14px; font-size:13px;" onclick="socket.emit('toggleTraining')">AFK-ТРЕНИРОВКА</button>
-                    <button class="btn-main" style="padding:10px 14px; font-size:13px;" onclick="socket.emit('findBattle')">В БОЙ (PVP)</button>
-                    <button class="btn-main btn-danger" style="padding:10px 12px; font-size:12px;" onclick="socket.emit('openEgg')">НОВОЕ ЯЙЦО</button>
-                </div>
+    <!-- 5. НАСТРОЙКИ -->
+    <div id="settings-screen" class="screen hidden">
+        <div class="settings-panel">
+            <h2 style="margin-bottom: 16px;">НАСТРОЙКИ</h2>
+            <div class="setting-row">
+                <span>Устройство:</span>
+                <select id="set-device" style="width: 160px;">
+                    <option value="mobile" selected>Телефон (Сенсор)</option>
+                    <option value="pc">ПК (Клавиатура)</option>
+                </select>
             </div>
-
-            <div class="panel">
-                <div style="font-size:13px; letter-spacing:1px; color:#94a3b8;">ШЕСТИГРАННИК ХАРАКТЕРИСТИК</div>
-                <svg id="hexRadar" width="240" height="210" viewBox="0 0 240 210"></svg>
-                <div id="statsLegend" style="font-size:11px; color:#94a3b8; text-align:center;"></div>
+            <div class="setting-row">
+                <span>Чувствительность:</span>
+                <input type="range" id="set-sens" min="1" max="10" value="5" style="width: 160px;">
             </div>
-        </div>
-
-        <div id="battleScreen" class="hidden" style="display:flex; flex-direction:column; flex:1; justify-content:space-between;">
-            <div class="arena-grid">
-                <div class="panel">
-                    <b id="bP1Name">ИГРОК 1</b>
-                    <div id="bP1Svg" style="width:90px; height:90px;"></div>
-                    <div style="width:100%;">
-                        <div style="font-size:12px;">HP: <span id="bP1HpText">100/100</span></div>
-                        <div class="hp-bar"><div id="bP1HpBar" class="hp-fill"></div></div>
-                    </div>
-                </div>
-
-                <div style="font-size:24px; font-weight:900; color:#f43f5e;">VS</div>
-
-                <div class="panel">
-                    <b id="bP2Name">ИГРОК 2</b>
-                    <div id="bP2Svg" style="width:90px; height:90px;"></div>
-                    <div style="width:100%;">
-                        <div style="font-size:12px;">HP: <span id="bP2HpText">100/100</span></div>
-                        <div class="hp-bar"><div id="bP2HpBar" class="hp-fill"></div></div>
-                    </div>
-                </div>
+            <div class="setting-row">
+                <span>Раскладка кнопок:</span>
+                <select id="set-layout" style="width: 160px;">
+                    <option value="default">Стандарт (Слева/Справа)</option>
+                    <option value="inverted">Инверсия (Справа/Слева)</option>
+                </select>
             </div>
-
-            <div class="moves-row">
-                <button class="btn-main moveBtn" onclick="sendMove('flame')">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2c0 6-6 8-6 14a6 6 0 0 0 12 0c0-6-6-8-6-14z"/></svg>
-                    ПЛАМЯ
-                </button>
-                <button class="btn-main moveBtn" onclick="sendMove('shield')">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                    ЩИТ
-                </button>
-                <button class="btn-main moveBtn" onclick="sendMove('power')">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                    СИЛА
-                </button>
-                <button id="backLobbyBtn" class="btn-main hidden" onclick="backToLobby()">В ЛОББИ</button>
+            <div style="text-align: center; margin-top: 20px;">
+                <button id="btn-save-settings">Сохранить</button>
             </div>
         </div>
+    </div>
 
-        <div class="status-line" id="statusMsg">СИСТЕМА ГОТОВА</div>
+    <!-- 6. ИГРОВОЙ ЭКРАН -->
+    <div id="game-screen" class="screen hidden" style="padding: 0;">
+        <canvas id="game-canvas"></canvas>
+        
+        <div id="hud">
+            <div class="hud-box">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="#ef4444"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                <span id="hud-hp">100</span>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="#f59e0b"><path d="M18.06 22.99h1.66c.84 0 1.53-.64 1.63-1.46L23 5.05h-5V1h-1.97v4.05h-4.97l.3 2.34c1.71.47 3.31 1.32 4.27 2.26 1.44 1.42 2.43 2.89 2.43 5.29v8.05zM1 21.99V21h15.03v.99c0 .55-.45 1-1.01 1H2.01c-.56 0-1.01-.45-1.01-1zm15.03-7c0-8-15.03-8-15.03 0h15.03zM1.02 17h15v2h-15z"/></svg>
+                <span id="hud-hunger">100</span>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="#a16207"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+                <span id="hud-wood">0</span>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="#94a3b8"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/></svg>
+                <span id="hud-stone">0</span>
+            </div>
+            
+            <div class="hud-box">
+                <button id="btn-admin-panel" class="admin-btn hidden" style="min-width: auto; padding: 6px 12px; margin: 0;">Админ-панель</button>
+                <button id="btn-exit-game" class="secondary" style="min-width: auto; padding: 6px 12px; margin: 0;">Выход</button>
+            </div>
+        </div>
+
+        <div id="touch-controls">
+            <div class="dpad" id="dpad-zone">
+                <div class="touch-btn" data-key="up" style="top: 0; left: 47px;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
+                </div>
+                <div class="touch-btn" data-key="down" style="bottom: 0; left: 47px;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
+                <div class="touch-btn" data-key="left" style="top: 47px; left: 0;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                </div>
+                <div class="touch-btn" data-key="right" style="top: 47px; right: 0;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                </div>
+            </div>
+            <div class="action-pads" id="action-zone">
+                <div class="touch-btn action-circle" id="btn-eat" title="Поесть">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                </div>
+                <div class="touch-btn action-circle" id="btn-mine" title="Добыть">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+                </div>
+            </div>
+        </div>
     </div>
     <script>
-        const socket = io();
-        let userData = null;
-        let currentRoom = null;
-        let trainInterval = null;
+        const SERVER_URL = 'http://103.82.102.226:3000';
+        const ADMIN_NICK = 'HELM77ZX';
+        const ADMIN_PASS_LOCAL = 'aB9xK2mP7qWz';
 
-        const PET_SVGS = {
-            lizard: `<svg viewBox="0 0 100 100" width="100%" height="100%">
-                <polygon points="20,75 40,35 75,30 85,50 65,75" fill="#16222f" stroke="#94a3b8" stroke-width="3"/>
-                <polygon points="45,35 52,18 60,33" fill="#94a3b8"/>
-                <circle cx="70" cy="43" r="4" fill="#00ffaa"/>
-            </svg>`,
-            dragon: `<svg viewBox="0 0 100 100" width="100%" height="100%">
-                <polygon points="15,65 35,20 55,40 85,25 75,70 45,80" fill="#122338" stroke="#38bdf8" stroke-width="3"/>
-                <polygon points="35,20 20,10 42,15" fill="#38bdf8"/>
-                <circle cx="68" cy="42" r="4" fill="#f43f5e"/>
-            </svg>`,
-            mutant: `<svg viewBox="0 0 100 100" width="100%" height="100%">
-                <polygon points="50,12 85,35 78,82 22,82 15,35" fill="#261220" stroke="#f43f5e" stroke-width="3"/>
-                <polygon points="35,45 45,38 45,52" fill="#00ffaa"/>
-                <polygon points="65,45 55,38 55,52" fill="#00ffaa"/>
-                <line x1="35" y1="68" x2="65" y2="68" stroke="#f43f5e" stroke-width="3"/>
-            </svg>`
+        let state = {
+            nickname: '',
+            isAdmin: false,
+            mode: 'single',
+            settings: { device: 'mobile', sens: 5, layout: 'default' },
+            player: { x: 400, y: 300, hp: 100, hunger: 100, wood: 0, stone: 0 },
+            world: [],
+            otherPlayers: {},
+            keys: { up: false, down: false, left: false, right: false }
         };
 
-        async function enterFullScreen() {
-            const el = document.documentElement;
-            try {
-                if (el.requestFullscreen) await el.requestFullscreen();
-                else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
+        let socket = null;
+        let gameLoopId = null;
 
+        // --- 1. ПОЛНОЭКРАННЫЙ РЕЖИМ И ГОРИЗОНТАЛЬНАЯ ОРИЕНТАЦИЯ ---
+        const fsOverlay = document.getElementById('fullscreen-overlay');
+        const btnFullscreen = document.getElementById('btn-fullscreen');
+
+        async function enterFullscreenAndLandscape() {
+            try {
+                const docEl = document.documentElement;
+                if (docEl.requestFullscreen) await docEl.requestFullscreen();
+                else if (docEl.webkitRequestFullscreen) await docEl.webkitRequestFullscreen();
+                
                 if (screen.orientation && screen.orientation.lock) {
                     await screen.orientation.lock('landscape').catch(() => {});
                 }
-            } catch (e) {}
-            checkFullScreen();
+                checkFullscreenState();
+            } catch (err) {
+                console.warn('Ошибка перехода в полный экран:', err);
+            }
         }
 
-        function checkFullScreen() {
+        function checkFullscreenState() {
             const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
-            const overlay = document.getElementById('fsOverlay');
-            if (isFs) overlay.classList.add('hidden');
-            else overlay.classList.remove('hidden');
+            if (isFs) {
+                fsOverlay.classList.add('hidden');
+                if (!state.nickname) showScreen('login-screen');
+            } else {
+                fsOverlay.classList.remove('hidden');
+            }
         }
 
-        document.addEventListener('fullscreenchange', checkFullScreen);
-        document.addEventListener('webkitfullscreenchange', checkFullScreen);
+        btnFullscreen.addEventListener('click', enterFullscreenAndLandscape);
+        document.addEventListener('fullscreenchange', checkFullscreenState);
+        document.addEventListener('webkitfullscreenchange', checkFullscreenState);
 
-        function drawHexagonStats(stats) {
-            const svg = document.getElementById('hexRadar');
-            const cx = 120, cy = 105, maxR = 72;
-            const keys = [
-                { k: 'str', label: 'СИЛ' },
-                { k: 'vit', label: 'ЖИВ' },
-                { k: 'def', label: 'БРО' },
-                { k: 'spd', label: 'СКО' },
-                { k: 'int', label: 'ИНТ' },
-                { k: 'rage', label: 'ЯРО' }
-            ];
-
-            let html = '';
-            [0.33, 0.66, 1].forEach(scale => {
-                const pts = keys.map((_, i) => {
-                    const angle = (Math.PI / 3) * i - Math.PI / 2;
-                    return `${cx + maxR * scale * Math.cos(angle)},${cy + maxR * scale * Math.sin(angle)}`;
-                }).join(' ');
-                html += `<polygon points="${pts}" fill="none" stroke="#262f40" stroke-width="1"/>`;
+        function showScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => {
+                if (s.id !== 'fullscreen-overlay') s.classList.add('hidden');
             });
-
-            const statPts = keys.map((item, i) => {
-                const angle = (Math.PI / 3) * i - Math.PI / 2;
-                const xEnd = cx + maxR * Math.cos(angle);
-                const yEnd = cy + maxR * Math.sin(angle);
-                const xLbl = cx + (maxR + 22) * Math.cos(angle);
-                const yLbl = cy + (maxR + 16) * Math.sin(angle) + 4;
-
-                html += `<line x1="${cx}" y1="${cy}" x2="${xEnd}" y2="${yEnd}" stroke="#1e2636" stroke-width="1"/>`;
-                html += `<text x="${xLbl}" y="${yLbl}" fill="#94a3b8" font-size="10" text-anchor="middle" font-weight="bold">${item.label}:${stats[item.k]}</text>`;
-
-                const valRatio = Math.min(1, (stats[item.k] || 10) / 100);
-                return `${cx + maxR * valRatio * Math.cos(angle)},${cy + maxR * valRatio * Math.sin(angle)}`;
-            }).join(' ');
-
-            html += `<polygon points="${statPts}" fill="rgba(0, 255, 170, 0.25)" stroke="#00ffaa" stroke-width="2"/>`;
-            svg.innerHTML = html;
+            document.getElementById(id).classList.remove('hidden');
         }
 
-        function login() {
-            const name = document.getElementById('usernameInput').value;
-            if (!name.trim()) return;
-            socket.emit('login', name);
-        }
+        // --- 2. АВТОРИЗАЦИЯ И АДМИНКА ---
+        const inputNick = document.getElementById('input-nick');
+        const inputPass = document.getElementById('input-pass');
+        const loginError = document.getElementById('login-error');
 
-        socket.on('msg', (text) => {
-            document.getElementById('statusMsg').innerText = text;
+        inputNick.addEventListener('input', () => {
+            if (inputNick.value.trim() === ADMIN_NICK) {
+                inputPass.classList.remove('hidden');
+            } else {
+                inputPass.classList.add('hidden');
+                inputPass.value = '';
+            }
         });
 
-        socket.on('userData', (data) => {
-            userData = data;
-            document.getElementById('loginScreen').classList.add('hidden');
-            document.getElementById('topStats').classList.remove('hidden');
-            document.getElementById('playerName').innerText = data.name;
-            document.getElementById('playerWins').innerText = data.wins;
+        document.getElementById('btn-login').addEventListener('click', async () => {
+            const nick = inputNick.value.trim();
+            const pass = inputPass.value;
+            loginError.textContent = '';
 
-            if (!data.pet) {
-                document.getElementById('eggScreen').classList.remove('hidden');
-                document.getElementById('lobbyScreen').classList.add('hidden');
-            } else {
-                document.getElementById('eggScreen').classList.add('hidden');
-                document.getElementById('lobbyScreen').classList.remove('hidden');
+            if (!nick) {
+                loginError.textContent = 'Введите никнейм';
+                return;
+            }
 
-                document.getElementById('petType').innerText = data.pet.type;
-                const rar = document.getElementById('petRarity');
-                rar.innerText = data.pet.rarity;
-                rar.className = 'rarity-' + data.pet.rarity;
-
-                document.getElementById('petSvgContainer').innerHTML = PET_SVGS[data.pet.svgKey];
-                document.getElementById('petLvl').innerText = data.pet.level;
-                document.getElementById('petHp').innerText = data.pet.maxHp;
-
-                drawHexagonStats(data.pet.stats);
-
-                clearInterval(trainInterval);
-                const trainBtn = document.getElementById('trainBtn');
-                const trainStatus = document.getElementById('trainStatus');
-
-                if (data.trainingStart) {
-                    trainBtn.innerText = 'ЗАБРАТЬ С ТРЕНИРОВКИ';
-                    trainInterval = setInterval(() => {
-                        const sec = Math.floor((Date.now() - data.trainingStart) / 1000);
-                        const gain = Math.floor(sec / 5);
-                        trainStatus.innerText = `ТРЕНИРОВКА: ${sec} СЕК (+${gain} КО ВСЕМ ГРАНЯМ)`;
-                    }, 1000);
+            try {
+                const res = await fetch(`${SERVER_URL}/api/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nickname: nick, password: pass })
+                });
+                const data = await res.json();
+                if (!data.ok) {
+                    loginError.textContent = data.error;
+                    return;
+                }
+                finishLogin(nick, data.isAdmin);
+            } catch (e) {
+                if (nick === ADMIN_NICK) {
+                    if (pass === ADMIN_PASS_LOCAL) finishLogin(nick, true);
+                    else loginError.textContent = 'Неверный пароль администратора';
                 } else {
-                    trainBtn.innerText = 'AFK-ТРЕНИРОВКА';
-                    trainStatus.innerText = 'ГОТОВ К БОЮ';
+                    finishLogin(nick, false);
                 }
             }
         });
 
-        socket.on('battleStart', (b) => {
-            currentRoom = b.roomId;
-            document.getElementById('lobbyScreen').classList.add('hidden');
-            document.getElementById('battleScreen').classList.remove('hidden');
-            document.getElementById('backLobbyBtn').classList.add('hidden');
-            document.getElementById('statusMsg').innerText = 'БОЙ НАЧАЛСЯ. ВЫБЕРИТЕ СПОСОБНОСТЬ.';
-            enableMoves(true);
-            updateBattleUI(b);
-        });
-
-        socket.on('battleUpdate', ({ log, battle }) => {
-            document.getElementById('statusMsg').innerText = log;
-            enableMoves(true);
-            updateBattleUI(battle);
-        });
-
-        socket.on('battleEnd', ({ winner, log, battle }) => {
-            updateBattleUI(battle);
-            document.getElementById('statusMsg').innerText = `${log} | ПОБЕДИТЕЛЬ: ${winner}`;
-            enableMoves(false);
-            document.getElementById('backLobbyBtn').classList.remove('hidden');
-        });
-
-        function updateBattleUI(b) {
-            document.getElementById('bP1Name').innerText = b.p1.name;
-            document.getElementById('bP1Svg').innerHTML = PET_SVGS[b.p1.pet.svgKey];
-            document.getElementById('bP1HpText').innerText = `${b.p1.hp}/${b.p1.pet.maxHp}`;
-            document.getElementById('bP1HpBar').style.width = `${(b.p1.hp / b.p1.pet.maxHp) * 100}%`;
-
-            document.getElementById('bP2Name').innerText = b.p2.name;
-            document.getElementById('bP2Svg').innerHTML = PET_SVGS[b.p2.pet.svgKey];
-            document.getElementById('bP2HpText').innerText = `${b.p2.hp}/${b.p2.pet.maxHp}`;
-            document.getElementById('bP2HpBar').style.width = `${(b.p2.hp / b.p2.pet.maxHp) * 100}%`;
+        function finishLogin(nick, isAdmin) {
+            state.nickname = nick;
+            state.isAdmin = isAdmin;
+            document.getElementById('player-badge').textContent = isAdmin ? `${nick} [ADMIN]` : nick;
+            if (isAdmin) document.getElementById('btn-admin-panel').classList.remove('hidden');
+            showScreen('menu-screen');
         }
 
-        function sendMove(move) {
-            enableMoves(false);
-            document.getElementById('statusMsg').innerText = 'ОЖИДАНИЕ ХОДА ПРОТИВНИКА...';
-            socket.emit('battleMove', { roomId: currentRoom, move });
+        // --- 3. НАСТРОЙКИ ---
+        document.getElementById('btn-settings').addEventListener('click', () => showScreen('settings-screen'));
+        document.getElementById('btn-save-settings').addEventListener('click', () => {
+            state.settings.device = document.getElementById('set-device').value;
+            state.settings.sens = parseInt(document.getElementById('set-sens').value, 10);
+            state.settings.layout = document.getElementById('set-layout').value;
+            applyControlsSettings();
+            showScreen('menu-screen');
+        });
+
+        function applyControlsSettings() {
+            const touchZone = document.getElementById('touch-controls');
+            const dpad = document.getElementById('dpad-zone');
+            const actions = document.getElementById('action-zone');
+
+            touchZone.style.display = state.settings.device === 'mobile' ? 'block' : 'none';
+            if (state.settings.layout === 'inverted') {
+                dpad.style.left = 'auto'; dpad.style.right = '25px';
+                actions.style.right = 'auto'; actions.style.left = '25px';
+            } else {
+                dpad.style.right = 'auto'; dpad.style.left = '25px';
+                actions.style.left = 'auto'; actions.style.right = '25px';
+            }
+        }
+        // --- 4. ОДИНОЧНАЯ ИГРА И ГЕНЕРАЦИЯ МИРА ---
+        document.getElementById('btn-singleplayer').addEventListener('click', () => {
+            renderWorldList();
+            showScreen('worlds-screen');
+        });
+
+        document.getElementById('btn-create-world').addEventListener('click', () => {
+            const nameInput = document.getElementById('new-world-name');
+            const name = nameInput.value.trim() || `Мир #${Date.now().toString().slice(-4)}`;
+            const worlds = JSON.parse(localStorage.getItem('surv_worlds') || '[]');
+            
+            const newWorld = {
+                id: Date.now(),
+                name: name,
+                seed: Math.random(),
+                objects: generateWorldObjects(2000, 2000)
+            };
+            worlds.push(newWorld);
+            localStorage.setItem('surv_worlds', JSON.stringify(worlds));
+            nameInput.value = '';
+            renderWorldList();
+        });
+
+        function generateWorldObjects(width, height) {
+            const objs = [];
+            for (let i = 0; i < 120; i++) {
+                const rand = Math.random();
+                let type = 'tree';
+                if (rand > 0.65) type = 'rock';
+                else if (rand > 0.45) type = 'bush';
+
+                objs.push({
+                    id: i,
+                    type: type,
+                    x: Math.floor(Math.random() * width),
+                    y: Math.floor(Math.random() * height),
+                    hp: type === 'rock' ? 50 : 30
+                });
+            }
+            return objs;
         }
 
-        function enableMoves(state) {
-            document.querySelectorAll('.moveBtn').forEach(btn => btn.disabled = !state);
+        function renderWorldList() {
+            const list = document.getElementById('world-list');
+            const worlds = JSON.parse(localStorage.getItem('surv_worlds') || '[]');
+            list.innerHTML = worlds.length ? '' : '<p style="color:#94a3b8; text-align:center;">Нет созданных миров</p>';
+            
+            worlds.forEach(w => {
+                const div = document.createElement('div');
+                div.className = 'world-item';
+                div.innerHTML = `<span>${w.name}</span><button style="min-width:auto; padding:6px 12px; margin:0;">Играть</button>`;
+                div.querySelector('button').onclick = () => startSingleplayer(w);
+                list.appendChild(div);
+            });
         }
 
-        function backToLobby() {
-            document.getElementById('battleScreen').classList.add('hidden');
-            document.getElementById('lobbyScreen').classList.remove('hidden');
-            socket.emit('login', userData.name);
+        function startSingleplayer(worldData) {
+            state.mode = 'single';
+            state.world = worldData.objects;
+            state.player = { x: 1000, y: 1000, hp: 100, hunger: 100, wood: 0, stone: 0 };
+            startGame();
+        }
+
+        // --- 5. МУЛЬТИПЛЕЕР (СЕРВЕРА) ---
+        document.getElementById('btn-multiplayer').addEventListener('click', () => {
+            state.mode = 'multi';
+            state.world = generateWorldObjects(2000, 2000);
+            state.player = { x: 500, y: 500, hp: 100, hunger: 100, wood: 0, stone: 0 };
+            
+            socket = io(SERVER_URL);
+            socket.on('connect', () => {
+                socket.emit('joinServer', { nickname: state.nickname, isAdmin: state.isAdmin });
+            });
+            socket.on('playersUpdate', (players) => { state.otherPlayers = players; });
+            socket.on('playerMoved', (p) => { state.otherPlayers[p.id] = p; });
+            
+            startGame();
+        });
+
+        // --- 6. ИГРОВОЙ ПРОЦЕСС И ВЫЖИВАНИЕ ---
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+
+        function startGame() {
+            applyControlsSettings();
+            showScreen('game-screen');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            const survivalTimer = setInterval(() => {
+                if (document.getElementById('game-screen').classList.contains('hidden')) {
+                    clearInterval(survivalTimer);
+                    return;
+                }
+                state.player.hunger = Math.max(0, state.player.hunger - 1);
+                if (state.player.hunger === 0) {
+                    state.player.hp = Math.max(0, state.player.hp - 2);
+                }
+                if (state.player.hp <= 0) {
+                    alert('Вы погибли от голода! Возрождение...');
+                    state.player.hp = 100;
+                    state.player.hunger = 100;
+                }
+                updateHUD();
+            }, 3000);
+
+            gameLoop();
+        }
+        function updateHUD() {
+            document.getElementById('hud-hp').textContent = state.player.hp;
+            document.getElementById('hud-hunger').textContent = state.player.hunger;
+            document.getElementById('hud-wood').textContent = state.player.wood;
+            document.getElementById('hud-stone').textContent = state.player.stone;
+        }
+
+        document.querySelectorAll('.touch-btn[data-key]').forEach(btn => {
+            const key = btn.dataset.key;
+            btn.addEventListener('touchstart', (e) => { e.preventDefault(); state.keys[key] = true; });
+            btn.addEventListener('touchend', (e) => { e.preventDefault(); state.keys[key] = false; });
+        });
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'w' || e.key === 'ArrowUp') state.keys.up = true;
+            if (e.key === 's' || e.key === 'ArrowDown') state.keys.down = true;
+            if (e.key === 'a' || e.key === 'ArrowLeft') state.keys.left = true;
+            if (e.key === 'd' || e.key === 'ArrowRight') state.keys.right = true;
+        });
+        window.addEventListener('keyup', (e) => {
+            if (e.key === 'w' || e.key === 'ArrowUp') state.keys.up = false;
+            if (e.key === 's' || e.key === 'ArrowDown') state.keys.down = false;
+            if (e.key === 'a' || e.key === 'ArrowLeft') state.keys.left = false;
+            if (e.key === 'd' || e.key === 'ArrowRight') state.keys.right = false;
+        });
+
+        document.getElementById('btn-mine').addEventListener('click', () => {
+            state.world.forEach((obj, idx) => {
+                const dist = Math.hypot(obj.x - state.player.x, obj.y - state.player.y);
+                if (dist < 65) {
+                    obj.hp -= 15;
+                    if (obj.type === 'tree') state.player.wood += 2;
+                    if (obj.type === 'rock') state.player.stone += 2;
+                    if (obj.type === 'bush') state.player.hunger = Math.min(100, state.player.hunger + 15);
+                    if (obj.hp <= 0) state.world.splice(idx, 1);
+                    updateHUD();
+                }
+            });
+        });
+
+        document.getElementById('btn-eat').addEventListener('click', () => {
+            if (state.player.wood >= 1 && state.player.hunger < 100) {
+                state.player.wood -= 1;
+                state.player.hunger = Math.min(100, state.player.hunger + 20);
+                state.player.hp = Math.min(100, state.player.hp + 5);
+                updateHUD();
+            }
+        });
+
+        document.getElementById('btn-admin-panel').addEventListener('click', () => {
+            state.player.hp = 100;
+            state.player.hunger = 100;
+            state.player.wood += 100;
+            state.player.stone += 100;
+            updateHUD();
+            if (socket) socket.emit('adminAction', 'healAll');
+        });
+
+        document.getElementById('btn-exit-game').addEventListener('click', () => {
+            cancelAnimationFrame(gameLoopId);
+            if (socket) socket.disconnect();
+            showScreen('menu-screen');
+        });
+
+        function gameLoop() {
+            const speed = 2 + (state.settings.sens * 0.5);
+            let moved = false;
+
+            if (state.keys.up) { state.player.y -= speed; moved = true; }
+            if (state.keys.down) { state.player.y += speed; moved = true; }
+            if (state.keys.left) { state.player.x -= speed; moved = true; }
+            if (state.keys.right) { state.player.x += speed; moved = true; }
+
+            if (moved && socket && socket.connected) {
+                socket.emit('move', { x: state.player.x, y: state.player.y });
+            }
+
+            ctx.fillStyle = '#14532d';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const camX = state.player.x - canvas.width / 2;
+            const camY = state.player.y - canvas.height / 2;
+
+            state.world.forEach(obj => {
+                const sx = obj.x - camX;
+                const sy = obj.y - camY;
+                if (sx < -50 || sy < -50 || sx > canvas.width + 50 || sy > canvas.height + 50) return;
+
+                if (obj.type === 'tree') {
+                    ctx.fillStyle = '#166534';
+                    ctx.beginPath(); ctx.arc(sx, sy, 24, 0, Math.PI * 2); ctx.fill();
+                } else if (obj.type === 'rock') {
+                    ctx.fillStyle = '#64748b';
+                    ctx.fillRect(sx - 18, sy - 18, 36, 36);
+                } else if (obj.type === 'bush') {
+                    ctx.fillStyle = '#dc2626';
+                    ctx.beginPath(); ctx.arc(sx, sy, 14, 0, Math.PI * 2); ctx.fill();
+                }
+            });
+
+            Object.values(state.otherPlayers).forEach(p => {
+                if (p.id === socket?.id) return;
+                const px = p.x - camX;
+                const py = p.y - camY;
+                ctx.fillStyle = p.isAdmin ? '#facc15' : '#38bdf8';
+                ctx.beginPath(); ctx.arc(px, py, 16, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#fff'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center';
+                ctx.fillText(p.nickname, px, py - 22);
+            });
+
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            ctx.fillStyle = state.isAdmin ? '#facc15' : '#3b82f6';
+            ctx.beginPath(); ctx.arc(centerX, centerY, 16, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#fff'; ctx.font = '13px sans-serif'; ctx.textAlign = 'center';
+            ctx.fillText(state.nickname, centerX, centerY - 22);
+
+            gameLoopId = requestAnimationFrame(gameLoop);
         }
     </script>
 </body>
