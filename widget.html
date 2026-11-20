@@ -1,119 +1,133 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; user-select: none; }
-        html, body { width: 100%; height: 100%; background: transparent; overflow: hidden; }
-        .panel {
-            width: 100%; height: 100%;
-            display: flex; flex-direction: column;
-            background: rgba(15, 23, 42, 0.96); border: 1px solid #ef4444;
-            border-radius: 10px; color: #f8fafc; box-shadow: 0 10px 25px rgba(0,0,0,0.8);
-            overflow: hidden;
-        }
-        .header {
-            flex-shrink: 0;
-            background: #dc2626; padding: 10px 12px; font-size: 13px; font-weight: bold;
-            display: flex; justify-content: space-between; align-items: center; cursor: move;
-            touch-action: none;
-        }
-        .body {
-            flex: 1;
-            overflow-y: auto; /* Включает прокрутку вниз */
-            -webkit-overflow-scrolling: touch;
-            padding: 10px; display: flex; flex-direction: column; gap: 8px; font-size: 12px;
-        }
-        select, button {
-            width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #334155;
-            background: #1e293b; color: #fff; font-size: 12px; cursor: pointer;
-        }
-        button { background: #2563eb; border: none; font-weight: 600; }
-        button:active { opacity: 0.8; }
-        .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-        .warn { background: #b45309; }
-        .danger { background: #991b1b; }
-        .success { background: #15803d; }
-        .close-btn { background: none; width: auto; padding: 0 6px; font-size: 18px; line-height: 1; }
-        .label { color: #94a3b8; font-size: 11px; margin-top: 4px; font-weight: 600; }
-    </style>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; font-family: sans-serif; user-select: none; }
+  body { margin: 0; background: #111827; color: #f3f4f6; padding: 10px; font-size: 12px; overflow-y: auto; }
+  .head { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #374151; padding-bottom: 6px; margin-bottom: 8px; }
+  .title { font-weight: bold; color: #facc15; display: flex; align-items: center; gap: 6px; }
+  .close-btn { background: #ef4444; border: none; color: #fff; border-radius: 4px; padding: 3px 8px; cursor: pointer; }
+  .sec { background: #1f2937; padding: 8px; border-radius: 6px; margin-bottom: 8px; }
+  .sec-t { font-size: 11px; color: #9ca3af; margin-bottom: 5px; text-transform: uppercase; }
+  select, input, button { width: 100%; padding: 5px; margin-bottom: 5px; border-radius: 4px; border: 1px solid #374151; background: #111827; color: #fff; font-size: 12px; }
+  .row { display: flex; gap: 4px; }
+  button { background: #2563eb; border: none; font-weight: bold; cursor: pointer; }
+  button.warn { background: #d97706; }
+  button.danger { background: #dc2626; }
+  button.ok { background: #059669; }
+</style>
 </head>
 <body>
-    <div class="panel">
-        <div class="header" id="drag-handle">
-            <span>ADMIN CONTROL (Листай вниз)</span>
-            <button class="close-btn" onclick="send('close')">×</button>
-        </div>
-        <div class="body">
-            <div class="label">Управление сервером:</div>
-            <button class="success" id="btn-room2" onclick="send('toggleRoom2')">Открыть/Закрыть ob.timeos.op</button>
-
-            <div class="label">Запустить ивент:</div>
-            <div class="grid2">
-                <button onclick="send('setEvent', 'clear')">Ясно</button>
-                <button onclick="send('setEvent', 'rain')">Дождь</button>
-                <button onclick="send('setEvent', 'hurricane')">Ураган</button>
-                <button onclick="send('setEvent', 'buff')">Бафф скорости</button>
-            </div>
-
-            <div class="label">Выбор игрока:</div>
-            <select id="player-select"></select>
-
-            <div class="label">Выдать выбранному игроку:</div>
-            <div class="grid2">
-                <button onclick="give('hp')">+100 HP</button>
-                <button onclick="give('food')">Еду (+100)</button>
-                <button onclick="give('res')">Ресурсы (+100)</button>
-                <button onclick="give('build')">Право строить</button>
-            </div>
-
-            <div class="label">Модерация игрока:</div>
-            <div class="grid2">
-                <button class="warn" onclick="mod('mute')">Мьют / Размьют</button>
-                <button class="danger" onclick="mod('banRoom')">Бан (Сервер)</button>
-            </div>
-            <button class="danger" onclick="mod('banGlobal')" style="margin-bottom: 10px;">Глобальный бан (Игра)</button>
-        </div>
+  <div class="head">
+    <div class="title">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#facc15" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      OWNER PANEL
     </div>
+    <button class="close-btn" onclick="send({type:'closeWidget'})">X</button>
+  </div>
 
-    <script>
-        function send(action, value = null, targetNick = null) {
-            window.parent.postMessage({ type: 'ADMIN_CMD', action, value, targetNick }, '*');
-        }
-        function give(item) {
-            const target = document.getElementById('player-select').value;
-            if (target) send('give', item, target);
-        }
-        function mod(action) {
-            const target = document.getElementById('player-select').value;
-            if (target) send(action, null, target);
-        }
+  <div class="sec">
+    <div class="sec-t">Выбор игрока (без HELM77ZX)</div>
+    <select id="playerSelect"></select>
+    <div class="row">
+      <button class="warn" onclick="act('freeze')">Заморозка</button>
+      <button class="danger" onclick="act('restrictAll')">Запретить всё</button>
+    </div>
+    <div class="row">
+      <button onclick="act('tpTo')">ТП к игроку</button>
+      <button class="warn" onclick="act('mute')">Мут</button>
+    </div>
+    <div class="row">
+      <button class="danger" onclick="act('banRoom')">Бан (Комната)</button>
+      <button class="danger" onclick="act('banGlobal')">Бан (Глобал)</button>
+    </div>
+  </div>
 
-        window.addEventListener('message', (e) => {
-            if (e.data?.type === 'UPDATE_ADMIN_LIST') {
-                const sel = document.getElementById('player-select');
-                const current = sel.value;
-                sel.innerHTML = '';
-                e.data.players.forEach(nick => {
-                    const opt = document.createElement('option');
-                    opt.value = nick; opt.textContent = nick;
-                    sel.appendChild(opt);
-                });
-                if (e.data.players.includes(current)) sel.value = current;
-            }
-        });
+  <div class="sec">
+    <div class="sec-t">Title-сообщение по центру</div>
+    <input id="titleText" placeholder="Текст на экран (до 40 симв.)" maxlength="40">
+    <div class="row">
+      <button class="ok" onclick="sendTitle(false)">Игроку</button>
+      <button class="warn" onclick="sendTitle(true)">Всем в комнате</button>
+    </div>
+  </div>
 
-        const handle = document.getElementById('drag-handle');
-        let dragging = false, sx, sy;
-        handle.addEventListener('pointerdown', (e) => {
-            dragging = true; sx = e.clientX; sy = e.clientY;
-            handle.setPointerCapture(e.pointerId);
-        });
-        handle.addEventListener('pointermove', (e) => {
-            if (!dragging) return;
-            window.parent.postMessage({ type: 'DRAG_WIDGET', dx: e.clientX - sx, dy: e.clientY - sy }, '*');
-        });
-        handle.addEventListener('pointerup', () => dragging = false);
-    </script>
+  <div class="sec">
+    <div class="sec-t">Выдача предметов и амулетов</div>
+    <div class="row">
+      <select id="itemType">
+        <option value="wood">Дерево</option>
+        <option value="stone">Камень</option>
+        <option value="brick">Кирпич</option>
+        <option value="meat">Мясо</option>
+        <option value="amulet_tp">Амулет ТП</option>
+        <option value="amulet_swap">Амулет Обмена</option>
+      </select>
+      <input id="itemAmt" type="number" value="5" min="1" max="99" style="width:65px">
+    </div>
+    <button class="ok" onclick="giveItem()">Выдать игроку</button>
+  </div>
+
+  <div class="sec">
+    <div class="sec-t">Лаки-блоки и мир</div>
+    <div class="row">
+      <input id="lbCount" type="number" value="5" min="1" max="30" placeholder="Кол-во">
+      <input id="lbLuck" type="number" value="60" min="0" max="100" placeholder="Удача %">
+    </div>
+    <button class="warn" onclick="spawnLucky()">Заспавнить Лаки-блоки</button>
+    <div class="row">
+      <select id="weatherSel">
+        <option value="clear">Ясно</option>
+        <option value="rain">Дождь</option>
+        <option value="storm">Ураган</option>
+        <option value="speed">Бафф скорости</option>
+      </select>
+      <button onclick="setWeather()">Погода</button>
+    </div>
+    <button onclick="send({type:'adminCmd', cmd:{action:'toggleRoom', roomId:'ob.timeos.op'}})">Открыть/Закрыть ob.timeos.op</button>
+  </div>
+
+<script>
+  function send(data) { window.parent.postMessage(data, '*'); }
+  function getTarget() { return document.getElementById('playerSelect').value; }
+  function act(action) {
+    const target = getTarget();
+    if (!target || target === 'HELM77ZX') return;
+    send({ type: 'adminCmd', cmd: { action, target } });
+  }
+  function sendTitle(all) {
+    const text = document.getElementById('titleText').value.trim();
+    if (!text) return;
+    const target = all ? 'ALL' : getTarget();
+    if (!target) return;
+    send({ type: 'adminCmd', cmd: { action: 'title', target, text } });
+    document.getElementById('titleText').value = '';
+  }
+  function giveItem() {
+    const target = getTarget();
+    if (!target) return;
+    send({ type: 'adminCmd', cmd: { action: 'give', target, item: document.getElementById('itemType').value, amount: document.getElementById('itemAmt').value } });
+  }
+  function spawnLucky() {
+    send({ type: 'adminCmd', cmd: { action: 'spawnLucky', count: document.getElementById('lbCount').value, luck: document.getElementById('lbLuck').value } });
+  }
+  function setWeather() {
+    send({ type: 'adminCmd', cmd: { action: 'weather', weather: document.getElementById('weatherSel').value } });
+  }
+  window.addEventListener('message', (e) => {
+    if (e.data && e.data.type === 'updatePlayers') {
+      const sel = document.getElementById('playerSelect');
+      const prev = sel.value;
+      sel.innerHTML = '';
+      (e.data.players || []).filter(n => n !== 'HELM77ZX').forEach(nick => {
+        const opt = document.createElement('option');
+        opt.value = nick; opt.textContent = nick;
+        sel.appendChild(opt);
+      });
+      if ([...sel.options].some(o => o.value === prev)) sel.value = prev;
+    }
+  });
+</script>
 </body>
 </html>
