@@ -12,30 +12,35 @@
   #fsLock { z-index: 9999; background: #020617; text-align: center; }
   .box { background: #1e293b; padding: 18px; border-radius: 10px; width: 100%; max-width: 360px; border: 1px solid #334155; }
   h2 { margin-bottom: 12px; font-size: 18px; text-align: center; color: #38bdf8; }
+  label { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 4px; }
   input, select, button { width: 100%; padding: 9px; margin-bottom: 8px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #fff; font-size: 14px; }
   button { background: #2563eb; border: none; font-weight: bold; cursor: pointer; }
   button.sec { background: #334155; }
   .room-card { background: #0f172a; padding: 10px; border-radius: 6px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #334155; }
   #gameUI { position: fixed; inset: 0; display: none; }
   canvas { display: block; width: 100%; height: 100%; background: #14532d; }
-  .hud-top { position: fixed; top: 8px; left: 8px; display: flex; gap: 6px; z-index: 5; flex-wrap: wrap; }
-  .pill { background: rgba(15,23,42,0.85); padding: 5px 9px; border-radius: 6px; font-size: 12px; border: 1px solid #334155; display: flex; align-items: center; gap: 4px; cursor: pointer; }
+  .hud-top { position: fixed; top: 8px; left: 8px; display: flex; gap: 5px; z-index: 5; flex-wrap: wrap; max-width: 78vw; }
+  .pill { background: rgba(15,23,42,0.88); padding: 5px 8px; border-radius: 6px; font-size: 11px; border: 1px solid #334155; cursor: pointer; }
   .pill.active { border-color: #facc15; color: #facc15; }
-  #titleOverlay { position: fixed; top: 28%; left: 50%; transform: translate(-50%, -50%); font-size: 28px; font-weight: 900; text-shadow: 0 3px 10px #000; pointer-events: none; z-index: 50; text-align: center; opacity: 0; transition: opacity 0.3s; }
-  #freezeBanner { position: fixed; top: 52px; left: 50%; transform: translateX(-50%); background: #dc2626; padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: bold; display: none; z-index: 40; }
-  #chatBox { position: fixed; top: 44px; left: 8px; width: 250px; z-index: 6; pointer-events: none; }
-  #chatMsgs { max-height: 130px; overflow-y: auto; display: flex; flex-direction: column; gap: 3px; pointer-events: auto; }
-  .c-msg { background: rgba(15,23,42,0.78); padding: 4px 7px; border-radius: 5px; font-size: 11px; line-height: 1.3; word-break: break-word; }
-  .adm-btns { display: inline-flex; gap: 4px; margin-top: 3px; }
-  .adm-btns button { width: auto; padding: 2px 5px; font-size: 10px; margin: 0; }
+  #titleOverlay { position: fixed; top: 28%; left: 50%; transform: translate(-50%, -50%); font-size: 26px; font-weight: 900; text-shadow: 0 3px 10px #000; pointer-events: none; z-index: 50; text-align: center; opacity: 0; transition: opacity 0.3s; }
+  #freezeBanner { position: fixed; top: 48px; left: 50%; transform: translateX(-50%); background: #dc2626; padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: bold; display: none; z-index: 40; }
+  #tpHint { position: fixed; bottom: 85px; left: 50%; transform: translateX(-50%); background: #2563eb; padding: 4px 10px; border-radius: 6px; font-size: 11px; display: none; z-index: 20; }
+  #chatBox { position: fixed; top: 44px; left: 8px; width: 255px; z-index: 6; pointer-events: none; }
+  #chatMsgs { max-height: 125px; overflow-y: auto; display: flex; flex-direction: column; gap: 3px; pointer-events: auto; }
+  .c-msg { background: rgba(15,23,42,0.82); padding: 4px 7px; border-radius: 5px; font-size: 11px; line-height: 1.3; word-break: break-word; }
+  .adm-btns { display: flex; gap: 4px; margin-top: 4px; }
+  .adm-btns button { width: auto; padding: 2px 6px; font-size: 10px; margin: 0; }
   #chatInputRow { display: none; pointer-events: auto; margin-top: 4px; gap: 4px; }
   #chatInputRow.open { display: flex; }
   #adminFab { position: fixed; right: 16px; top: 16px; width: 42px; height: 42px; border-radius: 50%; background: #facc15; color: #000; display: none; align-items: center; justify-content: center; z-index: 60; box-shadow: 0 4px 12px rgba(0,0,0,0.5); touch-action: none; }
   #adminFrame { position: fixed; right: 16px; top: 66px; width: 270px; height: 340px; border: 2px solid #facc15; border-radius: 8px; z-index: 60; display: none; background: #111827; }
-  #joyZone { position: fixed; bottom: 20px; left: 20px; width: 110px; height: 110px; border-radius: 50%; background: rgba(255,255,255,0.12); border: 2px solid rgba(255,255,255,0.25); z-index: 5; touch-action: none; }
-  #joyKnob { position: absolute; width: 42px; height: 42px; border-radius: 50%; background: rgba(255,255,255,0.6); top: 32px; left: 32px; pointer-events: none; }
-  #actBtns { position: fixed; bottom: 20px; right: 20px; display: flex; gap: 10px; z-index: 5; }
-  .act-btn { width: 54px; height: 54px; border-radius: 50%; background: rgba(37,99,235,0.85); border: 2px solid #93c5fd; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 11px; font-weight: bold; }
+  .ctrl-move { position: fixed; bottom: 18px; left: 18px; z-index: 5; touch-action: none; }
+  .ctrl-act { position: fixed; bottom: 18px; right: 18px; display: flex; gap: 8px; z-index: 5; }
+  #joyZone { width: 110px; height: 110px; border-radius: 50%; background: rgba(255,255,255,0.12); border: 2px solid rgba(255,255,255,0.25); position: relative; }
+  #joyKnob { position: absolute; width: 42px; height: 42px; border-radius: 50%; background: rgba(255,255,255,0.65); top: 32px; left: 32px; pointer-events: none; }
+  #dpadZone { display: none; grid-template-columns: repeat(3, 38px); gap: 4px; }
+  .dp-btn { width: 38px; height: 38px; background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.3); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+  .act-btn { width: 52px; height: 52px; border-radius: 50%; background: rgba(37,99,235,0.88); border: 2px solid #93c5fd; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 10px; font-weight: bold; }
 </style>
 </head>
 <body>
@@ -78,7 +83,8 @@
 <div id="spScreen" class="screen">
   <div class="box">
     <h2>ОДИНОЧНЫЕ МИРЫ</h2>
-    <button onclick="startSingleplayer()">Создать / Продолжить мир</button>
+    <button onclick="startSingleplayer(false)">Продолжить / Создать мир</button>
+    <button class="sec" onclick="startSingleplayer(true)">Сбросить и создать новый</button>
     <button class="sec" onclick="showScreen('menuScreen')">Назад</button>
   </div>
 </div>
@@ -86,11 +92,15 @@
 <div id="setScreen" class="screen">
   <div class="box">
     <h2>НАСТРОЙКИ УПРАВЛЕНИЯ</h2>
+    <label>Тип управления:</label>
     <select id="ctrlType">
       <option value="joy">Джойстик (База)</option>
       <option value="dpad">Кнопки (Крестовина)</option>
       <option value="pc">ПК (Клавиатура)</option>
     </select>
+    <label>Чувствительность: <span id="sensVal">5</span></label>
+    <input id="ctrlSens" type="range" min="1" max="10" value="5" oninput="document.getElementById('sensVal').textContent=this.value">
+    <label>Раскладка:</label>
     <select id="ctrlLayout">
       <option value="normal">Слева ход / Справа действия</option>
       <option value="inv">Справа ход / Слева действия</option>
@@ -102,6 +112,7 @@
   <canvas id="cv"></canvas>
   <div id="titleOverlay"></div>
   <div id="freezeBanner">ВЫ ЗАМОРОЖЕНЫ АДМИНИСТРАТОРОМ</div>
+  <div id="tpHint">Тапните по карте для телепортации</div>
   <div class="hud-top" id="hudInv"></div>
 
   <div id="chatBox">
@@ -112,7 +123,7 @@
     </div>
   </div>
 
-  <div id="reportModal" class="screen" style="background:rgba(0,0,0,0.7);z-index:80">
+  <div id="reportModal" class="screen" style="background:rgba(0,0,0,0.75);z-index:80">
     <div class="box">
       <h2 id="repTitle">Жалоба на игрока</h2>
       <button class="sec" onclick="sendReport('Читы / Спидхак')">Читы / Спидхак</button>
@@ -126,8 +137,16 @@
   </div>
   <iframe id="adminFrame" src="widget.html"></iframe>
 
-  <div id="joyZone"><div id="joyKnob"></div></div>
-  <div id="actBtns">
+  <div class="ctrl-move" id="moveWrap">
+    <div id="joyZone"><div id="joyKnob"></div></div>
+    <div id="dpadZone">
+      <div></div><div class="dp-btn" data-dx="0" data-dy="-1">W</div><div></div>
+      <div class="dp-btn" data-dx="-1" data-dy="0">A</div><div></div><div class="dp-btn" data-dx="1" data-dy="0">D</div>
+      <div></div><div class="dp-btn" data-dx="0" data-dy="1">S</div><div></div>
+    </div>
+  </div>
+
+  <div class="ctrl-act" id="actWrap">
     <div class="act-btn" onclick="toggleChat()">ЧАТ</div>
     <div class="act-btn" onclick="doAction()">ДЕЙСТВ</div>
     <div class="act-btn" style="background:#dc2626" onclick="tryExit()">ВЫХОД</div>
@@ -137,14 +156,18 @@
 <script src="/socket.io/socket.io.js"></script>
 <script>
 const socket = io();
-let myNick = '', isAdmin = false, isFrozen = false, isMultiplayer = false;
+let myNick = '', isAdmin = false, isFrozen = false, isMultiplayer = false, isLooping = false;
 let selectedSlot = 'wood', repTarget = '';
+let cfg = JSON.parse(localStorage.getItem('s2d_cfg') || '{"type":"joy","sens":5,"layout":"normal"}');
 let state = { weather: 'clear', players: {}, resources: [], blocks: [], mobs: [], luckyBlocks: [] };
 let me = { x: 1000, y: 1000, hp: 100, inv: { wood: 0, stone: 0, brick: 0, meat: 0, amulet_tp: 0, amulet_swap: 0 } };
 
 function checkFullscreen() {
-  const ok = document.fullscreenElement && window.innerWidth >= window.innerHeight;
+  const ok = !!document.fullscreenElement && window.innerWidth >= window.innerHeight;
   document.getElementById('fsLock').classList.toggle('active', !ok);
+  if (ok && !myNick && !document.querySelector('.screen.active:not(#fsLock)')) {
+    showScreen('authScreen');
+  }
 }
 function enterFullscreen() {
   document.documentElement.requestFullscreen?.().then(() => {
@@ -156,10 +179,38 @@ window.addEventListener('fullscreenchange', checkFullscreen);
 window.addEventListener('resize', checkFullscreen);
 
 function showScreen(id) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.screen').forEach(s => { if (s.id !== 'fsLock') s.classList.remove('active'); });
   if (id) document.getElementById(id).classList.add('active');
 }
-function saveSettings() { showScreen('menuScreen'); }
+
+function applySettings() {
+  document.getElementById('ctrlType').value = cfg.type;
+  document.getElementById('ctrlSens').value = cfg.sens;
+  document.getElementById('sensVal').textContent = cfg.sens;
+  document.getElementById('ctrlLayout').value = cfg.layout;
+
+  document.getElementById('joyZone').style.display = cfg.type === 'joy' ? 'block' : 'none';
+  document.getElementById('dpadZone').style.display = cfg.type === 'dpad' ? 'grid' : 'none';
+
+  const mw = document.getElementById('moveWrap'), aw = document.getElementById('actWrap');
+  if (cfg.layout === 'inv') {
+    mw.style.left = 'auto'; mw.style.right = '18px';
+    aw.style.right = 'auto'; aw.style.left = '18px';
+  } else {
+    mw.style.right = 'auto'; mw.style.left = '18px';
+    aw.style.left = 'auto'; aw.style.right = '18px';
+  }
+}
+function saveSettings() {
+  cfg = {
+    type: document.getElementById('ctrlType').value,
+    sens: Number(document.getElementById('ctrlSens').value),
+    layout: document.getElementById('ctrlLayout').value
+  };
+  localStorage.setItem('s2d_cfg', JSON.stringify(cfg));
+  applySettings();
+  showScreen('menuScreen');
+}
 
 function submitAuth() {
   const nick = document.getElementById('nickInput').value.trim();
@@ -177,10 +228,10 @@ function submitAuth() {
     }
     myNick = nick; isAdmin = !!res.isAdmin;
     if (isAdmin) document.getElementById('adminFab').style.display = 'flex';
+    applySettings();
     showScreen('menuScreen');
   });
 }
-
 socket.on('roomsList', (list) => {
   const el = document.getElementById('roomsList');
   el.innerHTML = '';
@@ -201,12 +252,24 @@ function joinRoom(roomId) {
     startGameLoop();
   });
 }
-function startSingleplayer() {
+
+function startSingleplayer(reset) {
   isMultiplayer = false;
-  state = { weather: 'clear', players: {}, resources: [], blocks: [], mobs: [], luckyBlocks: [] };
-  for (let i = 0; i < 35; i++) state.resources.push({ id: 'r' + i, type: i % 2 ? 'tree' : 'stone', x: 200 + Math.random() * 1600, y: 200 + Math.random() * 1600, hp: 3 });
-  me = { x: 1000, y: 1000, hp: 100, inv: { wood: 10, stone: 10, brick: 5, meat: 2, amulet_tp: 1, amulet_swap: 0 } };
+  const saved = !reset && localStorage.getItem('s2d_sp');
+  if (saved) {
+    const data = JSON.parse(saved);
+    state = data.state; me = data.me;
+  } else {
+    state = { weather: 'clear', players: {}, resources: [], blocks: [], mobs: [], luckyBlocks: [] };
+    for (let i = 0; i < 40; i++) state.resources.push({ id: 'r' + i, type: i % 3 === 0 ? 'stone' : (i % 5 === 0 ? 'bush' : 'tree'), x: 180 + Math.random() * 1640, y: 180 + Math.random() * 1640, hp: 3 });
+    for (let i = 0; i < 10; i++) state.mobs.push({ id: 'm' + i, x: 300 + Math.random() * 1400, y: 300 + Math.random() * 1400, hp: 3 });
+    me = { x: 1000, y: 1000, hp: 100, inv: { wood: 10, stone: 10, brick: 5, meat: 2, amulet_tp: 1, amulet_swap: 0 } };
+  }
   startGameLoop();
+}
+
+function saveSingleplayer() {
+  if (!isMultiplayer) localStorage.setItem('s2d_sp', JSON.stringify({ state, me }));
 }
 
 function startGameLoop() {
@@ -214,15 +277,17 @@ function startGameLoop() {
   document.getElementById('gameUI').style.display = 'block';
   renderHud();
   syncAdminPlayers();
-  requestAnimationFrame(loop);
+  if (!isLooping) { isLooping = true; requestAnimationFrame(loop); }
 }
 
 function renderHud() {
   const items = [['wood','Дер'],['stone','Кам'],['brick','Кир'],['meat','Мясо'],['amulet_tp','Ам.ТП'],['amulet_swap','Ам.Обм']];
   document.getElementById('hudInv').innerHTML = `<div class="pill">HP: ${me.hp}</div>` + items.map(([k, l]) =>
-    `<div class="pill ${selectedSlot === k ? 'active' : ''}" onclick="selectedSlot='${k}';renderHud()">${l}: ${me.inv[k] || 0}</div>`
+    `<div class="pill ${selectedSlot === k ? 'active' : ''}" onclick="selectSlot('${k}')">${l}: ${me.inv[k] || 0}</div>`
   ).join('');
+  document.getElementById('tpHint').style.display = (selectedSlot === 'amulet_tp' && me.inv.amulet_tp > 0) ? 'block' : 'none';
 }
+function selectSlot(k) { selectedSlot = k; renderHud(); }
 
 function showTitle(text, color = '#facc15') {
   const el = document.getElementById('titleOverlay');
@@ -260,25 +325,23 @@ socket.on('chatBroadcast', (m) => {
   const col = m.isAdmin ? '#facc15' : '#e2e8f0';
   addChatLine(`${tag}<b style="color:${col};cursor:pointer" onclick="openReport('${m.nick}')">${m.nick}</b>: ${m.text}`);
 });
-
 socket.on('adminAlert', (a) => {
   if (!isAdmin) return;
   const btns = `<div class="adm-btns"><button style="background:#2563eb" onclick="quickAdmin('tpTo','${a.target}')">[ТП]</button><button style="background:#dc2626" onclick="quickAdmin('banRoom','${a.target}')">[Забанить]</button><button style="background:#d97706" onclick="quickAdmin('restrictAll','${a.target}')">[Запретить всё]</button></div>`;
   addChatLine(`<span style="color:#fca5a5;font-weight:bold">${a.reason}</span>${btns}`, true);
 });
-
 socket.on('titleMsg', (d) => showTitle(d.text, d.color));
 socket.on('freezeState', (f) => { isFrozen = f; document.getElementById('freezeBanner').style.display = f ? 'block' : 'none'; });
 socket.on('forcePos', (pos) => { me.x = pos.x; me.y = pos.y; });
 socket.on('invUpdate', (inv) => { me.inv = inv; renderHud(); });
 socket.on('hpUpdate', (hp) => { me.hp = hp; renderHud(); });
 socket.on('weatherUpdate', (w) => { state.weather = w; });
+socket.on('mobsUpdate', (mobs) => { state.mobs = mobs; });
 socket.on('worldSync', (patch) => Object.assign(state, patch));
 socket.on('playerJoined', (p) => { state.players[p.nick] = p; syncAdminPlayers(); });
 socket.on('playerMoved', ({ nick, x, y }) => { if (state.players[nick]) { state.players[nick].x = x; state.players[nick].y = y; } });
 socket.on('playerLeft', (nick) => { delete state.players[nick]; syncAdminPlayers(); });
 socket.on('kicked', (msg) => { alert(msg); location.reload(); });
-
 function syncAdminPlayers() {
   const f = document.getElementById('adminFrame');
   if (f.contentWindow) f.contentWindow.postMessage({ type: 'updatePlayers', players: Object.keys(state.players) }, '*');
@@ -292,7 +355,7 @@ window.addEventListener('message', (e) => {
 const fab = document.getElementById('adminFab');
 let drag = false;
 fab.addEventListener('touchmove', (e) => {
-  drag = true; const t = e.touches;
+  drag = true; const t = e.touches[0];
   fab.style.left = (t.clientX - 21) + 'px'; fab.style.top = (t.clientY - 21) + 'px'; fab.style.right = 'auto';
 });
 fab.addEventListener('touchend', () => {
@@ -312,48 +375,128 @@ function sendChat() {
 }
 function tryExit() {
   if (isFrozen) return showTitle('Нельзя выйти при заморозке!', '#ef4444');
+  saveSingleplayer();
   location.reload();
 }
 
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+cv.addEventListener('pointerdown', (e) => {
+  if (isFrozen || selectedSlot !== 'amulet_tp' || me.inv.amulet_tp <= 0) return;
+  const tx = me.x + (e.clientX - cv.width / 2);
+  const ty = me.y + (e.clientY - cv.height / 2);
+  if (isMultiplayer) {
+    socket.emit('action', { type: 'useAmulet', item: 'amulet_tp', x: tx, y: ty });
+  } else {
+    me.inv.amulet_tp--; me.x = Math.max(40, Math.min(1960, tx)); me.y = Math.max(40, Math.min(1960, ty));
+    renderHud(); saveSingleplayer();
+  }
+});
+
 function doAction() {
   if (isFrozen) return;
-  if (selectedSlot === 'amulet_tp') return socket.emit('action', { type: 'useAmulet', item: 'amulet_tp', x: me.x + (Math.random() * 300 - 150), y: me.y + (Math.random() * 300 - 150) });
-  if (selectedSlot === 'amulet_swap') return socket.emit('action', { type: 'useAmulet', item: 'amulet_swap' });
+  if (selectedSlot === 'meat' && me.inv.meat > 0 && me.hp < 100) {
+    me.inv.meat--; me.hp = Math.min(100, me.hp + 25); renderHud(); saveSingleplayer(); return;
+  }
+  if (selectedSlot === 'amulet_swap' && isMultiplayer) {
+    return socket.emit('action', { type: 'useAmulet', item: 'amulet_swap' });
+  }
   const lb = state.luckyBlocks.find(b => Math.hypot(b.x - me.x, b.y - me.y) < 55);
   if (lb) return socket.emit('action', { type: 'hitLucky', targetId: lb.id });
-  const res = state.resources.find(r => Math.hypot(r.x - me.x, r.y - me.y) < 55);
-  if (res) return socket.emit('action', { type: 'hitResource', targetId: res.id });
-  if (['wood', 'stone', 'brick'].includes(selectedSlot) && me.inv[selectedSlot] > 0) socket.emit('action', { type: 'build', blockType: selectedSlot, x: me.x + 35, y: me.y });
+
+  const resIdx = state.resources.findIndex(r => Math.hypot(r.x - me.x, r.y - me.y) < 55);
+  if (resIdx !== -1) {
+    if (isMultiplayer) return socket.emit('action', { type: 'hitResource', targetId: state.resources[resIdx].id });
+    const r = state.resources[resIdx]; r.hp--;
+    if (r.hp <= 0) { state.resources.splice(resIdx, 1); me.inv[r.type === 'stone' ? 'stone' : 'wood'] += 2; }
+    renderHud(); saveSingleplayer(); return;
+  }
+
+  const mobIdx = state.mobs.findIndex(m => Math.hypot(m.x - me.x, m.y - me.y) < 55);
+  if (mobIdx !== -1 && !isMultiplayer) {
+    state.mobs[mobIdx].hp--;
+    if (state.mobs[mobIdx].hp <= 0) { state.mobs.splice(mobIdx, 1); me.inv.meat += 2; }
+    renderHud(); saveSingleplayer(); return;
+  }
+
+  if (['wood', 'stone', 'brick'].includes(selectedSlot) && me.inv[selectedSlot] > 0) {
+    if (Math.hypot(me.x + 35 - 1000, me.y - 1000) < 160) return showTitle('Нельзя строить на спавне!', '#ef4444');
+    if (isMultiplayer) return socket.emit('action', { type: 'build', blockType: selectedSlot, x: me.x + 35, y: me.y });
+    me.inv[selectedSlot]--; state.blocks.push({ type: selectedSlot, x: me.x + 35, y: me.y });
+    renderHud(); saveSingleplayer();
+  }
 }
 
-let joyVec = { x: 0, y: 0 };
+let moveVec = { x: 0, y: 0 }, keys = {};
 const joyZone = document.getElementById('joyZone'), joyKnob = document.getElementById('joyKnob');
 joyZone.addEventListener('touchmove', (e) => {
-  const r = joyZone.getBoundingClientRect(), t = e.touches;
+  const r = joyZone.getBoundingClientRect(), t = e.touches[0];
   let dx = t.clientX - (r.left + 55), dy = t.clientY - (r.top + 55);
   const d = Math.min(40, Math.hypot(dx, dy)), a = Math.atan2(dy, dx);
   joyKnob.style.left = (34 + Math.cos(a) * d) + 'px'; joyKnob.style.top = (34 + Math.sin(a) * d) + 'px';
-  joyVec = { x: Math.cos(a) * (d / 40), y: Math.sin(a) * (d / 40) };
+  moveVec = { x: Math.cos(a) * (d / 40), y: Math.sin(a) * (d / 40) };
 });
-joyZone.addEventListener('touchend', () => { joyKnob.style.left = '34px'; joyKnob.style.top = '34px'; joyVec = { x: 0, y: 0 }; });
+joyZone.addEventListener('touchend', () => { joyKnob.style.left = '34px'; joyKnob.style.top = '34px'; moveVec = { x: 0, y: 0 }; });
 
-const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+document.querySelectorAll('.dp-btn').forEach(b => {
+  b.addEventListener('touchstart', (e) => { e.preventDefault(); moveVec = { x: Number(b.dataset.dx), y: Number(b.dataset.dy) }; });
+  b.addEventListener('touchend', () => { moveVec = { x: 0, y: 0 }; });
+});
+window.addEventListener('keydown', (e) => { keys[e.code] = true; });
+window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+
 let lastEmit = 0;
 function loop(ts) {
   cv.width = window.innerWidth; cv.height = window.innerHeight;
-  if (!isFrozen && (joyVec.x || joyVec.y)) {
-    const spd = state.weather === 'speed' ? 5.2 : 3.4;
-    me.x = Math.max(40, Math.min(1960, me.x + joyVec.x * spd)); me.y = Math.max(40, Math.min(1960, me.y + joyVec.y * spd));
+  let vx = moveVec.x, vy = moveVec.y;
+  if (keys['KeyW'] || keys['ArrowUp']) vy = -1;
+  if (keys['KeyS'] || keys['ArrowDown']) vy = 1;
+  if (keys['KeyA'] || keys['ArrowLeft']) vx = -1;
+  if (keys['KeyD'] || keys['ArrowRight']) vx = 1;
+
+  if (!isFrozen && (vx || vy)) {
+    const sensMult = 0.6 + (cfg.sens * 0.08);
+    const spd = (state.weather === 'speed' ? 5.0 : 3.2) * sensMult;
+    me.x = Math.max(40, Math.min(1960, me.x + vx * spd));
+    me.y = Math.max(40, Math.min(1960, me.y + vy * spd));
     if (isMultiplayer && ts - lastEmit > 50) { socket.emit('move', { x: me.x, y: me.y }); lastEmit = ts; }
   }
-  ctx.save(); ctx.translate(cv.width / 2 - me.x, cv.height / 2 - me.y);
-  ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.beginPath(); ctx.arc(1000, 1000, 160, 0, Math.PI * 2); ctx.stroke();
-  state.resources.forEach(r => { ctx.fillStyle = r.type === 'stone' ? '#94a3b8' : (r.type === 'bush' ? '#22c55e' : '#15803d'); ctx.beginPath(); ctx.arc(r.x, r.y, 18, 0, Math.PI * 2); ctx.fill(); });
-  state.luckyBlocks.forEach(b => { ctx.fillStyle = '#facc15'; ctx.fillRect(b.x - 14, b.y - 14, 28, 28); ctx.fillStyle = '#000'; ctx.font = 'bold 16px sans-serif'; ctx.fillText('?', b.x - 4, b.y + 6); });
-  state.blocks.forEach(b => { ctx.fillStyle = b.type === 'brick' ? '#b91c1c' : (b.type === 'stone' ? '#64748b' : '#92400e'); ctx.fillRect(b.x - 15, b.y - 15, 30, 30); });
-  Object.values(state.players).forEach(p => { if (p.nick === myNick) return; ctx.fillStyle = p.isAdmin ? '#facc15' : '#38bdf8'; ctx.beginPath(); ctx.arc(p.x, p.y, 14, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#fff'; ctx.font = '11px sans-serif'; ctx.fillText(p.nick, p.x - 18, p.y - 20); });
-  ctx.fillStyle = isAdmin ? '#facc15' : '#fff'; ctx.beginPath(); ctx.arc(me.x, me.y, 14, 0, Math.PI * 2); ctx.fill();
-  ctx.restore(); requestAnimationFrame(loop);
+
+  ctx.save();
+  ctx.translate(cv.width / 2 - me.x, cv.height / 2 - me.y);
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+  ctx.beginPath(); ctx.arc(1000, 1000, 160, 0, Math.PI * 2); ctx.stroke();
+
+  state.resources.forEach(r => {
+    ctx.fillStyle = r.type === 'stone' ? '#94a3b8' : (r.type === 'bush' ? '#22c55e' : '#15803d');
+    ctx.beginPath(); ctx.arc(r.x, r.y, 18, 0, Math.PI * 2); ctx.fill();
+  });
+  state.mobs.forEach(m => {
+    ctx.fillStyle = '#ea580c';
+    ctx.beginPath(); ctx.arc(m.x, m.y, 12, 0, Math.PI * 2); ctx.fill();
+  });
+  state.luckyBlocks.forEach(b => {
+    ctx.fillStyle = '#facc15'; ctx.fillRect(b.x - 14, b.y - 14, 28, 28);
+    ctx.fillStyle = '#000'; ctx.font = 'bold 16px sans-serif'; ctx.fillText('?', b.x - 4, b.y + 6);
+  });
+  state.blocks.forEach(b => {
+    ctx.fillStyle = b.type === 'brick' ? '#b91c1c' : (b.type === 'stone' ? '#64748b' : '#92400e');
+    ctx.fillRect(b.x - 15, b.y - 15, 30, 30);
+  });
+  Object.values(state.players).forEach(p => {
+    if (p.nick === myNick) return;
+    ctx.fillStyle = p.isAdmin ? '#facc15' : '#38bdf8';
+    ctx.beginPath(); ctx.arc(p.x, p.y, 14, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = '11px sans-serif'; ctx.fillText(p.nick, p.x - 18, p.y - 20);
+  });
+  ctx.fillStyle = isAdmin ? '#facc15' : '#fff';
+  ctx.beginPath(); ctx.arc(me.x, me.y, 14, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+
+  if (state.weather === 'rain' || state.weather === 'storm') {
+    ctx.fillStyle = state.weather === 'storm' ? 'rgba(15,23,42,0.45)' : 'rgba(30,58,138,0.22)';
+    ctx.fillRect(0, 0, cv.width, cv.height);
+  }
+  requestAnimationFrame(loop);
 }
 </script>
 </body>
