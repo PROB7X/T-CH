@@ -7,40 +7,48 @@
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; font-family: sans-serif; }
   body { background: #0f172a; color: #f8fafc; overflow: hidden; width: 100vw; height: 100vh; }
-  .screen { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; background: #0f172a; z-index: 10; padding: 16px; }
+  .screen { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; background: #0f172a; z-index: 10; padding: 14px; overflow-y: auto; }
   .screen.active { display: flex; }
   #fsLock { z-index: 9999; background: #020617; text-align: center; }
-  .box { background: #1e293b; padding: 18px; border-radius: 10px; width: 100%; max-width: 360px; border: 1px solid #334155; }
-  h2 { margin-bottom: 12px; font-size: 18px; text-align: center; color: #38bdf8; }
-  label { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 4px; }
-  input, select, button { width: 100%; padding: 9px; margin-bottom: 8px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #fff; font-size: 14px; }
+  .box { background: #1e293b; padding: 16px; border-radius: 10px; width: 100%; max-width: 370px; border: 1px solid #334155; max-height: 92vh; overflow-y: auto; }
+  h2 { margin-bottom: 10px; font-size: 17px; text-align: center; color: #38bdf8; }
+  label { display: block; font-size: 11px; color: #94a3b8; margin-bottom: 3px; }
+  input, select, button { width: 100%; padding: 8px; margin-bottom: 7px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #fff; font-size: 13px; }
   button { background: #2563eb; border: none; font-weight: bold; cursor: pointer; }
   button.sec { background: #334155; }
-  .room-card { background: #0f172a; padding: 10px; border-radius: 6px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #334155; }
+  button.ok { background: #059669; }
+  .room-card { background: #0f172a; padding: 9px; border-radius: 6px; margin-bottom: 7px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #334155; }
   #gameUI { position: fixed; inset: 0; display: none; }
   canvas { display: block; width: 100%; height: 100%; background: #14532d; }
-  .hud-top { position: fixed; top: 8px; left: 8px; display: flex; gap: 5px; z-index: 5; flex-wrap: wrap; max-width: 78vw; }
-  .pill { background: rgba(15,23,42,0.88); padding: 5px 8px; border-radius: 6px; font-size: 11px; border: 1px solid #334155; cursor: pointer; }
-  .pill.active { border-color: #facc15; color: #facc15; }
-  #titleOverlay { position: fixed; top: 28%; left: 50%; transform: translate(-50%, -50%); font-size: 26px; font-weight: 900; text-shadow: 0 3px 10px #000; pointer-events: none; z-index: 50; text-align: center; opacity: 0; transition: opacity 0.3s; }
+  .hp-pill { position: fixed; top: 10px; left: 10px; background: rgba(15,23,42,0.88); padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: bold; border: 1px solid #ef4444; color: #fca5a5; z-index: 5; }
+  #exitBtn { position: fixed; top: 10px; right: 10px; width: 38px; height: 38px; border-radius: 8px; background: rgba(220,38,38,0.9); border: 1px solid #fca5a5; color: #fff; display: flex; align-items: center; justify-content: center; z-index: 15; cursor: pointer; }
+  #adminFab { position: fixed; right: 56px; top: 10px; width: 38px; height: 38px; border-radius: 50%; background: #facc15; color: #000; display: none; align-items: center; justify-content: center; z-index: 60; box-shadow: 0 3px 10px rgba(0,0,0,0.5); touch-action: none; }
+  #adminFrame { position: fixed; right: 12px; top: 56px; width: 270px; height: 330px; border: 2px solid #facc15; border-radius: 8px; z-index: 60; display: none; background: #111827; }
+  #hotbar { position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 5px; background: rgba(15,23,42,0.9); padding: 5px; border-radius: 10px; border: 1px solid #334155; z-index: 10; }
+  .hb-slot { width: 42px; height: 42px; border-radius: 7px; background: #1e293b; border: 2px solid #334155; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; cursor: pointer; }
+  .hb-slot.active { border-color: #facc15; background: #0f172a; }
+  .hb-cnt { position: absolute; bottom: 1px; right: 3px; font-size: 10px; font-weight: bold; color: #f8fafc; }
+  #bpGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
+  .bp-item { background: #0f172a; border: 1px solid #475569; border-radius: 8px; padding: 8px; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; cursor: pointer; }
+  #titleOverlay { position: fixed; top: 26%; left: 50%; transform: translate(-50%, -50%); font-size: 25px; font-weight: 900; text-shadow: 0 3px 10px #000; pointer-events: none; z-index: 50; text-align: center; opacity: 0; transition: opacity 0.3s; }
   #freezeBanner { position: fixed; top: 48px; left: 50%; transform: translateX(-50%); background: #dc2626; padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: bold; display: none; z-index: 40; }
-  #tpHint { position: fixed; bottom: 85px; left: 50%; transform: translateX(-50%); background: #2563eb; padding: 4px 10px; border-radius: 6px; font-size: 11px; display: none; z-index: 20; }
-  #chatBox { position: fixed; top: 44px; left: 8px; width: 255px; z-index: 6; pointer-events: none; }
-  #chatMsgs { max-height: 125px; overflow-y: auto; display: flex; flex-direction: column; gap: 3px; pointer-events: auto; }
+  #modeHint { position: fixed; bottom: 64px; left: 50%; transform: translateX(-50%); background: #2563eb; padding: 3px 10px; border-radius: 6px; font-size: 11px; display: none; z-index: 20; }
+  #chatBox { position: fixed; top: 44px; left: 10px; width: 245px; z-index: 6; pointer-events: none; }
+  #chatMsgs { max-height: 115px; overflow-y: auto; display: flex; flex-direction: column; gap: 3px; pointer-events: auto; }
   .c-msg { background: rgba(15,23,42,0.82); padding: 4px 7px; border-radius: 5px; font-size: 11px; line-height: 1.3; word-break: break-word; }
-  .adm-btns { display: flex; gap: 4px; margin-top: 4px; }
-  .adm-btns button { width: auto; padding: 2px 6px; font-size: 10px; margin: 0; }
+  .adm-btns { display: flex; gap: 4px; margin-top: 3px; }
+  .adm-btns button { width: auto; padding: 2px 5px; font-size: 10px; margin: 0; }
   #chatInputRow { display: none; pointer-events: auto; margin-top: 4px; gap: 4px; }
   #chatInputRow.open { display: flex; }
-  #adminFab { position: fixed; right: 16px; top: 16px; width: 42px; height: 42px; border-radius: 50%; background: #facc15; color: #000; display: none; align-items: center; justify-content: center; z-index: 60; box-shadow: 0 4px 12px rgba(0,0,0,0.5); touch-action: none; }
-  #adminFrame { position: fixed; right: 16px; top: 66px; width: 270px; height: 340px; border: 2px solid #facc15; border-radius: 8px; z-index: 60; display: none; background: #111827; }
-  .ctrl-move { position: fixed; bottom: 18px; left: 18px; z-index: 5; touch-action: none; }
-  .ctrl-act { position: fixed; bottom: 18px; right: 18px; display: flex; gap: 8px; z-index: 5; }
-  #joyZone { width: 110px; height: 110px; border-radius: 50%; background: rgba(255,255,255,0.12); border: 2px solid rgba(255,255,255,0.25); position: relative; }
-  #joyKnob { position: absolute; width: 42px; height: 42px; border-radius: 50%; background: rgba(255,255,255,0.65); top: 32px; left: 32px; pointer-events: none; }
-  #dpadZone { display: none; grid-template-columns: repeat(3, 38px); gap: 4px; }
-  .dp-btn { width: 38px; height: 38px; background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.3); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: bold; }
-  .act-btn { width: 52px; height: 52px; border-radius: 50%; background: rgba(37,99,235,0.88); border: 2px solid #93c5fd; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 10px; font-weight: bold; }
+  .ctrl-move { position: fixed; bottom: 16px; left: 16px; z-index: 5; touch-action: none; }
+  .ctrl-act { position: fixed; bottom: 16px; right: 16px; display: flex; flex-direction: column; gap: 8px; z-index: 5; align-items: flex-end; }
+  .act-row { display: flex; gap: 8px; }
+  #joyZone { width: 104px; height: 104px; border-radius: 50%; background: rgba(255,255,255,0.12); border: 2px solid rgba(255,255,255,0.25); position: relative; }
+  #joyKnob { position: absolute; width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.65); top: 30px; left: 30px; pointer-events: none; }
+  #dpadZone { display: none; grid-template-columns: repeat(3, 36px); gap: 4px; }
+  .dp-btn { width: 36px; height: 36px; background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.3); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+  .act-btn { width: 48px; height: 48px; border-radius: 50%; background: rgba(30,41,59,0.9); border: 2px solid #60a5fa; display: flex; align-items: center; justify-content: center; color: #fff; cursor: pointer; }
+  .act-btn.on { border-color: #facc15; background: #1d4ed8; }
 </style>
 </head>
 <body>
@@ -48,7 +56,7 @@
 <div id="fsLock" class="screen active">
   <div class="box">
     <h2>ТРЕБУЕТСЯ ПОЛНЫЙ ЭКРАН</h2>
-    <p style="font-size:13px;color:#94a3b8;margin-bottom:14px">Игра работает только в горизонтальном полноэкранном режиме.</p>
+    <p style="font-size:13px;color:#94a3b8;margin-bottom:12px">Игра работает только в горизонтальном полноэкранном режиме.</p>
     <button onclick="enterFullscreen()">На весь экран</button>
   </div>
 </div>
@@ -57,7 +65,7 @@
   <div class="box">
     <h2>ВХОД В СИСТЕМУ</h2>
     <input id="nickInput" placeholder="Введите ваш ник" maxlength="16">
-    <input id="passInput" type="password" placeholder="Пароль администратора" style="display:none">
+    <input id="passInput" type="password" placeholder="Пароль аккаунта" style="display:none">
     <div id="authErr" style="color:#f87171;font-size:12px;margin-bottom:6px"></div>
     <button onclick="submitAuth()">Продолжить</button>
   </div>
@@ -66,9 +74,12 @@
 <div id="menuScreen" class="screen">
   <div class="box">
     <h2>SURVIVAL 2D</h2>
+    <div id="lastSrvBanner" style="display:none;margin-bottom:8px">
+      <button class="ok" id="btnLastSrv"></button>
+    </div>
     <button onclick="showScreen('spScreen')">Одиночная игра</button>
     <button onclick="showScreen('mpScreen')">Сервера</button>
-    <button class="sec" onclick="showScreen('setScreen')">Настройки</button>
+    <button class="sec" onclick="openSettings()">Настройки</button>
   </div>
 </div>
 
@@ -91,8 +102,19 @@
 
 <div id="setScreen" class="screen">
   <div class="box">
-    <h2>НАСТРОЙКИ УПРАВЛЕНИЯ</h2>
-    <label>Тип управления:</label>
+    <h2>НАСТРОЙКИ И АККАУНТ</h2>
+    <label>Сменить ник:</label>
+    <div style="display:flex;gap:5px">
+      <input id="setNickInp" maxlength="16" placeholder="Новый ник">
+      <button style="width:90px" onclick="changeNick()">Сменить</button>
+    </div>
+    <label>Пароль аккаунта (сброс через 15 дн. без входа):</label>
+    <div style="display:flex;gap:5px">
+      <input id="setPassInp" type="password" placeholder="Новый пароль (пусто = удалить)">
+      <button class="ok" style="width:90px" onclick="saveAccountPass()">OK</button>
+    </div>
+    <div id="passStatus" style="font-size:11px;color:#38bdf8;margin-bottom:6px"></div>
+    <label>Управление:</label>
     <select id="ctrlType">
       <option value="joy">Джойстик (База)</option>
       <option value="dpad">Кнопки (Крестовина)</option>
@@ -105,21 +127,40 @@
       <option value="normal">Слева ход / Справа действия</option>
       <option value="inv">Справа ход / Слева действия</option>
     </select>
-    <button onclick="saveSettings()">Сохранить</button>
+    <button onclick="saveSettings()">Сохранить и выйти</button>
   </div>
 </div>
 <div id="gameUI">
   <canvas id="cv"></canvas>
+  <div class="hp-pill" id="hpPill">HP: 100</div>
   <div id="titleOverlay"></div>
   <div id="freezeBanner">ВЫ ЗАМОРОЖЕНЫ АДМИНИСТРАТОРОМ</div>
-  <div id="tpHint">Тапните по карте для телепортации</div>
-  <div class="hud-top" id="hudInv"></div>
+  <div id="modeHint"></div>
+
+  <div id="exitBtn" onclick="tryExit()" title="Выйти">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+  </div>
+
+  <div id="adminFab">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+  </div>
+  <iframe id="adminFrame" src="widget.html"></iframe>
 
   <div id="chatBox">
     <div id="chatMsgs"></div>
     <div id="chatInputRow">
       <input id="chatInp" maxlength="32" placeholder="Сообщение (до 32)...">
       <button style="width:50px" onclick="sendChat()">OK</button>
+    </div>
+  </div>
+
+  <div id="hotbar"></div>
+
+  <div id="backpackModal" class="screen" style="background:rgba(0,0,0,0.75);z-index:70">
+    <div class="box">
+      <h2>РЮКЗАК (ВЫБЕРИТЕ ПРЕДМЕТ)</h2>
+      <div id="bpGrid"></div>
+      <button class="sec" onclick="document.getElementById('backpackModal').classList.remove('active')">Закрыть</button>
     </div>
   </div>
 
@@ -132,11 +173,6 @@
     </div>
   </div>
 
-  <div id="adminFab">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-  </div>
-  <iframe id="adminFrame" src="widget.html"></iframe>
-
   <div class="ctrl-move" id="moveWrap">
     <div id="joyZone"><div id="joyKnob"></div></div>
     <div id="dpadZone">
@@ -147,33 +183,56 @@
   </div>
 
   <div class="ctrl-act" id="actWrap">
-    <div class="act-btn" onclick="toggleChat()">ЧАТ</div>
-    <div class="act-btn" onclick="doAction()">ДЕЙСТВ</div>
-    <div class="act-btn" style="background:#dc2626" onclick="tryExit()">ВЫХОД</div>
+    <div class="act-row">
+      <div class="act-btn" id="btnBuildMode" onclick="toggleBuildMode()" title="Режим стройки">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 12h18M12 3v18"/></svg>
+      </div>
+      <div class="act-btn" onclick="toggleChat()" title="Чат">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      </div>
+    </div>
+    <div class="act-row">
+      <div class="act-btn" style="border-color:#f87171" onclick="doAttack()" title="Ударить">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fca5a5" stroke-width="2.2"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M16 16l4 4"/><path d="M19 21l2-2"/></svg>
+      </div>
+      <div class="act-btn" style="border-color:#34d399" onclick="doHarvest()" title="Добыть / Использовать">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6ee7b7" stroke-width="2.2"><path d="M14 6l4 4-9 9H5v-4l9-9z"/><path d="M12 8l4 4"/></svg>
+      </div>
+    </div>
   </div>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
 const socket = io();
-let myNick = '', isAdmin = false, isFrozen = false, isMultiplayer = false, isLooping = false;
-let selectedSlot = 'wood', repTarget = '';
+const ITEM_META = {
+  wood: { name: 'Дерево', svg: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2"><rect x="4" y="6" width="16" height="12" rx="2"/><line x1="4" y1="12" x2="20" y2="12"/></svg>' },
+  stone: { name: 'Камень', svg: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><polygon points="12 3 20 9 17 20 7 20 4 9"/></svg>' },
+  brick: { name: 'Кирпич', svg: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="1"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="12" y1="5" x2="12" y2="12"/></svg>' },
+  meat: { name: 'Мясо', svg: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2"><circle cx="14" cy="10" r="6"/><path d="M9 15L4 20"/></svg>' },
+  amulet_tp: { name: 'Амулет ТП', svg: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><polygon points="12 2 19 12 12 22 5 12"/><circle cx="12" cy="12" r="2"/></svg>' },
+  amulet_swap: { name: 'Амулет Обм.', svg: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#c084fc" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>' }
+};
+const BAG_SVG = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#facc15" stroke-width="2"><path d="M6 7h12l1 13H5L6 7z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/></svg>';
+let myNick = localStorage.getItem('s2d_nick') || '', myRole = 'player', myStyle = { tag: '', color: '#fff', tagColor: '' };
+let isFrozen = false, isMultiplayer = false, isLooping = false, buildMode = false;
+let hotbarSlots = ['wood', 'stone', 'brick', 'meat', 'amulet_tp', 'amulet_swap'];
+let activeSlotIdx = 0, repTarget = '';
 let cfg = JSON.parse(localStorage.getItem('s2d_cfg') || '{"type":"joy","sens":5,"layout":"normal"}');
 let state = { weather: 'clear', players: {}, resources: [], blocks: [], mobs: [], luckyBlocks: [] };
 let me = { x: 1000, y: 1000, hp: 100, inv: { wood: 0, stone: 0, brick: 0, meat: 0, amulet_tp: 0, amulet_swap: 0 } };
 
+document.getElementById('nickInput').value = myNick;
+
 function checkFullscreen() {
   const ok = !!document.fullscreenElement && window.innerWidth >= window.innerHeight;
   document.getElementById('fsLock').classList.toggle('active', !ok);
-  if (ok && !myNick && !document.querySelector('.screen.active:not(#fsLock)')) {
+  if (ok && !document.getElementById('gameUI').style.display.includes('block') && !document.querySelector('.screen.active:not(#fsLock)')) {
     showScreen('authScreen');
   }
 }
 function enterFullscreen() {
-  document.documentElement.requestFullscreen?.().then(() => {
-    screen.orientation?.lock?.('landscape').catch(() => {});
-    checkFullscreen();
-  });
+  document.documentElement.requestFullscreen?.().then(() => { screen.orientation?.lock?.('landscape').catch(() => {}); checkFullscreen(); });
 }
 window.addEventListener('fullscreenchange', checkFullscreen);
 window.addEventListener('resize', checkFullscreen);
@@ -183,54 +242,78 @@ function showScreen(id) {
   if (id) document.getElementById(id).classList.add('active');
 }
 
-function applySettings() {
-  document.getElementById('ctrlType').value = cfg.type;
-  document.getElementById('ctrlSens').value = cfg.sens;
-  document.getElementById('sensVal').textContent = cfg.sens;
-  document.getElementById('ctrlLayout').value = cfg.layout;
-
-  document.getElementById('joyZone').style.display = cfg.type === 'joy' ? 'block' : 'none';
-  document.getElementById('dpadZone').style.display = cfg.type === 'dpad' ? 'grid' : 'none';
-
-  const mw = document.getElementById('moveWrap'), aw = document.getElementById('actWrap');
-  if (cfg.layout === 'inv') {
-    mw.style.left = 'auto'; mw.style.right = '18px';
-    aw.style.right = 'auto'; aw.style.left = '18px';
-  } else {
-    mw.style.right = 'auto'; mw.style.left = '18px';
-    aw.style.left = 'auto'; aw.style.right = '18px';
-  }
-}
-function saveSettings() {
-  cfg = {
-    type: document.getElementById('ctrlType').value,
-    sens: Number(document.getElementById('ctrlSens').value),
-    layout: document.getElementById('ctrlLayout').value
-  };
-  localStorage.setItem('s2d_cfg', JSON.stringify(cfg));
-  applySettings();
-  showScreen('menuScreen');
-}
-
-function submitAuth() {
-  const nick = document.getElementById('nickInput').value.trim();
+function submitAuth(forcedNick) {
+  const nick = (forcedNick || document.getElementById('nickInput').value).trim();
   const pass = document.getElementById('passInput').value;
   if (!nick) return;
   socket.emit('authCheck', { nick, pass }, (res) => {
     if (res.needPass) {
       document.getElementById('passInput').style.display = 'block';
-      document.getElementById('authErr').textContent = 'Введите пароль OWNER';
+      document.getElementById('authErr').textContent = 'Введите пароль аккаунта';
       return;
     }
-    if (!res.ok) {
-      document.getElementById('authErr').textContent = res.msg;
-      return;
-    }
-    myNick = nick; isAdmin = !!res.isAdmin;
-    if (isAdmin) document.getElementById('adminFab').style.display = 'flex';
+    if (!res.ok) { document.getElementById('authErr').textContent = res.msg; return; }
+    myNick = res.nick; myRole = res.role; myStyle = { tag: res.tag, color: res.color, tagColor: res.tagColor };
+    localStorage.setItem('s2d_nick', myNick);
+    document.getElementById('authErr').textContent = '';
+    document.getElementById('passInput').style.display = 'none';
+    updateRoleUI();
     applySettings();
+    const lastSrv = localStorage.getItem('s2d_last_srv');
+    if (lastSrv) {
+      document.getElementById('lastSrvBanner').style.display = 'block';
+      const b = document.getElementById('btnLastSrv');
+      b.textContent = 'Вернуться на: ' + lastSrv;
+      b.onclick = () => joinRoom(lastSrv);
+    }
     showScreen('menuScreen');
   });
+}
+
+function updateRoleUI() {
+  const canPanel = myRole === 'owner' || myRole === 'brother';
+  const fab = document.getElementById('adminFab');
+  fab.style.display = canPanel ? 'flex' : 'none';
+  fab.style.background = myRole === 'brother' ? '#cbd5e1' : '#facc15';
+  const f = document.getElementById('adminFrame');
+  if (f.contentWindow) f.contentWindow.postMessage({ type: 'setRole', role: myRole }, '*');
+}
+
+function openSettings() {
+  document.getElementById('setNickInp').value = myNick;
+  document.getElementById('passStatus').textContent = '';
+  showScreen('setScreen');
+}
+function changeNick() {
+  const next = document.getElementById('setNickInp').value.trim();
+  if (!next || next === myNick) return;
+  document.getElementById('nickInput').value = next;
+  document.getElementById('passInput').value = '';
+  showScreen('authScreen');
+  submitAuth(next);
+}
+function saveAccountPass() {
+  const newPass = document.getElementById('setPassInp').value;
+  socket.emit('setPassword', { nick: myNick, newPass }, (res) => {
+    document.getElementById('passStatus').textContent = res?.msg || 'Ошибка';
+    document.getElementById('setPassInp').value = '';
+  });
+}
+function applySettings() {
+  document.getElementById('ctrlType').value = cfg.type;
+  document.getElementById('ctrlSens').value = cfg.sens;
+  document.getElementById('sensVal').textContent = cfg.sens;
+  document.getElementById('ctrlLayout').value = cfg.layout;
+  document.getElementById('joyZone').style.display = cfg.type === 'joy' ? 'block' : 'none';
+  document.getElementById('dpadZone').style.display = cfg.type === 'dpad' ? 'grid' : 'none';
+  const mw = document.getElementById('moveWrap'), aw = document.getElementById('actWrap');
+  if (cfg.layout === 'inv') { mw.style.left = 'auto'; mw.style.right = '16px'; aw.style.right = 'auto'; aw.style.left = '16px'; }
+  else { mw.style.right = 'auto'; mw.style.left = '16px'; aw.style.left = 'auto'; aw.style.right = '16px'; }
+}
+function saveSettings() {
+  cfg = { type: document.getElementById('ctrlType').value, sens: Number(document.getElementById('ctrlSens').value), layout: document.getElementById('ctrlLayout').value };
+  localStorage.setItem('s2d_cfg', JSON.stringify(cfg));
+  applySettings(); showScreen('menuScreen');
 }
 socket.on('roomsList', (list) => {
   const el = document.getElementById('roomsList');
@@ -244,10 +327,11 @@ socket.on('roomsList', (list) => {
 });
 
 function joinRoom(roomId) {
-  socket.emit('joinRoom', { roomId, nick: myNick, isAdmin }, (res) => {
+  socket.emit('joinRoom', { roomId, nick: myNick }, (res) => {
     if (!res.ok) return alert(res.msg);
-    isMultiplayer = true;
-    state = res.state;
+    localStorage.setItem('s2d_last_srv', roomId);
+    isMultiplayer = true; state = res.state;
+    Object.values(state.players).forEach(p => { p.tx = p.x; p.ty = p.y; });
     me = state.players[myNick];
     startGameLoop();
   });
@@ -256,61 +340,79 @@ function joinRoom(roomId) {
 function startSingleplayer(reset) {
   isMultiplayer = false;
   const saved = !reset && localStorage.getItem('s2d_sp');
-  if (saved) {
-    const data = JSON.parse(saved);
-    state = data.state; me = data.me;
-  } else {
+  if (saved) { const d = JSON.parse(saved); state = d.state; me = d.me; }
+  else {
     state = { weather: 'clear', players: {}, resources: [], blocks: [], mobs: [], luckyBlocks: [] };
-    for (let i = 0; i < 40; i++) state.resources.push({ id: 'r' + i, type: i % 3 === 0 ? 'stone' : (i % 5 === 0 ? 'bush' : 'tree'), x: 180 + Math.random() * 1640, y: 180 + Math.random() * 1640, hp: 3 });
-    for (let i = 0; i < 10; i++) state.mobs.push({ id: 'm' + i, x: 300 + Math.random() * 1400, y: 300 + Math.random() * 1400, hp: 3 });
+    for (let i = 0; i < 35; i++) state.resources.push({ id: 'r' + i, type: i % 3 === 0 ? 'stone' : 'tree', x: 180 + Math.random() * 1640, y: 180 + Math.random() * 1640, hp: 3 });
+    for (let i = 0; i < 10; i++) state.mobs.push({ id: 'm' + i, x: 300 + Math.random() * 1400, y: 300 + Math.random() * 1400, hp: 4 });
     me = { x: 1000, y: 1000, hp: 100, inv: { wood: 10, stone: 10, brick: 5, meat: 2, amulet_tp: 1, amulet_swap: 0 } };
   }
   startGameLoop();
 }
-
-function saveSingleplayer() {
-  if (!isMultiplayer) localStorage.setItem('s2d_sp', JSON.stringify({ state, me }));
-}
+function saveSingleplayer() { if (!isMultiplayer) localStorage.setItem('s2d_sp', JSON.stringify({ state, me })); }
 
 function startGameLoop() {
   showScreen(null);
   document.getElementById('gameUI').style.display = 'block';
-  renderHud();
-  syncAdminPlayers();
+  updateRoleUI(); renderHotbar(); syncAdminPlayers();
   if (!isLooping) { isLooping = true; requestAnimationFrame(loop); }
 }
 
-function renderHud() {
-  const items = [['wood','Дер'],['stone','Кам'],['brick','Кир'],['meat','Мясо'],['amulet_tp','Ам.ТП'],['amulet_swap','Ам.Обм']];
-  document.getElementById('hudInv').innerHTML = `<div class="pill">HP: ${me.hp}</div>` + items.map(([k, l]) =>
-    `<div class="pill ${selectedSlot === k ? 'active' : ''}" onclick="selectSlot('${k}')">${l}: ${me.inv[k] || 0}</div>`
-  ).join('');
-  document.getElementById('tpHint').style.display = (selectedSlot === 'amulet_tp' && me.inv.amulet_tp > 0) ? 'block' : 'none';
+function getSelectedItem() { return hotbarSlots[activeSlotIdx]; }
+function renderHotbar() {
+  document.getElementById('hpPill').textContent = 'HP: ' + me.hp;
+  const hb = document.getElementById('hotbar');
+  hb.innerHTML = hotbarSlots.map((k, i) => {
+    const m = ITEM_META[k];
+    return `<div class="hb-slot ${activeSlotIdx === i ? 'active' : ''}" onclick="activeSlotIdx=${i};renderHotbar()">${m.svg}<span class="hb-cnt">${me.inv[k] || 0}</span></div>`;
+  }).join('') + `<div class="hb-slot" onclick="openBackpack()">${BAG_SVG}</div>`;
+  updateModeHint();
 }
-function selectSlot(k) { selectedSlot = k; renderHud(); }
+function openBackpack() {
+  const grid = document.getElementById('bpGrid');
+  grid.innerHTML = Object.keys(ITEM_META).map(k => {
+    const m = ITEM_META[k];
+    return `<div class="bp-item" onclick="equipToSlot('${k}')">${m.svg}<b>${m.name}</b><span>${me.inv[k] || 0} шт.</span></div>`;
+  }).join('');
+  document.getElementById('backpackModal').classList.add('active');
+}
+function equipToSlot(itemKey) {
+  const existing = hotbarSlots.indexOf(itemKey);
+  if (existing !== -1) activeSlotIdx = existing;
+  else hotbarSlots[activeSlotIdx] = itemKey;
+  document.getElementById('backpackModal').classList.remove('active');
+  renderHotbar();
+}
+
+function toggleBuildMode() {
+  buildMode = !buildMode;
+  document.getElementById('btnBuildMode').classList.toggle('on', buildMode);
+  updateModeHint();
+}
+function updateModeHint() {
+  const h = document.getElementById('modeHint');
+  const sel = getSelectedItem();
+  if (sel === 'amulet_tp' && me.inv.amulet_tp > 0) { h.style.display = 'block'; h.textContent = 'Тапните по карте для телепортации'; }
+  else if (buildMode && ['wood', 'stone', 'brick'].includes(sel)) { h.style.display = 'block'; h.textContent = 'Тапните рядом с собой, чтобы поставить блок'; }
+  else h.style.display = 'none';
+}
 
 function showTitle(text, color = '#facc15') {
   const el = document.getElementById('titleOverlay');
   el.textContent = text; el.style.color = color; el.style.opacity = '1';
-  clearTimeout(el._t);
-  el._t = setTimeout(() => el.style.opacity = '0', 3500);
+  clearTimeout(el._t); el._t = setTimeout(() => el.style.opacity = '0', 3500);
 }
-
 function addChatLine(html, isAlert = false) {
   const box = document.getElementById('chatMsgs');
   const div = document.createElement('div');
   div.className = 'c-msg';
   if (isAlert) div.style.borderLeft = '3px solid #ef4444';
-  div.innerHTML = html;
-  box.appendChild(div);
-  box.scrollTop = box.scrollHeight;
+  div.innerHTML = html; box.appendChild(div); box.scrollTop = box.scrollHeight;
   setTimeout(() => div.remove(), 300000);
 }
-
 function openReport(nick) {
   if (nick === myNick || nick === 'HELM77ZX') return;
-  repTarget = nick;
-  document.getElementById('repTitle').textContent = 'Жалоба на ' + nick;
+  repTarget = nick; document.getElementById('repTitle').textContent = 'Жалоба на ' + nick;
   document.getElementById('reportModal').classList.add('active');
 }
 function sendReport(reason) {
@@ -321,30 +423,34 @@ function sendReport(reason) {
 function quickAdmin(action, target) { socket.emit('adminCmd', { action, target }); }
 
 socket.on('chatBroadcast', (m) => {
-  const tag = m.isAdmin ? '<span style="color:#f97316;font-weight:bold">[OWNER]</span> ' : '';
-  const col = m.isAdmin ? '#facc15' : '#e2e8f0';
-  addChatLine(`${tag}<b style="color:${col};cursor:pointer" onclick="openReport('${m.nick}')">${m.nick}</b>: ${m.text}`);
+  const tag = m.tag ? `<span style="color:${m.tagColor || '#f97316'};font-weight:bold">${m.tag}</span> ` : '';
+  addChatLine(`${tag}<b style="color:${m.color || '#e2e8f0'};cursor:pointer" onclick="openReport('${m.nick}')">${m.nick}</b>: ${m.text}`);
 });
 socket.on('adminAlert', (a) => {
-  if (!isAdmin) return;
+  if (myRole !== 'owner') return;
   const btns = `<div class="adm-btns"><button style="background:#2563eb" onclick="quickAdmin('tpTo','${a.target}')">[ТП]</button><button style="background:#dc2626" onclick="quickAdmin('banRoom','${a.target}')">[Забанить]</button><button style="background:#d97706" onclick="quickAdmin('restrictAll','${a.target}')">[Запретить всё]</button></div>`;
   addChatLine(`<span style="color:#fca5a5;font-weight:bold">${a.reason}</span>${btns}`, true);
 });
+socket.on('roleChanged', (st) => { myRole = st.role; myStyle = st; updateRoleUI(); showTitle('Ваш статус обновлен!', '#facc15'); });
+socket.on('playerRoleSync', ({ nick, tag, color, tagColor, role }) => { if (state.players[nick]) Object.assign(state.players[nick], { tag, color, tagColor, role }); });
 socket.on('titleMsg', (d) => showTitle(d.text, d.color));
 socket.on('freezeState', (f) => { isFrozen = f; document.getElementById('freezeBanner').style.display = f ? 'block' : 'none'; });
 socket.on('forcePos', (pos) => { me.x = pos.x; me.y = pos.y; });
-socket.on('invUpdate', (inv) => { me.inv = inv; renderHud(); });
-socket.on('hpUpdate', (hp) => { me.hp = hp; renderHud(); });
+socket.on('invUpdate', (inv) => { me.inv = inv; renderHotbar(); });
+socket.on('hpUpdate', (hp) => { me.hp = hp; renderHotbar(); });
 socket.on('weatherUpdate', (w) => { state.weather = w; });
 socket.on('mobsUpdate', (mobs) => { state.mobs = mobs; });
 socket.on('worldSync', (patch) => Object.assign(state, patch));
-socket.on('playerJoined', (p) => { state.players[p.nick] = p; syncAdminPlayers(); });
-socket.on('playerMoved', ({ nick, x, y }) => { if (state.players[nick]) { state.players[nick].x = x; state.players[nick].y = y; } });
+socket.on('playerJoined', (p) => { p.tx = p.x; p.ty = p.y; state.players[p.nick] = p; syncAdminPlayers(); });
+socket.on('playerMoved', ({ nick, x, y }) => { if (state.players[nick]) { state.players[nick].tx = x; state.players[nick].ty = y; } });
 socket.on('playerLeft', (nick) => { delete state.players[nick]; syncAdminPlayers(); });
 socket.on('kicked', (msg) => { alert(msg); location.reload(); });
 function syncAdminPlayers() {
   const f = document.getElementById('adminFrame');
-  if (f.contentWindow) f.contentWindow.postMessage({ type: 'updatePlayers', players: Object.keys(state.players) }, '*');
+  if (f.contentWindow) {
+    f.contentWindow.postMessage({ type: 'setRole', role: myRole }, '*');
+    f.contentWindow.postMessage({ type: 'updatePlayers', players: Object.keys(state.players) }, '*');
+  }
 }
 window.addEventListener('message', (e) => {
   if (!e.data) return;
@@ -355,15 +461,11 @@ window.addEventListener('message', (e) => {
 const fab = document.getElementById('adminFab');
 let drag = false;
 fab.addEventListener('touchmove', (e) => {
-  drag = true; const t = e.touches[0];
-  fab.style.left = (t.clientX - 21) + 'px'; fab.style.top = (t.clientY - 21) + 'px'; fab.style.right = 'auto';
+  drag = true; const t = e.touches;
+  fab.style.left = (t.clientX - 19) + 'px'; fab.style.top = (t.clientY - 19) + 'px'; fab.style.right = 'auto';
 });
 fab.addEventListener('touchend', () => {
-  if (!drag) {
-    const f = document.getElementById('adminFrame');
-    f.style.display = f.style.display === 'block' ? 'none' : 'block';
-    syncAdminPlayers();
-  }
+  if (!drag) { const f = document.getElementById('adminFrame'); f.style.display = f.style.display === 'block' ? 'none' : 'block'; syncAdminPlayers(); }
   drag = false;
 });
 
@@ -375,83 +477,89 @@ function sendChat() {
 }
 function tryExit() {
   if (isFrozen) return showTitle('Нельзя выйти при заморозке!', '#ef4444');
-  saveSingleplayer();
-  location.reload();
+  saveSingleplayer(); location.reload();
 }
 
 const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
 cv.addEventListener('pointerdown', (e) => {
-  if (isFrozen || selectedSlot !== 'amulet_tp' || me.inv.amulet_tp <= 0) return;
-  const tx = me.x + (e.clientX - cv.width / 2);
-  const ty = me.y + (e.clientY - cv.height / 2);
-  if (isMultiplayer) {
-    socket.emit('action', { type: 'useAmulet', item: 'amulet_tp', x: tx, y: ty });
-  } else {
-    me.inv.amulet_tp--; me.x = Math.max(40, Math.min(1960, tx)); me.y = Math.max(40, Math.min(1960, ty));
-    renderHud(); saveSingleplayer();
+  if (isFrozen) return;
+  const wx = me.x + (e.clientX - cv.width / 2);
+  const wy = me.y + (e.clientY - cv.height / 2);
+  const sel = getSelectedItem();
+
+  if (sel === 'amulet_tp' && me.inv.amulet_tp > 0) {
+    if (isMultiplayer) socket.emit('action', { type: 'useAmulet', item: 'amulet_tp', x: wx, y: wy });
+    else { me.inv.amulet_tp--; me.x = Math.max(40, Math.min(1960, wx)); me.y = Math.max(40, Math.min(1960, wy)); renderHotbar(); saveSingleplayer(); }
+    return;
+  }
+  if (buildMode && ['wood', 'stone', 'brick'].includes(sel) && me.inv[sel] > 0) {
+    if (Math.hypot(wx - 1000, wy - 1000) < 160) return showTitle('Нельзя строить на спавне!', '#ef4444');
+    if (Math.hypot(wx - me.x, wy - me.y) > 150) return showTitle('Слишком далеко!', '#ef4444');
+    if (isMultiplayer) socket.emit('action', { type: 'build', blockType: sel, x: wx, y: wy });
+    else { me.inv[sel]--; state.blocks.push({ type: sel, x: wx, y: wy }); renderHotbar(); saveSingleplayer(); }
   }
 });
 
-function doAction() {
+function doAttack() {
   if (isFrozen) return;
-  if (selectedSlot === 'meat' && me.inv.meat > 0 && me.hp < 100) {
-    me.inv.meat--; me.hp = Math.min(100, me.hp + 25); renderHud(); saveSingleplayer(); return;
+  if (isMultiplayer) return socket.emit('action', { type: 'attack' });
+  const mIdx = state.mobs.findIndex(m => Math.hypot(m.x - me.x, m.y - me.y) < 65);
+  if (mIdx !== -1) {
+    state.mobs[mIdx].hp--;
+    if (state.mobs[mIdx].hp <= 0) { state.mobs.splice(mIdx, 1); me.inv.meat += 2; }
+    renderHotbar(); saveSingleplayer();
   }
-  if (selectedSlot === 'amulet_swap' && isMultiplayer) {
-    return socket.emit('action', { type: 'useAmulet', item: 'amulet_swap' });
+}
+
+function doHarvest() {
+  if (isFrozen) return;
+  const sel = getSelectedItem();
+  if (sel === 'meat' && me.inv.meat > 0 && me.hp < 100) {
+    me.inv.meat--; me.hp = Math.min(100, me.hp + 25); renderHotbar(); saveSingleplayer(); return;
   }
+  if (sel === 'amulet_swap' && isMultiplayer) return socket.emit('action', { type: 'useAmulet', item: 'amulet_swap' });
   const lb = state.luckyBlocks.find(b => Math.hypot(b.x - me.x, b.y - me.y) < 55);
   if (lb) return socket.emit('action', { type: 'hitLucky', targetId: lb.id });
 
-  const resIdx = state.resources.findIndex(r => Math.hypot(r.x - me.x, r.y - me.y) < 55);
-  if (resIdx !== -1) {
-    if (isMultiplayer) return socket.emit('action', { type: 'hitResource', targetId: state.resources[resIdx].id });
-    const r = state.resources[resIdx]; r.hp--;
-    if (r.hp <= 0) { state.resources.splice(resIdx, 1); me.inv[r.type === 'stone' ? 'stone' : 'wood'] += 2; }
-    renderHud(); saveSingleplayer(); return;
-  }
-
-  const mobIdx = state.mobs.findIndex(m => Math.hypot(m.x - me.x, m.y - me.y) < 55);
-  if (mobIdx !== -1 && !isMultiplayer) {
-    state.mobs[mobIdx].hp--;
-    if (state.mobs[mobIdx].hp <= 0) { state.mobs.splice(mobIdx, 1); me.inv.meat += 2; }
-    renderHud(); saveSingleplayer(); return;
-  }
-
-  if (['wood', 'stone', 'brick'].includes(selectedSlot) && me.inv[selectedSlot] > 0) {
-    if (Math.hypot(me.x + 35 - 1000, me.y - 1000) < 160) return showTitle('Нельзя строить на спавне!', '#ef4444');
-    if (isMultiplayer) return socket.emit('action', { type: 'build', blockType: selectedSlot, x: me.x + 35, y: me.y });
-    me.inv[selectedSlot]--; state.blocks.push({ type: selectedSlot, x: me.x + 35, y: me.y });
-    renderHud(); saveSingleplayer();
+  const rIdx = state.resources.findIndex(r => Math.hypot(r.x - me.x, r.y - me.y) < 55);
+  if (rIdx !== -1) {
+    if (isMultiplayer) return socket.emit('action', { type: 'hitResource', targetId: state.resources[rIdx].id });
+    const r = state.resources[rIdx]; r.hp--;
+    if (r.hp <= 0) { state.resources.splice(rIdx, 1); me.inv[r.type === 'stone' ? 'stone' : 'wood'] += 2; }
+    renderHotbar(); saveSingleplayer();
   }
 }
 
 let moveVec = { x: 0, y: 0 }, keys = {};
 const joyZone = document.getElementById('joyZone'), joyKnob = document.getElementById('joyKnob');
 joyZone.addEventListener('touchmove', (e) => {
-  const r = joyZone.getBoundingClientRect(), t = e.touches[0];
-  let dx = t.clientX - (r.left + 55), dy = t.clientY - (r.top + 55);
-  const d = Math.min(40, Math.hypot(dx, dy)), a = Math.atan2(dy, dx);
-  joyKnob.style.left = (34 + Math.cos(a) * d) + 'px'; joyKnob.style.top = (34 + Math.sin(a) * d) + 'px';
-  moveVec = { x: Math.cos(a) * (d / 40), y: Math.sin(a) * (d / 40) };
+  const r = joyZone.getBoundingClientRect(), t = e.touches;
+  let dx = t.clientX - (r.left + 52), dy = t.clientY - (r.top + 52);
+  const d = Math.min(38, Math.hypot(dx, dy)), a = Math.atan2(dy, dx);
+  joyKnob.style.left = (32 + Math.cos(a) * d) + 'px'; joyKnob.style.top = (32 + Math.sin(a) * d) + 'px';
+  moveVec = { x: Math.cos(a) * (d / 38), y: Math.sin(a) * (d / 38) };
 });
-joyZone.addEventListener('touchend', () => { joyKnob.style.left = '34px'; joyKnob.style.top = '34px'; moveVec = { x: 0, y: 0 }; });
+joyZone.addEventListener('touchend', () => { joyKnob.style.left = '32px'; joyKnob.style.top = '32px'; moveVec = { x: 0, y: 0 }; });
 
 document.querySelectorAll('.dp-btn').forEach(b => {
   b.addEventListener('touchstart', (e) => { e.preventDefault(); moveVec = { x: Number(b.dataset.dx), y: Number(b.dataset.dy) }; });
   b.addEventListener('touchend', () => { moveVec = { x: 0, y: 0 }; });
 });
-window.addEventListener('keydown', (e) => { keys[e.code] = true; });
+
+window.addEventListener('keydown', (e) => { if (document.activeElement.tagName !== 'INPUT') keys[e.code] = true; });
 window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+window.addEventListener('blur', () => { keys = {}; moveVec = { x: 0, y: 0 }; });
+document.addEventListener('visibilitychange', () => { if (document.hidden) { keys = {}; moveVec = { x: 0, y: 0 }; } });
 
 let lastEmit = 0;
 function loop(ts) {
   cv.width = window.innerWidth; cv.height = window.innerHeight;
   let vx = moveVec.x, vy = moveVec.y;
-  if (keys['KeyW'] || keys['ArrowUp']) vy = -1;
-  if (keys['KeyS'] || keys['ArrowDown']) vy = 1;
-  if (keys['KeyA'] || keys['ArrowLeft']) vx = -1;
-  if (keys['KeyD'] || keys['ArrowRight']) vx = 1;
+  if (keys['KeyW'] || keys['ArrowUp']) vy -= 1;
+  if (keys['KeyS'] || keys['ArrowDown']) vy += 1;
+  if (keys['KeyA'] || keys['ArrowLeft']) vx -= 1;
+  if (keys['KeyD'] || keys['ArrowRight']) vx += 1;
+  if (vx && vy) { const n = Math.hypot(vx, vy); vx /= n; vy /= n; }
 
   if (!isFrozen && (vx || vy)) {
     const sensMult = 0.6 + (cfg.sens * 0.08);
@@ -463,32 +571,24 @@ function loop(ts) {
 
   ctx.save();
   ctx.translate(cv.width / 2 - me.x, cv.height / 2 - me.y);
-  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
-  ctx.beginPath(); ctx.arc(1000, 1000, 160, 0, Math.PI * 2); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.beginPath(); ctx.arc(1000, 1000, 160, 0, Math.PI * 2); ctx.stroke();
 
-  state.resources.forEach(r => {
-    ctx.fillStyle = r.type === 'stone' ? '#94a3b8' : (r.type === 'bush' ? '#22c55e' : '#15803d');
-    ctx.beginPath(); ctx.arc(r.x, r.y, 18, 0, Math.PI * 2); ctx.fill();
-  });
-  state.mobs.forEach(m => {
-    ctx.fillStyle = '#ea580c';
-    ctx.beginPath(); ctx.arc(m.x, m.y, 12, 0, Math.PI * 2); ctx.fill();
-  });
-  state.luckyBlocks.forEach(b => {
-    ctx.fillStyle = '#facc15'; ctx.fillRect(b.x - 14, b.y - 14, 28, 28);
-    ctx.fillStyle = '#000'; ctx.font = 'bold 16px sans-serif'; ctx.fillText('?', b.x - 4, b.y + 6);
-  });
-  state.blocks.forEach(b => {
-    ctx.fillStyle = b.type === 'brick' ? '#b91c1c' : (b.type === 'stone' ? '#64748b' : '#92400e');
-    ctx.fillRect(b.x - 15, b.y - 15, 30, 30);
-  });
+  state.resources.forEach(r => { ctx.fillStyle = r.type === 'stone' ? '#94a3b8' : '#15803d'; ctx.beginPath(); ctx.arc(r.x, r.y, 18, 0, Math.PI * 2); ctx.fill(); });
+  state.mobs.forEach(m => { ctx.fillStyle = '#ea580c'; ctx.beginPath(); ctx.arc(m.x, m.y, 12, 0, Math.PI * 2); ctx.fill(); });
+  state.luckyBlocks.forEach(b => { ctx.fillStyle = '#facc15'; ctx.fillRect(b.x - 14, b.y - 14, 28, 28); ctx.fillStyle = '#000'; ctx.font = 'bold 16px sans-serif'; ctx.fillText('?', b.x - 4, b.y + 6); });
+  state.blocks.forEach(b => { ctx.fillStyle = b.type === 'brick' ? '#b91c1c' : (b.type === 'stone' ? '#64748b' : '#92400e'); ctx.fillRect(b.x - 15, b.y - 15, 30, 30); });
+
   Object.values(state.players).forEach(p => {
     if (p.nick === myNick) return;
-    ctx.fillStyle = p.isAdmin ? '#facc15' : '#38bdf8';
+    if (typeof p.tx === 'number') { p.x += (p.tx - p.x) * 0.22; p.y += (p.ty - p.y) * 0.22; }
+    ctx.fillStyle = p.color || '#38bdf8';
     ctx.beginPath(); ctx.arc(p.x, p.y, 14, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#fff'; ctx.font = '11px sans-serif'; ctx.fillText(p.nick, p.x - 18, p.y - 20);
+    ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillStyle = p.color || '#fff';
+    ctx.fillText((p.tag ? p.tag + ' ' : '') + p.nick, p.x, p.y - 20);
   });
-  ctx.fillStyle = isAdmin ? '#facc15' : '#fff';
+
+  ctx.fillStyle = myStyle.color || '#fff';
   ctx.beginPath(); ctx.arc(me.x, me.y, 14, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 
