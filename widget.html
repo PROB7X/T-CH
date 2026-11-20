@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; user-select: none; }
+        body { background: transparent; overflow: hidden; }
+        .panel {
+            width: 240px;
+            background: rgba(15, 23, 42, 0.92);
+            border: 1px solid #ef4444;
+            border-radius: 10px;
+            color: #f8fafc;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+            overflow: hidden;
+        }
+        .header {
+            background: #dc2626;
+            padding: 8px 12px;
+            font-size: 13px;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: move; /* Курсор перетаскивания */
+        }
+        .body { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+        .stats { font-size: 12px; color: #cbd5e1; background: #1e293b; padding: 6px 8px; border-radius: 6px; }
+        button {
+            background: #2563eb; color: #fff; border: none; padding: 8px;
+            border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover { background: #1d4ed8; }
+        button.danger { background: #991b1b; }
+        .close-btn { background: none; border: none; color: white; font-size: 16px; cursor: pointer; padding: 0; min-width: auto; }
+    </style>
+</head>
+<body>
+    <div class="panel">
+        <div class="header" id="drag-handle">
+            <span>ADMIN WIDGET</span>
+            <button class="close-btn" onclick="sendCommand('close')">×</button>
+        </div>
+        <div class="body">
+            <div class="stats" id="info-box">Ожидание данных из игры...</div>
+            <button onclick="sendCommand('healAndRes')">Выдать 100 HP и ресурсы</button>
+            <button onclick="sendCommand('healAll')">Вылечить всех на сервере</button>
+            <button class="danger" onclick="sendCommand('teleportCenter')">Телепорт в центр (1000,1000)</button>
+        </div>
+    </div>
+
+    <script>
+        // 1. Отправка команд в основной index.html
+        function sendCommand(cmd) {
+            window.parent.postMessage({ type: 'ADMIN_CMD', command: cmd }, '*');
+        }
+
+        // 2. Получение данных от index.html для отображения в виджете
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.type === 'GAME_STATS') {
+                const { hp, wood, stone, playersCount } = event.data;
+                document.getElementById('info-box').innerHTML = 
+                    `HP: <b>${hp}</b> | Дерево: <b>${wood}</b> | Камень: <b>${stone}</b><br>Игроков онлайн: <b>${playersCount}</b>`;
+            }
+        });
+
+        // 3. Логика перетаскивания (передаём смещение мыши/пальца родительскому окну)
+        const handle = document.getElementById('drag-handle');
+        let isDragging = false, startX, startY;
+
+        handle.addEventListener('pointerdown', (e) => {
+            isDragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            handle.setPointerCapture(e.pointerId);
+        });
+
+        handle.addEventListener('pointermove', (e) => {
+            if (!isDragging) return;
+            window.parent.postMessage({
+                type: 'DRAG_WIDGET',
+                dx: e.clientX - startX,
+                dy: e.clientY - startY
+            }, '*');
+        });
+
+        handle.addEventListener('pointerup', () => { isDragging = false; });
+    </script>
+</body>
+</html>
