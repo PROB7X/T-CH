@@ -32,7 +32,6 @@
         #hud { position: fixed; top: 12px; left: 12px; right: 12px; display: flex; justify-content: space-between; pointer-events: none; z-index: 5; }
         .hud-box { background: rgba(15, 23, 42, 0.85); padding: 8px 14px; border-radius: 8px; border: 1px solid #334155; display: flex; gap: 12px; align-items: center; pointer-events: auto; font-size: 14px; }
         
-        /* Чат (верхний левый угол под HUD) */
         #chat-box { position: fixed; top: 60px; left: 12px; width: 270px; z-index: 6; pointer-events: none; }
         #chat-messages { max-height: 120px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; }
         .chat-msg { background: rgba(15, 23, 42, 0.75); padding: 4px 8px; border-radius: 4px; font-size: 12px; color: #f1f5f9; word-break: break-word; }
@@ -40,7 +39,6 @@
         #chat-input { width: 100%; padding: 6px 8px; font-size: 12px; margin: 0; }
         #chat-send { min-width: auto; padding: 6px 10px; margin: 0; font-size: 12px; }
 
-        /* Сенсорное управление: Джойстик и Кнопки */
         #touch-controls { position: fixed; inset: 0; pointer-events: none; z-index: 6; }
         #joystick-zone { position: absolute; bottom: 25px; left: 25px; width: 130px; height: 130px; border-radius: 50%; background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.25); pointer-events: auto; touch-action: none; }
         #joystick-stick { position: absolute; top: 40px; left: 40px; width: 46px; height: 46px; border-radius: 50%; background: rgba(59, 130, 246, 0.7); pointer-events: none; }
@@ -85,7 +83,6 @@
         <button id="btn-servers" class="secondary">Сервера</button>
         <button id="btn-settings" class="secondary">Настройки</button>
     </div>
-    <!-- СЕРВЕРА (КОМНАТЫ) -->
     <div id="servers-screen" class="screen hidden">
         <div class="panel-card">
             <h3 style="margin-bottom: 12px;">СПИСОК СЕРВЕРОВ</h3>
@@ -109,7 +106,6 @@
         </div>
     </div>
 
-    <!-- ОДИНОЧНАЯ ИГРА -->
     <div id="worlds-screen" class="screen hidden">
         <div class="panel-card">
             <h3 style="margin-bottom: 10px;">ОДИНОЧНЫЕ МИРЫ</h3>
@@ -124,7 +120,6 @@
         </div>
     </div>
 
-    <!-- НАСТРОЙКИ -->
     <div id="settings-screen" class="screen hidden">
         <div class="panel-card">
             <h3 style="margin-bottom: 14px;">НАСТРОЙКИ УПРАВЛЕНИЯ</h3>
@@ -153,7 +148,6 @@
         </div>
     </div>
 
-    <!-- ИГРОВОЙ ЭКРАН -->
     <div id="game-screen" class="screen hidden" style="padding: 0;">
         <canvas id="game-canvas"></canvas>
         
@@ -176,7 +170,6 @@
             </div>
         </div>
 
-        <!-- ЧАТ (МАКС 32 СИМВОЛА, ОЧИСТКА ЧЕРЕЗ 5 МИН) -->
         <div id="chat-box" class="hidden">
             <div id="chat-messages"></div>
             <div id="chat-input-row">
@@ -185,7 +178,6 @@
             </div>
         </div>
 
-        <!-- УПРАВЛЕНИЕ -->
         <div id="touch-controls">
             <div id="joystick-zone"><div id="joystick-stick"></div></div>
             <div class="dpad hidden" id="dpad-zone">
@@ -208,9 +200,9 @@
         </div>
     </div>
 
-    <iframe id="admin-widget" src="widget.html" class="hidden" style="position: fixed; top: 65px; right: 15px; width: 285px; height: 390px; border: none; z-index: 9998; background: transparent;"></iframe>
+    <iframe id="admin-widget" src="widget.html" class="hidden" style="position: fixed; top: 55px; right: 12px; width: 270px; height: 75vh; max-height: 360px; border: none; z-index: 9998; background: transparent;"></iframe>
     <script>
-        const SERVER_URL = 'http://103.82.102.226:3000';
+        const SERVER_URL = window.location.port === '3000' ? window.location.origin : 'http://103.82.102.226:3000';
         const ADMIN_NICK = 'HELM77ZX';
         const ADMIN_PASS_LOCAL = 'aB9xK2mP7qWz';
 
@@ -225,7 +217,6 @@
 
         let socket = null, gameLoopId = null;
 
-        // 1. Полноэкранный режим
         const fsOverlay = document.getElementById('fullscreen-overlay');
         async function enterFs() {
             const el = document.documentElement;
@@ -247,7 +238,6 @@
             document.getElementById(id).classList.remove('hidden');
         }
 
-        // 2. Авторизация
         const inputNick = document.getElementById('input-nick');
         const inputPass = document.getElementById('input-pass');
         inputNick.addEventListener('input', () => {
@@ -287,7 +277,6 @@
             showScreen('menu-screen');
         }
 
-        // 3. Настройки и Джойстик
         document.getElementById('btn-settings').addEventListener('click', () => showScreen('settings-screen'));
         document.getElementById('btn-save-settings').addEventListener('click', () => {
             state.settings.controlType = document.getElementById('set-control-type').value;
@@ -333,15 +322,15 @@
             joyStick.style.transform = `translate(0px, 0px)`;
             state.joyVec = { x: 0, y: 0 };
         });
-
-        // 4. Сервера (Комнаты) и Чат
         document.getElementById('btn-servers').addEventListener('click', async () => {
             showScreen('servers-screen');
             try {
                 const res = await fetch(`${SERVER_URL}/api/rooms`);
                 const rooms = await res.json();
                 updateRoomsUI(rooms);
-            } catch (e) {}
+            } catch (e) {
+                document.getElementById('srv1-info').textContent = 'Нет связи с сервером';
+            }
         });
 
         function updateRoomsUI(rooms) {
@@ -354,14 +343,26 @@
         }
 
         function joinServerRoom(roomName) {
+            if (typeof io === 'undefined') {
+                alert('Ошибка: библиотека Socket.IO не загрузилась.');
+                return;
+            }
             state.mode = 'multi';
             state.currentRoom = roomName;
             state.world = generateWorld(2000, 2000);
             state.player = { x: 1000, y: 1000, hp: 100, hunger: 100, wood: 0, stone: 0, canBuild: state.isAdmin };
             document.getElementById('chat-box').classList.remove('hidden');
 
-            socket = io(SERVER_URL);
-            socket.on('connect', () => socket.emit('joinRoom', { room: roomName, nickname: state.nickname, isAdmin: state.isAdmin }));
+            if (socket) socket.disconnect();
+            socket = io(SERVER_URL, { transports: ['websocket', 'polling'], reconnectionAttempts: 3 });
+
+            socket.on('connect', () => {
+                socket.emit('joinRoom', { room: roomName, nickname: state.nickname, isAdmin: state.isAdmin });
+            });
+            socket.on('connect_error', (err) => {
+                alert('Ошибка подключения к ' + SERVER_URL + ': ' + err.message + '\nОткрывайте игру по ссылке http://103.82.102.226:3000');
+                exitToMenu();
+            });
             socket.on('roomInit', (data) => {
                 state.event = data.event; state.builds = data.builds; state.otherPlayers = data.players;
                 syncAdminPlayers();
@@ -392,7 +393,7 @@
             div.innerHTML = `<b style="color:${msg.isAdmin ? '#facc15' : '#38bdf8'}">${msg.nick}:</b> ${msg.text}`;
             box.appendChild(div);
             box.scrollTop = box.scrollHeight;
-            setTimeout(() => div.remove(), 5 * 60 * 1000); // Очистка через 5 минут
+            setTimeout(() => div.remove(), 5 * 60 * 1000);
         }
 
         document.getElementById('chat-send').addEventListener('click', () => {
@@ -400,7 +401,7 @@
             if (inp.value.trim() && socket) socket.emit('chatMsg', inp.value.trim().slice(0, 32));
             inp.value = '';
         });
-        // 5. Связь с плавающим виджетом админки
+
         const adminWidget = document.getElementById('admin-widget');
         document.getElementById('btn-admin-panel').addEventListener('click', () => {
             adminWidget.classList.toggle('hidden');
@@ -438,8 +439,6 @@
                 }
             }
         });
-
-        // 6. Одиночная игра и генерация мира
         document.getElementById('btn-singleplayer').addEventListener('click', () => { renderWorlds(); showScreen('worlds-screen'); });
         document.getElementById('btn-create-world').addEventListener('click', () => {
             const inp = document.getElementById('new-world-name');
@@ -476,7 +475,6 @@
             });
         }
 
-        // 7. Игровой процесс, выживание и отрисовка
         const canvas = document.getElementById('game-canvas');
         const ctx = canvas.getContext('2d');
 
@@ -496,6 +494,7 @@
 
             loop();
         }
+
         function updateHUD() {
             document.getElementById('hud-hp').textContent = state.player.hp;
             document.getElementById('hud-hunger').textContent = state.player.hunger;
