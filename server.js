@@ -1,166 +1,356 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 
 const secret = JSON.parse(fs.readFileSync(path.join(__dirname, 'secret.json'), 'utf8'));
+const PORT = secret.port || 3000;
+const ADMIN_NICK = secret.adminNick || 'HELM77ZX';
+const ADMIN_PASS = secret.adminPass || 'aB9xK2mP7qWz';
 
 const app = express();
-app.use(cors());
-app.use(express.json());
+const server = http.createServer(app);
+const io = new Server(server);
+
 app.use(express.static(__dirname));
 
-const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: "*", methods: ["GET", "POST"] } });
+const globalBans = new Set();
+const mutedPlayers = new Set();
+const frozenPlayers = new Set();
 
-const roomsState = {
-    'adm.helm7.play': { open: true, event: 'clear', players: {}, builds: [] },
-    'ob.timeos.op': { open: false, event: 'clear', players: {}, builds: [] }
+const rooms = {
+  'adm.helm7.play': createRoom('adm.helm7.play', true, false),
+  'ob.timeos.op': createRoom('ob.timeos.op', false, true)
 };
 
-const globalBans = new Set();
-const roomBans = { 'adm.helm7.play': new Set(), 'ob.timeos.op': new Set() };
-const mutedNicks = new Set();
+function createRoom(id, isOpen, adminOnly) {
+  const world = {
+    id,
+    isOpen,
+    adminOnly,
+    weather: 'clear',
+    players: {},
+    resources: [],
+    blocks: [],
+    mobs: [],
+    luckyBlocks: [],
+    banned: new Set()
+  };
+  generateWorldObjects(world);
+  return world;
+}
 
-app.post('/api/login', (req, res) => {
-    const { nickname, password } = req.body;
-    const nick = (nickname || '').trim();
-    if (!nick) return res.status(400).json({ ok: false, error: 'Введите никнейм' });
-    if (globalBans.has(nick)) return res.status(403).json({ ok: false, error: 'Вы забанены в этой игре навсегда' });
-
-    if (nick === secret.adminNick) {
-        if (password === secret.adminPass) return res.json({ ok: true, isAdmin: true });
-        return res.status(403).json({ ok: false, error: 'Неверный пароль администратора' });
-    }
-    return res.json({ ok: true, isAdmin: false });
-});
-
-app.get('/api/rooms', (req, res) => {
-    res.json({
-        'adm.helm7.play': { open: roomsState['adm.helm7.play'].open, count: Object.keys(roomsState['adm.helm7.play'].players).length },
-        'ob.timeos.op': { open: roomsState['ob.timeos.op'].open, count: Object.keys(roomsState['ob.timeos.op'].players).length }
+function generateWorldObjects(world) {
+  for (let i = 0; i < 45; i++) {
+    world.resources.push({
+      id: 'res_' + Math.random().toString(36).slice(2, 9),
+      type: i % 3 === 0 ? 'stone' : (i % 5 === 0 ? 'bush' : 'tree'),
+      x: 150 + Math.random() * 1700,
+      y: 150 + Math.random() * 1700,
+      hp: 3
     });
-});
+  }
+  for (let i = 0; i < 12; i++) {
+    world.mobs.push({
+      id: 'mob_' + i,
+      x: 300 + Math.random() * 1400,
+      y: 300 + Math.random() * 1400,
+      hp: 3,
+      vx: 0,
+      vy: 0
+    });
+  }
+}
+
+setInterval(() => {
+  Object.values(rooms).forEach(room => {
+    if (!Object.keys(room.players).length) return;
+    room.mobs.forEach(m => {
+      if (Math.random() < 0.05) {
+        const a = Math.random() * Math.PI * 2;
+        m.vx = Math.cos(a) * 1.2;
+        m.vy = Math.sin(a) * 1.2;
+      }
+      m.x = Math.max(80, Math.min(1920, m.x + m.vx));
+      m.y = Math.max(80, Math.min(1920, m.y + m.vy));
+    });
+    io.to(room.id).emit('mobsUpdate', room.mobs);
+  });
+}, 100);
+
+function getRoomsMeta() {
+  return Object.values(rooms).map(r => ({
+    id: r.id,
+    isOpen: r.isOpen,
+    adminOnly: r.adminOnly,
+    count: Object.keys(r.players).length
+  }));
+}
+
+function notifyAdmins(room, alertData) {
+  Object.values(room.players).forEach(p => {
+    if (p.isAdmin) {
+      io.to(p.socketId).emit('adminAlert', alertData);
+    }
+  });
+}
 
 io.on('connection', (socket) => {
-    let currentRoom = null;
-    let currentNick = null;
+  let currentRoom = null;
+  let currentNick = null;
 
-    socket.on('joinRoom', ({ room, nickname, isAdmin }) => {
-        if (!roomsState[room]) return;
-        if (globalBans.has(nickname) || roomBans[room].has(nickname)) {
-            return socket.emit('kicked', 'Вы забанены на этом сервере');
-        }
-        if (!roomsState[room].open && !isAdmin) {
-            return socket.emit('kicked', 'Сервер закрыт администратором');
-        }
+  socket.emit('roomsList', getRoomsMeta());
 
-        currentRoom = room;
-        currentNick = nickname;
-        socket.join(room);
+  socket.on('authCheck', ({ nick, pass }, cb) => {
+    if (globalBans.has(nick)) return cb({ ok: false, msg: 'Вы забанены глобально' });
+    if (nick === ADMIN_NICK) {
+      if (!pass) return cb({ needPass: true });
+      if (pass !== ADMIN_PASS) return cb({ ok: false, msg: 'Неверный пароль' });
+      return cb({ ok: true, isAdmin: true });
+    }
+    cb({ ok: true, isAdmin: false });
+  });
+  socket.on('joinRoom', ({ roomId, nick, isAdmin }, cb) => {
+    const room = rooms[roomId];
+    if (!room) return cb({ ok: false, msg: 'Комната не найдена' });
+    if (globalBans.has(nick) || room.banned.has(nick)) {
+      return cb({ ok: false, msg: 'Доступ запрещен (Бан)' });
+    }
+    if (!room.isOpen && !isAdmin) return cb({ ok: false, msg: 'Комната закрыта' });
+    if (room.adminOnly && !isAdmin) return cb({ ok: false, msg: 'Только для OWNER' });
 
-        roomsState[room].players[socket.id] = {
-            id: socket.id, nickname, isAdmin: !!isAdmin,
-            x: 1000, y: 1000, hp: 100, canBuild: !!isAdmin
-        };
+    currentRoom = room;
+    currentNick = nick;
+    socket.join(roomId);
 
-        socket.emit('roomInit', {
-            event: roomsState[room].event,
-            builds: roomsState[room].builds,
-            players: roomsState[room].players
+    room.players[nick] = {
+      nick,
+      socketId: socket.id,
+      isAdmin: !!isAdmin,
+      x: 1000,
+      y: 1000,
+      hp: 100,
+      lastMoveTime: Date.now(),
+      acStrikes: 0,
+      frozen: frozenPlayers.has(nick),
+      inv: { wood: 0, stone: 0, brick: 0, meat: 0, amulet_tp: 0, amulet_swap: 0 }
+    };
+
+    io.emit('roomsList', getRoomsMeta());
+    cb({
+      ok: true,
+      state: {
+        weather: room.weather,
+        players: room.players,
+        resources: room.resources,
+        blocks: room.blocks,
+        mobs: room.mobs,
+        luckyBlocks: room.luckyBlocks
+      }
+    });
+    socket.to(roomId).emit('playerJoined', room.players[nick]);
+  });
+
+  socket.on('move', ({ x, y }) => {
+    if (!currentRoom || !currentNick) return;
+    const p = currentRoom.players[currentNick];
+    if (!p || p.frozen || frozenPlayers.has(currentNick)) {
+      return socket.emit('forcePos', { x: p.x, y: p.y });
+    }
+
+    const now = Date.now();
+    const dt = Math.max(16, now - p.lastMoveTime);
+    const dist = Math.hypot(x - p.x, y - p.y);
+    const maxSpeed = (currentRoom.weather === 'speed' ? 0.65 : 0.42) * dt + 28;
+
+    if (!p.isAdmin && dist > maxSpeed) {
+      p.acStrikes++;
+      if (p.acStrikes >= 3) {
+        p.acStrikes = 0;
+        notifyAdmins(currentRoom, {
+          type: 'anticheat',
+          target: currentNick,
+          reason: `Античит: спидхак (${Math.round(dist)}px)`
         });
-        io.to(room).emit('playersUpdate', roomsState[room].players);
-    });
+      }
+      return socket.emit('forcePos', { x: p.x, y: p.y });
+    }
 
-    socket.on('move', (coords) => {
-        if (currentRoom && roomsState[currentRoom]?.players[socket.id]) {
-            roomsState[currentRoom].players[socket.id].x = coords.x;
-            roomsState[currentRoom].players[socket.id].y = coords.y;
-            socket.to(currentRoom).emit('playerMoved', roomsState[currentRoom].players[socket.id]);
-        }
-    });
+    p.acStrikes = Math.max(0, p.acStrikes - 0.2);
+    p.lastMoveTime = now;
+    p.x = Math.max(40, Math.min(1960, x));
+    p.y = Math.max(40, Math.min(1960, y));
+    socket.to(currentRoom.id).emit('playerMoved', { nick: currentNick, x: p.x, y: p.y });
+  });
 
-    socket.on('buildBlock', (pos) => {
-        if (!currentRoom) return;
-        const p = roomsState[currentRoom]?.players[socket.id];
-        if (p && (p.isAdmin || p.canBuild)) {
-            const block = { x: pos.x, y: pos.y };
-            roomsState[currentRoom].builds.push(block);
-            io.to(currentRoom).emit('blockBuilt', block);
-        }
-    });
+  socket.on('action', ({ type, targetId, x, y, blockType, item }) => {
+    if (!currentRoom || !currentNick) return;
+    const p = currentRoom.players[currentNick];
+    if (!p || p.frozen || frozenPlayers.has(currentNick)) return;
 
-    socket.on('chatMsg', (text) => {
-        if (!currentRoom || !currentNick) return;
-        if (mutedNicks.has(currentNick)) {
-            return socket.emit('systemNotice', 'Вы замьючены и не можете писать в чат');
+    if (type === 'hitResource') {
+      const idx = currentRoom.resources.findIndex(r => r.id === targetId);
+      if (idx !== -1) {
+        const res = currentRoom.resources[idx];
+        res.hp--;
+        if (res.hp <= 0) {
+          currentRoom.resources.splice(idx, 1);
+          const drop = res.type === 'stone' ? 'stone' : 'wood';
+          p.inv[drop] += 2;
+          io.to(currentRoom.id).emit('worldSync', { resources: currentRoom.resources });
+          socket.emit('invUpdate', p.inv);
         }
-        const cleanText = String(text || '').trim().slice(0, 32);
-        if (!cleanText) return;
-        io.to(currentRoom).emit('chatBroadcast', {
-            id: Date.now() + Math.random(),
-            nick: currentNick,
-            text: cleanText,
-            isAdmin: roomsState[currentRoom]?.players[socket.id]?.isAdmin || false
+      }
+    } else if (type === 'hitLucky') {
+      const idx = currentRoom.luckyBlocks.findIndex(b => b.id === targetId);
+      if (idx !== -1) {
+        const lb = currentRoom.luckyBlocks.splice(idx, 1)[0];
+        const isLucky = Math.random() * 100 <= lb.luck;
+        if (isLucky) {
+          const drop = Math.random() < 0.5 ? 'amulet_tp' : 'amulet_swap';
+          p.inv[drop] = (p.inv[drop] || 0) + 1;
+          socket.emit('titleMsg', { text: 'УДАЧА! Выпал амулет', color: '#facc15' });
+        } else {
+          p.hp = Math.max(10, p.hp - 25);
+          socket.emit('titleMsg', { text: 'НЕУДАЧА! Ловушка -25 HP', color: '#ef4444' });
+          socket.emit('hpUpdate', p.hp);
+        }
+        io.to(currentRoom.id).emit('worldSync', { luckyBlocks: currentRoom.luckyBlocks });
+        socket.emit('invUpdate', p.inv);
+      }
+    } else if (type === 'useAmulet') {
+      if (item === 'amulet_tp' && p.inv.amulet_tp > 0) {
+        p.inv.amulet_tp--;
+        p.x = Math.max(60, Math.min(1940, x));
+        p.y = Math.max(60, Math.min(1940, y));
+        io.to(currentRoom.id).emit('playerMoved', { nick: currentNick, x: p.x, y: p.y });
+        socket.emit('forcePos', { x: p.x, y: p.y });
+        socket.emit('invUpdate', p.inv);
+      } else if (item === 'amulet_swap' && p.inv.amulet_swap > 0) {
+        const others = Object.values(currentRoom.players).filter(o => o.nick !== currentNick && !o.isAdmin);
+        if (others.length) {
+          const target = others[Math.floor(Math.random() * others.length)];
+          p.inv.amulet_swap--;
+          const tx = target.x, ty = target.y;
+          target.x = p.x; target.y = p.y;
+          p.x = tx; p.y = ty;
+          io.to(currentRoom.id).emit('playerMoved', { nick: currentNick, x: p.x, y: p.y });
+          io.to(currentRoom.id).emit('playerMoved', { nick: target.nick, x: target.x, y: target.y });
+          socket.emit('forcePos', { x: p.x, y: p.y });
+          io.to(target.socketId).emit('forcePos', { x: target.x, y: target.y });
+          socket.emit('invUpdate', p.inv);
+        }
+      }
+    } else if (type === 'build') {
+      if (Math.hypot(x - 1000, y - 1000) < 160) return;
+      if (p.inv[blockType] > 0) {
+        p.inv[blockType]--;
+        currentRoom.blocks.push({ id: 'blk_' + Date.now(), type: blockType, x, y });
+        io.to(currentRoom.id).emit('worldSync', { blocks: currentRoom.blocks });
+        socket.emit('invUpdate', p.inv);
+      }
+    }
+  });
+
+  socket.on('chatMsg', (text) => {
+    if (!currentRoom || !currentNick) return;
+    if (mutedPlayers.has(currentNick)) return;
+    const clean = String(text || '').trim().slice(0, 32);
+    if (!clean) return;
+    const p = currentRoom.players[currentNick];
+    io.to(currentRoom.id).emit('chatBroadcast', {
+      id: 'msg_' + Date.now() + Math.random().toString(36).slice(2, 5),
+      nick: currentNick,
+      isAdmin: p?.isAdmin,
+      text: clean
+    });
+  });
+
+  socket.on('reportPlayer', ({ target, reason }) => {
+    if (!currentRoom || !currentNick || target === ADMIN_NICK) return;
+    notifyAdmins(currentRoom, {
+      type: 'report',
+      from: currentNick,
+      target,
+      reason: `Жалоба от ${currentNick} на ${target}: ${reason}`
+    });
+  });
+
+  socket.on('adminCmd', (cmd) => {
+    if (!currentRoom || currentNick !== ADMIN_NICK) return;
+    const targetP = cmd.target ? currentRoom.players[cmd.target] : null;
+
+    if (cmd.action === 'title') {
+      if (cmd.target === 'ALL') {
+        io.to(currentRoom.id).emit('titleMsg', { text: cmd.text, color: '#facc15' });
+      } else if (targetP) {
+        io.to(targetP.socketId).emit('titleMsg', { text: cmd.text, color: '#facc15' });
+      }
+    } else if (cmd.action === 'freeze' && targetP && cmd.target !== ADMIN_NICK) {
+      const nextState = !targetP.frozen;
+      targetP.frozen = nextState;
+      if (nextState) frozenPlayers.add(cmd.target);
+      else frozenPlayers.delete(cmd.target);
+      io.to(targetP.socketId).emit('freezeState', nextState);
+    } else if (cmd.action === 'restrictAll' && cmd.target !== ADMIN_NICK) {
+      frozenPlayers.add(cmd.target);
+      mutedPlayers.add(cmd.target);
+      if (targetP) {
+        targetP.frozen = true;
+        io.to(targetP.socketId).emit('freezeState', true);
+      }
+    } else if (cmd.action === 'tpTo' && targetP) {
+      const adminP = currentRoom.players[ADMIN_NICK];
+      if (adminP) {
+        adminP.x = targetP.x + 30;
+        adminP.y = targetP.y;
+        socket.emit('forcePos', { x: adminP.x, y: adminP.y });
+        io.to(currentRoom.id).emit('playerMoved', { nick: ADMIN_NICK, x: adminP.x, y: adminP.y });
+      }
+    } else if (cmd.action === 'spawnLucky') {
+      const count = Math.min(30, Math.max(1, Number(cmd.count) || 5));
+      const luck = Math.min(100, Math.max(0, Number(cmd.luck) || 50));
+      for (let i = 0; i < count; i++) {
+        currentRoom.luckyBlocks.push({
+          id: 'lb_' + Date.now() + '_' + i,
+          x: 200 + Math.random() * 1600,
+          y: 200 + Math.random() * 1600,
+          luck
         });
-    });
+      }
+      io.to(currentRoom.id).emit('worldSync', { luckyBlocks: currentRoom.luckyBlocks });
+    } else if (cmd.action === 'give' && targetP) {
+      targetP.inv[cmd.item] = (targetP.inv[cmd.item] || 0) + (Number(cmd.amount) || 1);
+      io.to(targetP.socketId).emit('invUpdate', targetP.inv);
+    } else if (cmd.action === 'weather') {
+      currentRoom.weather = cmd.weather;
+      io.to(currentRoom.id).emit('weatherUpdate', cmd.weather);
+    } else if (cmd.action === 'toggleRoom') {
+      const r = rooms[cmd.roomId || currentRoom.id];
+      if (r) {
+        r.isOpen = !r.isOpen;
+        io.emit('roomsList', getRoomsMeta());
+      }
+    } else if (cmd.action === 'mute' && cmd.target !== ADMIN_NICK) {
+      if (mutedPlayers.has(cmd.target)) mutedPlayers.delete(cmd.target);
+      else mutedPlayers.add(cmd.target);
+    } else if (cmd.action === 'banRoom' && cmd.target !== ADMIN_NICK) {
+      currentRoom.banned.add(cmd.target);
+      if (targetP) io.to(targetP.socketId).emit('kicked', 'Вы забанены в этой комнате');
+    } else if (cmd.action === 'banGlobal' && cmd.target !== ADMIN_NICK) {
+      globalBans.add(cmd.target);
+      if (targetP) io.to(targetP.socketId).emit('kicked', 'Вы получили глобальный бан');
+    }
+  });
 
-    socket.on('adminCmd', (data) => {
-        if (!currentRoom) return;
-        const sender = roomsState[currentRoom]?.players[socket.id];
-        if (!sender || !sender.isAdmin) return;
-
-        const { action, targetNick, value } = data;
-
-        if (action === 'toggleRoom2') {
-            roomsState['ob.timeos.op'].open = !roomsState['ob.timeos.op'].open;
-            io.emit('roomsStatus', {
-                'adm.helm7.play': { open: roomsState['adm.helm7.play'].open, count: Object.keys(roomsState['adm.helm7.play'].players).length },
-                'ob.timeos.op': { open: roomsState['ob.timeos.op'].open, count: Object.keys(roomsState['ob.timeos.op'].players).length }
-            });
-        }
-
-        if (action === 'setEvent') {
-            roomsState[currentRoom].event = value;
-            io.to(currentRoom).emit('eventChanged', value);
-        }
-
-        if (action === 'mute') {
-            if (mutedNicks.has(targetNick)) mutedNicks.delete(targetNick);
-            else mutedNicks.add(targetNick);
-        }
-
-        if (action === 'banRoom' || action === 'banGlobal') {
-            if (action === 'banRoom') roomBans[currentRoom].add(targetNick);
-            if (action === 'banGlobal') globalBans.add(targetNick);
-            const targetSocketId = Object.keys(roomsState[currentRoom].players).find(
-                id => roomsState[currentRoom].players[id].nickname === targetNick
-            );
-            if (targetSocketId) {
-                io.to(targetSocketId).emit('kicked', action === 'banGlobal' ? 'Глобальный бан в игре' : 'Бан на этом сервере');
-                io.sockets.sockets.get(targetSocketId)?.disconnect(true);
-            }
-        }
-
-        if (action === 'give') {
-            const targetSocketId = Object.keys(roomsState[currentRoom].players).find(
-                id => roomsState[currentRoom].players[id].nickname === targetNick
-            );
-            if (targetSocketId) {
-                if (value === 'build') roomsState[currentRoom].players[targetSocketId].canBuild = true;
-                io.to(targetSocketId).emit('receiveGift', value);
-            }
-        }
-    });
-
-    socket.on('disconnect', () => {
-        if (currentRoom && roomsState[currentRoom]) {
-            delete roomsState[currentRoom].players[socket.id];
-            io.to(currentRoom).emit('playersUpdate', roomsState[currentRoom].players);
-        }
-    });
+  socket.on('disconnect', () => {
+    if (currentRoom && currentNick && currentRoom.players[currentNick]) {
+      delete currentRoom.players[currentNick];
+      io.to(currentRoom.id).emit('playerLeft', currentNick);
+      io.emit('roomsList', getRoomsMeta());
+    }
+  });
 });
 
-server.listen(secret.port, '0.0.0.0', () => console.log(`Сервер запущен на порту ${secret.port}`));
+server.listen(PORT, () => console.log('Survival 2D running on port', PORT));
