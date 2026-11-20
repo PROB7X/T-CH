@@ -1,620 +1,360 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>2D Survival</title>
-    <script src="/socket.io/socket.io.js"></script>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; font-family: 'Segoe UI', sans-serif; }
-        body, html { width: 100%; height: 100%; background: #0f172a; color: #f8fafc; overflow: hidden; }
-        .screen { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #0f172a; z-index: 10; padding: 20px; }
-        .hidden { display: none !important; }
-        #fullscreen-overlay { z-index: 9999; background: rgba(15, 23, 42, 0.98); text-align: center; }
-        
-        button {
-            display: inline-flex; align-items: center; justify-content: center; gap: 10px;
-            background: #2563eb; color: #fff; border: none; padding: 12px 24px;
-            font-size: 15px; font-weight: 600; border-radius: 8px; cursor: pointer;
-            margin: 6px; min-width: 220px;
-        }
-        button:hover { background: #1d4ed8; }
-        button.secondary { background: #334155; }
-        button.admin-btn { background: #dc2626; }
-        button:disabled { opacity: 0.4; cursor: not-allowed; }
-
-        input, select {
-            background: #1e293b; border: 1px solid #475569; color: #fff;
-            padding: 10px 14px; border-radius: 8px; font-size: 15px; margin: 6px 0; width: 280px;
-        }
-
-        #game-canvas { display: block; width: 100%; height: 100%; }
-        #hud { position: fixed; top: 12px; left: 12px; right: 12px; display: flex; justify-content: space-between; pointer-events: none; z-index: 5; }
-        .hud-box { background: rgba(15, 23, 42, 0.85); padding: 8px 14px; border-radius: 8px; border: 1px solid #334155; display: flex; gap: 12px; align-items: center; pointer-events: auto; font-size: 14px; }
-        
-        #chat-box { position: fixed; top: 60px; left: 12px; width: 270px; z-index: 6; pointer-events: none; }
-        #chat-messages { max-height: 120px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; }
-        .chat-msg { background: rgba(15, 23, 42, 0.75); padding: 4px 8px; border-radius: 4px; font-size: 12px; color: #f1f5f9; word-break: break-word; }
-        #chat-input-row { display: flex; gap: 4px; pointer-events: auto; }
-        #chat-input { width: 100%; padding: 6px 8px; font-size: 12px; margin: 0; }
-        #chat-send { min-width: auto; padding: 6px 10px; margin: 0; font-size: 12px; }
-
-        #touch-controls { position: fixed; inset: 0; pointer-events: none; z-index: 6; }
-        #joystick-zone { position: absolute; bottom: 25px; left: 25px; width: 130px; height: 130px; border-radius: 50%; background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.25); pointer-events: auto; touch-action: none; }
-        #joystick-stick { position: absolute; top: 40px; left: 40px; width: 46px; height: 46px; border-radius: 50%; background: rgba(59, 130, 246, 0.7); pointer-events: none; }
-        
-        .dpad { position: absolute; bottom: 25px; left: 25px; width: 140px; height: 140px; pointer-events: auto; }
-        .action-pads { position: absolute; bottom: 25px; right: 25px; display: flex; gap: 12px; pointer-events: auto; }
-        .touch-btn {
-            position: absolute; width: 46px; height: 46px; background: rgba(255, 255, 255, 0.15);
-            border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 50%;
-            display: flex; align-items: center; justify-content: center; color: white;
-        }
-        .action-circle { position: static; width: 60px; height: 60px; }
-        
-        .panel-card { background: #1e293b; padding: 20px; border-radius: 12px; width: 100%; max-width: 440px; border: 1px solid #334155; }
-        .row-between { display: flex; justify-content: space-between; align-items: center; margin: 10px 0; }
-        .server-item { background: #0f172a; padding: 12px; border-radius: 8px; border: 1px solid #334155; margin: 8px 0; display: flex; justify-content: space-between; align-items: center; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Survival 2D</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; font-family: sans-serif; }
+  body { background: #0f172a; color: #f8fafc; overflow: hidden; width: 100vw; height: 100vh; }
+  .screen { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; background: #0f172a; z-index: 10; padding: 16px; }
+  .screen.active { display: flex; }
+  #fsLock { z-index: 9999; background: #020617; text-align: center; }
+  .box { background: #1e293b; padding: 18px; border-radius: 10px; width: 100%; max-width: 360px; border: 1px solid #334155; }
+  h2 { margin-bottom: 12px; font-size: 18px; text-align: center; color: #38bdf8; }
+  input, select, button { width: 100%; padding: 9px; margin-bottom: 8px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #fff; font-size: 14px; }
+  button { background: #2563eb; border: none; font-weight: bold; cursor: pointer; }
+  button.sec { background: #334155; }
+  .room-card { background: #0f172a; padding: 10px; border-radius: 6px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #334155; }
+  #gameUI { position: fixed; inset: 0; display: none; }
+  canvas { display: block; width: 100%; height: 100%; background: #14532d; }
+  .hud-top { position: fixed; top: 8px; left: 8px; display: flex; gap: 6px; z-index: 5; flex-wrap: wrap; }
+  .pill { background: rgba(15,23,42,0.85); padding: 5px 9px; border-radius: 6px; font-size: 12px; border: 1px solid #334155; display: flex; align-items: center; gap: 4px; cursor: pointer; }
+  .pill.active { border-color: #facc15; color: #facc15; }
+  #titleOverlay { position: fixed; top: 28%; left: 50%; transform: translate(-50%, -50%); font-size: 28px; font-weight: 900; text-shadow: 0 3px 10px #000; pointer-events: none; z-index: 50; text-align: center; opacity: 0; transition: opacity 0.3s; }
+  #freezeBanner { position: fixed; top: 52px; left: 50%; transform: translateX(-50%); background: #dc2626; padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: bold; display: none; z-index: 40; }
+  #chatBox { position: fixed; top: 44px; left: 8px; width: 250px; z-index: 6; pointer-events: none; }
+  #chatMsgs { max-height: 130px; overflow-y: auto; display: flex; flex-direction: column; gap: 3px; pointer-events: auto; }
+  .c-msg { background: rgba(15,23,42,0.78); padding: 4px 7px; border-radius: 5px; font-size: 11px; line-height: 1.3; word-break: break-word; }
+  .adm-btns { display: inline-flex; gap: 4px; margin-top: 3px; }
+  .adm-btns button { width: auto; padding: 2px 5px; font-size: 10px; margin: 0; }
+  #chatInputRow { display: none; pointer-events: auto; margin-top: 4px; gap: 4px; }
+  #chatInputRow.open { display: flex; }
+  #adminFab { position: fixed; right: 16px; top: 16px; width: 42px; height: 42px; border-radius: 50%; background: #facc15; color: #000; display: none; align-items: center; justify-content: center; z-index: 60; box-shadow: 0 4px 12px rgba(0,0,0,0.5); touch-action: none; }
+  #adminFrame { position: fixed; right: 16px; top: 66px; width: 270px; height: 340px; border: 2px solid #facc15; border-radius: 8px; z-index: 60; display: none; background: #111827; }
+  #joyZone { position: fixed; bottom: 20px; left: 20px; width: 110px; height: 110px; border-radius: 50%; background: rgba(255,255,255,0.12); border: 2px solid rgba(255,255,255,0.25); z-index: 5; touch-action: none; }
+  #joyKnob { position: absolute; width: 42px; height: 42px; border-radius: 50%; background: rgba(255,255,255,0.6); top: 32px; left: 32px; pointer-events: none; }
+  #actBtns { position: fixed; bottom: 20px; right: 20px; display: flex; gap: 10px; z-index: 5; }
+  .act-btn { width: 54px; height: 54px; border-radius: 50%; background: rgba(37,99,235,0.85); border: 2px solid #93c5fd; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 11px; font-weight: bold; }
+</style>
 </head>
 <body>
 
-    <div id="fullscreen-overlay" class="screen">
-        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" style="margin-bottom: 12px;">
-            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
-        </svg>
-        <h2>ТРЕБУЕТСЯ ПОЛНЫЙ ЭКРАН</h2>
-        <p style="color: #94a3b8; margin: 10px 0 18px;">Игра работает только в горизонтальном полноэкранном режиме.</p>
-        <button id="btn-fullscreen">На весь экран</button>
+<div id="fsLock" class="screen active">
+  <div class="box">
+    <h2>ТРЕБУЕТСЯ ПОЛНЫЙ ЭКРАН</h2>
+    <p style="font-size:13px;color:#94a3b8;margin-bottom:14px">Игра работает только в горизонтальном полноэкранном режиме.</p>
+    <button onclick="enterFullscreen()">На весь экран</button>
+  </div>
+</div>
+
+<div id="authScreen" class="screen">
+  <div class="box">
+    <h2>ВХОД В СИСТЕМУ</h2>
+    <input id="nickInput" placeholder="Введите ваш ник" maxlength="16">
+    <input id="passInput" type="password" placeholder="Пароль администратора" style="display:none">
+    <div id="authErr" style="color:#f87171;font-size:12px;margin-bottom:6px"></div>
+    <button onclick="submitAuth()">Продолжить</button>
+  </div>
+</div>
+
+<div id="menuScreen" class="screen">
+  <div class="box">
+    <h2>SURVIVAL 2D</h2>
+    <button onclick="showScreen('spScreen')">Одиночная игра</button>
+    <button onclick="showScreen('mpScreen')">Сервера</button>
+    <button class="sec" onclick="showScreen('setScreen')">Настройки</button>
+  </div>
+</div>
+
+<div id="mpScreen" class="screen">
+  <div class="box">
+    <h2>СПИСОК СЕРВЕРОВ</h2>
+    <div id="roomsList"></div>
+    <button class="sec" onclick="showScreen('menuScreen')">Назад</button>
+  </div>
+</div>
+
+<div id="spScreen" class="screen">
+  <div class="box">
+    <h2>ОДИНОЧНЫЕ МИРЫ</h2>
+    <button onclick="startSingleplayer()">Создать / Продолжить мир</button>
+    <button class="sec" onclick="showScreen('menuScreen')">Назад</button>
+  </div>
+</div>
+
+<div id="setScreen" class="screen">
+  <div class="box">
+    <h2>НАСТРОЙКИ УПРАВЛЕНИЯ</h2>
+    <select id="ctrlType">
+      <option value="joy">Джойстик (База)</option>
+      <option value="dpad">Кнопки (Крестовина)</option>
+      <option value="pc">ПК (Клавиатура)</option>
+    </select>
+    <select id="ctrlLayout">
+      <option value="normal">Слева ход / Справа действия</option>
+      <option value="inv">Справа ход / Слева действия</option>
+    </select>
+    <button onclick="saveSettings()">Сохранить</button>
+  </div>
+</div>
+<div id="gameUI">
+  <canvas id="cv"></canvas>
+  <div id="titleOverlay"></div>
+  <div id="freezeBanner">ВЫ ЗАМОРОЖЕНЫ АДМИНИСТРАТОРОМ</div>
+  <div class="hud-top" id="hudInv"></div>
+
+  <div id="chatBox">
+    <div id="chatMsgs"></div>
+    <div id="chatInputRow">
+      <input id="chatInp" maxlength="32" placeholder="Сообщение (до 32)...">
+      <button style="width:50px" onclick="sendChat()">OK</button>
     </div>
+  </div>
 
-    <div id="login-screen" class="screen hidden">
-        <h2 style="margin-bottom: 15px;">ВХОД В СИСТЕМУ</h2>
-        <input type="text" id="input-nick" placeholder="Ваш никнейм" autocomplete="off">
-        <input type="password" id="input-pass" class="hidden" placeholder="Пароль администратора">
-        <p id="login-error" style="color: #ef4444; font-size: 13px; min-height: 18px;"></p>
-        <button id="btn-login">Продолжить</button>
+  <div id="reportModal" class="screen" style="background:rgba(0,0,0,0.7);z-index:80">
+    <div class="box">
+      <h2 id="repTitle">Жалоба на игрока</h2>
+      <button class="sec" onclick="sendReport('Читы / Спидхак')">Читы / Спидхак</button>
+      <button class="sec" onclick="sendReport('Мат / Оскорбления')">Мат / Оскорбления</button>
+      <button onclick="document.getElementById('reportModal').classList.remove('active')">Отмена</button>
     </div>
+  </div>
 
-    <div id="menu-screen" class="screen hidden">
-        <h2>SURVIVAL 2D</h2>
-        <p id="player-badge" style="color: #38bdf8; margin: 6px 0 20px; font-weight: bold;"></p>
-        <button id="btn-singleplayer">Одиночная игра</button>
-        <button id="btn-servers" class="secondary">Сервера</button>
-        <button id="btn-settings" class="secondary">Настройки</button>
-    </div>
-    <div id="servers-screen" class="screen hidden">
-        <div class="panel-card">
-            <h3 style="margin-bottom: 12px;">СПИСОК СЕРВЕРОВ</h3>
-            <div class="server-item">
-                <div>
-                    <div style="font-weight: bold;">adm.helm7.play</div>
-                    <div id="srv1-info" style="font-size: 12px; color: #4ade80;">Открыт | Игроков: 0</div>
-                </div>
-                <button style="min-width: auto; padding: 8px 14px;" onclick="joinServerRoom('adm.helm7.play')">Войти</button>
-            </div>
-            <div class="server-item">
-                <div>
-                    <div style="font-weight: bold;">ob.timeos.op</div>
-                    <div id="srv2-info" style="font-size: 12px; color: #f87171;">Закрыт (Админ)</div>
-                </div>
-                <button id="btn-join-srv2" style="min-width: auto; padding: 8px 14px;" onclick="joinServerRoom('ob.timeos.op')">Войти</button>
-            </div>
-            <div style="text-align: center; margin-top: 12px;">
-                <button class="secondary" onclick="showScreen('menu-screen')">Назад</button>
-            </div>
-        </div>
-    </div>
+  <div id="adminFab">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+  </div>
+  <iframe id="adminFrame" src="widget.html"></iframe>
 
-    <div id="worlds-screen" class="screen hidden">
-        <div class="panel-card">
-            <h3 style="margin-bottom: 10px;">ОДИНОЧНЫЕ МИРЫ</h3>
-            <div style="display: flex; gap: 6px;">
-                <input type="text" id="new-world-name" placeholder="Название мира" style="width: 100%;">
-                <button id="btn-create-world" style="min-width: auto; padding: 10px 14px;">Создать</button>
-            </div>
-            <div id="world-list" style="max-height: 150px; overflow-y: auto; margin: 10px 0;"></div>
-            <div style="text-align: center;">
-                <button class="secondary" onclick="showScreen('menu-screen')">Назад</button>
-            </div>
-        </div>
-    </div>
+  <div id="joyZone"><div id="joyKnob"></div></div>
+  <div id="actBtns">
+    <div class="act-btn" onclick="toggleChat()">ЧАТ</div>
+    <div class="act-btn" onclick="doAction()">ДЕЙСТВ</div>
+    <div class="act-btn" style="background:#dc2626" onclick="tryExit()">ВЫХОД</div>
+  </div>
+</div>
 
-    <div id="settings-screen" class="screen hidden">
-        <div class="panel-card">
-            <h3 style="margin-bottom: 14px;">НАСТРОЙКИ УПРАВЛЕНИЯ</h3>
-            <div class="row-between">
-                <span>Тип управления:</span>
-                <select id="set-control-type" style="width: 170px;">
-                    <option value="joystick" selected>Джойстик (База)</option>
-                    <option value="buttons">Кнопки (Крестовина)</option>
-                    <option value="pc">ПК (Клавиатура)</option>
-                </select>
-            </div>
-            <div class="row-between">
-                <span>Чувствительность:</span>
-                <input type="range" id="set-sens" min="1" max="10" value="5" style="width: 170px;">
-            </div>
-            <div class="row-between">
-                <span>Раскладка:</span>
-                <select id="set-layout" style="width: 170px;">
-                    <option value="default">Слева ход / Справа действия</option>
-                    <option value="inverted">Справа ход / Слева действия</option>
-                </select>
-            </div>
-            <div style="text-align: center; margin-top: 14px;">
-                <button id="btn-save-settings">Сохранить</button>
-            </div>
-        </div>
-    </div>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket = io();
+let myNick = '', isAdmin = false, isFrozen = false, isMultiplayer = false;
+let selectedSlot = 'wood', repTarget = '';
+let state = { weather: 'clear', players: {}, resources: [], blocks: [], mobs: [], luckyBlocks: [] };
+let me = { x: 1000, y: 1000, hp: 100, inv: { wood: 0, stone: 0, brick: 0, meat: 0, amulet_tp: 0, amulet_swap: 0 } };
 
-    <div id="game-screen" class="screen hidden" style="padding: 0;">
-        <canvas id="game-canvas"></canvas>
-        
-        <div id="hud">
-            <div class="hud-box">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="#ef4444"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-                <span id="hud-hp">100</span>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="#f59e0b"><path d="M18.06 22.99h1.66c.84 0 1.53-.64 1.63-1.46L23 5.05h-5V1h-1.97v4.05h-4.97l.3 2.34c1.71.47 3.31 1.32 4.27 2.26 1.44 1.42 2.43 2.89 2.43 5.29v8.05z"/></svg>
-                <span id="hud-hunger">100</span>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="#a16207"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
-                <span id="hud-wood">0</span>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="#94a3b8"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/></svg>
-                <span id="hud-stone">0</span>
-                <span id="hud-event" style="color: #38bdf8; font-weight: bold;"></span>
-            </div>
-            
-            <div class="hud-box">
-                <button id="btn-admin-panel" class="admin-btn hidden" style="min-width: auto; padding: 6px 12px; margin: 0;">Админ</button>
-                <button id="btn-exit-game" class="secondary" style="min-width: auto; padding: 6px 12px; margin: 0;">Выход</button>
-            </div>
-        </div>
+function checkFullscreen() {
+  const ok = document.fullscreenElement && window.innerWidth >= window.innerHeight;
+  document.getElementById('fsLock').classList.toggle('active', !ok);
+}
+function enterFullscreen() {
+  document.documentElement.requestFullscreen?.().then(() => {
+    screen.orientation?.lock?.('landscape').catch(() => {});
+    checkFullscreen();
+  });
+}
+window.addEventListener('fullscreenchange', checkFullscreen);
+window.addEventListener('resize', checkFullscreen);
 
-        <div id="chat-box" class="hidden">
-            <div id="chat-messages"></div>
-            <div id="chat-input-row">
-                <input type="text" id="chat-input" maxlength="32" placeholder="Чат (до 32 симв.)">
-                <button id="chat-send">OK</button>
-            </div>
-        </div>
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  if (id) document.getElementById(id).classList.add('active');
+}
+function saveSettings() { showScreen('menuScreen'); }
 
-        <div id="touch-controls">
-            <div id="joystick-zone"><div id="joystick-stick"></div></div>
-            <div class="dpad hidden" id="dpad-zone">
-                <div class="touch-btn" data-key="up" style="top: 0; left: 47px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg></div>
-                <div class="touch-btn" data-key="down" style="bottom: 0; left: 47px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
-                <div class="touch-btn" data-key="left" style="top: 47px; left: 0;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></div>
-                <div class="touch-btn" data-key="right" style="top: 47px; right: 0;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
-            </div>
-            <div class="action-pads" id="action-zone">
-                <div class="touch-btn action-circle hidden" id="btn-build" title="Строить">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-                </div>
-                <div class="touch-btn action-circle" id="btn-eat" title="Поесть">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                </div>
-                <div class="touch-btn action-circle" id="btn-mine" title="Добыть">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
-                </div>
-            </div>
-        </div>
-    </div>
+function submitAuth() {
+  const nick = document.getElementById('nickInput').value.trim();
+  const pass = document.getElementById('passInput').value;
+  if (!nick) return;
+  socket.emit('authCheck', { nick, pass }, (res) => {
+    if (res.needPass) {
+      document.getElementById('passInput').style.display = 'block';
+      document.getElementById('authErr').textContent = 'Введите пароль OWNER';
+      return;
+    }
+    if (!res.ok) {
+      document.getElementById('authErr').textContent = res.msg;
+      return;
+    }
+    myNick = nick; isAdmin = !!res.isAdmin;
+    if (isAdmin) document.getElementById('adminFab').style.display = 'flex';
+    showScreen('menuScreen');
+  });
+}
 
-    <iframe id="admin-widget" src="widget.html" class="hidden" style="position: fixed; top: 55px; right: 12px; width: 270px; height: 75vh; max-height: 360px; border: none; z-index: 9998; background: transparent;"></iframe>
-    <script>
-        const SERVER_URL = window.location.port === '3000' ? window.location.origin : 'http://103.82.102.226:3000';
-        const ADMIN_NICK = 'HELM77ZX';
-        const ADMIN_PASS_LOCAL = 'aB9xK2mP7qWz';
+socket.on('roomsList', (list) => {
+  const el = document.getElementById('roomsList');
+  el.innerHTML = '';
+  list.forEach(r => {
+    const div = document.createElement('div');
+    div.className = 'room-card';
+    div.innerHTML = `<div><b>${r.id}</b><br><span style="font-size:11px;color:#94a3b8">${r.isOpen ? 'Открыт' : 'Закрыт'} | Игроков: ${r.count}</span></div><button style="width:70px;margin:0" onclick="joinRoom('${r.id}')">Войти</button>`;
+    el.appendChild(div);
+  });
+});
 
-        let state = {
-            nickname: '', isAdmin: false, mode: 'single', currentRoom: null, event: 'clear',
-            settings: { controlType: 'joystick', sens: 5, layout: 'default' },
-            player: { x: 1000, y: 1000, hp: 100, hunger: 100, wood: 0, stone: 0, canBuild: false },
-            world: [], builds: [], otherPlayers: {},
-            keys: { up: false, down: false, left: false, right: false },
-            joyVec: { x: 0, y: 0 }
-        };
+function joinRoom(roomId) {
+  socket.emit('joinRoom', { roomId, nick: myNick, isAdmin }, (res) => {
+    if (!res.ok) return alert(res.msg);
+    isMultiplayer = true;
+    state = res.state;
+    me = state.players[myNick];
+    startGameLoop();
+  });
+}
+function startSingleplayer() {
+  isMultiplayer = false;
+  state = { weather: 'clear', players: {}, resources: [], blocks: [], mobs: [], luckyBlocks: [] };
+  for (let i = 0; i < 35; i++) state.resources.push({ id: 'r' + i, type: i % 2 ? 'tree' : 'stone', x: 200 + Math.random() * 1600, y: 200 + Math.random() * 1600, hp: 3 });
+  me = { x: 1000, y: 1000, hp: 100, inv: { wood: 10, stone: 10, brick: 5, meat: 2, amulet_tp: 1, amulet_swap: 0 } };
+  startGameLoop();
+}
 
-        let socket = null, gameLoopId = null;
+function startGameLoop() {
+  showScreen(null);
+  document.getElementById('gameUI').style.display = 'block';
+  renderHud();
+  syncAdminPlayers();
+  requestAnimationFrame(loop);
+}
 
-        const fsOverlay = document.getElementById('fullscreen-overlay');
-        async function enterFs() {
-            const el = document.documentElement;
-            if (el.requestFullscreen) await el.requestFullscreen().catch(()=>{});
-            else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
-            if (screen.orientation?.lock) await screen.orientation.lock('landscape').catch(()=>{});
-            checkFs();
-        }
-        function checkFs() {
-            const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
-            fsOverlay.classList.toggle('hidden', isFs);
-            if (isFs && !state.nickname) showScreen('login-screen');
-        }
-        document.getElementById('btn-fullscreen').addEventListener('click', enterFs);
-        document.addEventListener('fullscreenchange', checkFs);
+function renderHud() {
+  const items = [['wood','Дер'],['stone','Кам'],['brick','Кир'],['meat','Мясо'],['amulet_tp','Ам.ТП'],['amulet_swap','Ам.Обм']];
+  document.getElementById('hudInv').innerHTML = `<div class="pill">HP: ${me.hp}</div>` + items.map(([k, l]) =>
+    `<div class="pill ${selectedSlot === k ? 'active' : ''}" onclick="selectedSlot='${k}';renderHud()">${l}: ${me.inv[k] || 0}</div>`
+  ).join('');
+}
 
-        function showScreen(id) {
-            document.querySelectorAll('.screen').forEach(s => { if (s.id !== 'fullscreen-overlay') s.classList.add('hidden'); });
-            document.getElementById(id).classList.remove('hidden');
-        }
+function showTitle(text, color = '#facc15') {
+  const el = document.getElementById('titleOverlay');
+  el.textContent = text; el.style.color = color; el.style.opacity = '1';
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.style.opacity = '0', 3500);
+}
 
-        const inputNick = document.getElementById('input-nick');
-        const inputPass = document.getElementById('input-pass');
-        inputNick.addEventListener('input', () => {
-            inputPass.classList.toggle('hidden', inputNick.value.trim() !== ADMIN_NICK);
-        });
+function addChatLine(html, isAlert = false) {
+  const box = document.getElementById('chatMsgs');
+  const div = document.createElement('div');
+  div.className = 'c-msg';
+  if (isAlert) div.style.borderLeft = '3px solid #ef4444';
+  div.innerHTML = html;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+  setTimeout(() => div.remove(), 300000);
+}
 
-        document.getElementById('btn-login').addEventListener('click', async () => {
-            const nick = inputNick.value.trim();
-            const pass = inputPass.value;
-            const errBox = document.getElementById('login-error');
-            errBox.textContent = '';
-            if (!nick) return errBox.textContent = 'Введите никнейм';
+function openReport(nick) {
+  if (nick === myNick || nick === 'HELM77ZX') return;
+  repTarget = nick;
+  document.getElementById('repTitle').textContent = 'Жалоба на ' + nick;
+  document.getElementById('reportModal').classList.add('active');
+}
+function sendReport(reason) {
+  socket.emit('reportPlayer', { target: repTarget, reason });
+  document.getElementById('reportModal').classList.remove('active');
+  showTitle('Жалоба отправлена', '#38bdf8');
+}
+function quickAdmin(action, target) { socket.emit('adminCmd', { action, target }); }
 
-            try {
-                const res = await fetch(`${SERVER_URL}/api/login`, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ nickname: nick, password: pass })
-                });
-                const data = await res.json();
-                if (!data.ok) return errBox.textContent = data.error;
-                finishLogin(nick, data.isAdmin);
-            } catch (e) {
-                if (nick === ADMIN_NICK && pass !== ADMIN_PASS_LOCAL) return errBox.textContent = 'Неверный пароль';
-                finishLogin(nick, nick === ADMIN_NICK);
-            }
-        });
+socket.on('chatBroadcast', (m) => {
+  const tag = m.isAdmin ? '<span style="color:#f97316;font-weight:bold">[OWNER]</span> ' : '';
+  const col = m.isAdmin ? '#facc15' : '#e2e8f0';
+  addChatLine(`${tag}<b style="color:${col};cursor:pointer" onclick="openReport('${m.nick}')">${m.nick}</b>: ${m.text}`);
+});
 
-        function finishLogin(nick, isAdmin) {
-            state.nickname = nick;
-            state.isAdmin = isAdmin;
-            state.player.canBuild = isAdmin;
-            document.getElementById('player-badge').textContent = isAdmin ? `${nick} [ADMIN]` : nick;
-            if (isAdmin) {
-                document.getElementById('btn-admin-panel').classList.remove('hidden');
-                document.getElementById('btn-build').classList.remove('hidden');
-            }
-            showScreen('menu-screen');
-        }
+socket.on('adminAlert', (a) => {
+  if (!isAdmin) return;
+  const btns = `<div class="adm-btns"><button style="background:#2563eb" onclick="quickAdmin('tpTo','${a.target}')">[ТП]</button><button style="background:#dc2626" onclick="quickAdmin('banRoom','${a.target}')">[Забанить]</button><button style="background:#d97706" onclick="quickAdmin('restrictAll','${a.target}')">[Запретить всё]</button></div>`;
+  addChatLine(`<span style="color:#fca5a5;font-weight:bold">${a.reason}</span>${btns}`, true);
+});
 
-        document.getElementById('btn-settings').addEventListener('click', () => showScreen('settings-screen'));
-        document.getElementById('btn-save-settings').addEventListener('click', () => {
-            state.settings.controlType = document.getElementById('set-control-type').value;
-            state.settings.sens = parseInt(document.getElementById('set-sens').value, 10);
-            state.settings.layout = document.getElementById('set-layout').value;
-            applyControls();
-            showScreen('menu-screen');
-        });
+socket.on('titleMsg', (d) => showTitle(d.text, d.color));
+socket.on('freezeState', (f) => { isFrozen = f; document.getElementById('freezeBanner').style.display = f ? 'block' : 'none'; });
+socket.on('forcePos', (pos) => { me.x = pos.x; me.y = pos.y; });
+socket.on('invUpdate', (inv) => { me.inv = inv; renderHud(); });
+socket.on('hpUpdate', (hp) => { me.hp = hp; renderHud(); });
+socket.on('weatherUpdate', (w) => { state.weather = w; });
+socket.on('worldSync', (patch) => Object.assign(state, patch));
+socket.on('playerJoined', (p) => { state.players[p.nick] = p; syncAdminPlayers(); });
+socket.on('playerMoved', ({ nick, x, y }) => { if (state.players[nick]) { state.players[nick].x = x; state.players[nick].y = y; } });
+socket.on('playerLeft', (nick) => { delete state.players[nick]; syncAdminPlayers(); });
+socket.on('kicked', (msg) => { alert(msg); location.reload(); });
 
-        function applyControls() {
-            const type = state.settings.controlType;
-            const touchZone = document.getElementById('touch-controls');
-            const joy = document.getElementById('joystick-zone');
-            const dpad = document.getElementById('dpad-zone');
-            const act = document.getElementById('action-zone');
+function syncAdminPlayers() {
+  const f = document.getElementById('adminFrame');
+  if (f.contentWindow) f.contentWindow.postMessage({ type: 'updatePlayers', players: Object.keys(state.players) }, '*');
+}
+window.addEventListener('message', (e) => {
+  if (!e.data) return;
+  if (e.data.type === 'closeWidget') document.getElementById('adminFrame').style.display = 'none';
+  if (e.data.type === 'adminCmd') socket.emit('adminCmd', e.data.cmd);
+});
 
-            touchZone.style.display = type === 'pc' ? 'none' : 'block';
-            joy.classList.toggle('hidden', type !== 'joystick');
-            dpad.classList.toggle('hidden', type !== 'buttons');
+const fab = document.getElementById('adminFab');
+let drag = false;
+fab.addEventListener('touchmove', (e) => {
+  drag = true; const t = e.touches;
+  fab.style.left = (t.clientX - 21) + 'px'; fab.style.top = (t.clientY - 21) + 'px'; fab.style.right = 'auto';
+});
+fab.addEventListener('touchend', () => {
+  if (!drag) {
+    const f = document.getElementById('adminFrame');
+    f.style.display = f.style.display === 'block' ? 'none' : 'block';
+    syncAdminPlayers();
+  }
+  drag = false;
+});
 
-            const inv = state.settings.layout === 'inverted';
-            joy.style.left = dpad.style.left = inv ? 'auto' : '25px';
-            joy.style.right = dpad.style.right = inv ? '25px' : 'auto';
-            act.style.right = inv ? 'auto' : '25px';
-            act.style.left = inv ? '25px' : 'auto';
-        }
+function toggleChat() { document.getElementById('chatInputRow').classList.toggle('open'); }
+function sendChat() {
+  const inp = document.getElementById('chatInp');
+  if (inp.value.trim()) socket.emit('chatMsg', inp.value);
+  inp.value = ''; document.getElementById('chatInputRow').classList.remove('open');
+}
+function tryExit() {
+  if (isFrozen) return showTitle('Нельзя выйти при заморозке!', '#ef4444');
+  location.reload();
+}
 
-        const joyZone = document.getElementById('joystick-zone');
-        const joyStick = document.getElementById('joystick-stick');
-        joyZone.addEventListener('touchmove', (e) => {
-            e.preventDefault();
-            const rect = joyZone.getBoundingClientRect();
-            const touch = e.touches[0];
-            let dx = touch.clientX - (rect.left + 65);
-            let dy = touch.clientY - (rect.top + 65);
-            const dist = Math.min(42, Math.hypot(dx, dy));
-            const angle = Math.atan2(dy, dx);
-            const sx = Math.cos(angle) * dist, sy = Math.sin(angle) * dist;
-            joyStick.style.transform = `translate(${sx}px, ${sy}px)`;
-            state.joyVec = { x: sx / 42, y: sy / 42 };
-        });
-        joyZone.addEventListener('touchend', () => {
-            joyStick.style.transform = `translate(0px, 0px)`;
-            state.joyVec = { x: 0, y: 0 };
-        });
-        document.getElementById('btn-servers').addEventListener('click', async () => {
-            showScreen('servers-screen');
-            try {
-                const res = await fetch(`${SERVER_URL}/api/rooms`);
-                const rooms = await res.json();
-                updateRoomsUI(rooms);
-            } catch (e) {
-                document.getElementById('srv1-info').textContent = 'Нет связи с сервером';
-            }
-        });
+function doAction() {
+  if (isFrozen) return;
+  if (selectedSlot === 'amulet_tp') return socket.emit('action', { type: 'useAmulet', item: 'amulet_tp', x: me.x + (Math.random() * 300 - 150), y: me.y + (Math.random() * 300 - 150) });
+  if (selectedSlot === 'amulet_swap') return socket.emit('action', { type: 'useAmulet', item: 'amulet_swap' });
+  const lb = state.luckyBlocks.find(b => Math.hypot(b.x - me.x, b.y - me.y) < 55);
+  if (lb) return socket.emit('action', { type: 'hitLucky', targetId: lb.id });
+  const res = state.resources.find(r => Math.hypot(r.x - me.x, r.y - me.y) < 55);
+  if (res) return socket.emit('action', { type: 'hitResource', targetId: res.id });
+  if (['wood', 'stone', 'brick'].includes(selectedSlot) && me.inv[selectedSlot] > 0) socket.emit('action', { type: 'build', blockType: selectedSlot, x: me.x + 35, y: me.y });
+}
 
-        function updateRoomsUI(rooms) {
-            document.getElementById('srv1-info').textContent = `Открыт | Игроков: ${rooms['adm.helm7.play'].count}`;
-            const r2 = rooms['ob.timeos.op'];
-            const info2 = document.getElementById('srv2-info');
-            info2.textContent = r2.open ? `Открыт | Игроков: ${r2.count}` : 'Закрыт (Админ)';
-            info2.style.color = r2.open ? '#4ade80' : '#f87171';
-            document.getElementById('btn-join-srv2').disabled = !r2.open && !state.isAdmin;
-        }
+let joyVec = { x: 0, y: 0 };
+const joyZone = document.getElementById('joyZone'), joyKnob = document.getElementById('joyKnob');
+joyZone.addEventListener('touchmove', (e) => {
+  const r = joyZone.getBoundingClientRect(), t = e.touches;
+  let dx = t.clientX - (r.left + 55), dy = t.clientY - (r.top + 55);
+  const d = Math.min(40, Math.hypot(dx, dy)), a = Math.atan2(dy, dx);
+  joyKnob.style.left = (34 + Math.cos(a) * d) + 'px'; joyKnob.style.top = (34 + Math.sin(a) * d) + 'px';
+  joyVec = { x: Math.cos(a) * (d / 40), y: Math.sin(a) * (d / 40) };
+});
+joyZone.addEventListener('touchend', () => { joyKnob.style.left = '34px'; joyKnob.style.top = '34px'; joyVec = { x: 0, y: 0 }; });
 
-        function joinServerRoom(roomName) {
-            if (typeof io === 'undefined') {
-                alert('Ошибка: библиотека Socket.IO не загрузилась.');
-                return;
-            }
-            state.mode = 'multi';
-            state.currentRoom = roomName;
-            state.world = generateWorld(2000, 2000);
-            state.player = { x: 1000, y: 1000, hp: 100, hunger: 100, wood: 0, stone: 0, canBuild: state.isAdmin };
-            document.getElementById('chat-box').classList.remove('hidden');
-
-            if (socket) socket.disconnect();
-            socket = io(SERVER_URL, { transports: ['websocket', 'polling'], reconnectionAttempts: 3 });
-
-            socket.on('connect', () => {
-                socket.emit('joinRoom', { room: roomName, nickname: state.nickname, isAdmin: state.isAdmin });
-            });
-            socket.on('connect_error', (err) => {
-                alert('Ошибка подключения к ' + SERVER_URL + ': ' + err.message + '\nОткрывайте игру по ссылке http://103.82.102.226:3000');
-                exitToMenu();
-            });
-            socket.on('roomInit', (data) => {
-                state.event = data.event; state.builds = data.builds; state.otherPlayers = data.players;
-                syncAdminPlayers();
-            });
-            socket.on('playersUpdate', (p) => { state.otherPlayers = p; syncAdminPlayers(); });
-            socket.on('playerMoved', (p) => { state.otherPlayers[p.id] = p; });
-            socket.on('blockBuilt', (b) => state.builds.push(b));
-            socket.on('eventChanged', (ev) => { state.event = ev; updateHUD(); });
-            socket.on('roomsStatus', updateRoomsUI);
-            socket.on('receiveGift', (gift) => {
-                if (gift === 'hp') state.player.hp = 100;
-                if (gift === 'food') state.player.hunger = 100;
-                if (gift === 'res') { state.player.wood += 100; state.player.stone += 100; }
-                if (gift === 'build') { state.player.canBuild = true; document.getElementById('btn-build').classList.remove('hidden'); }
-                updateHUD();
-            });
-            socket.on('chatBroadcast', addChatMessage);
-            socket.on('systemNotice', (msg) => addChatMessage({ nick: 'СИСТЕМА', text: msg, isAdmin: true }));
-            socket.on('kicked', (reason) => { alert(reason); exitToMenu(); });
-
-            startGame();
-        }
-
-        function addChatMessage(msg) {
-            const box = document.getElementById('chat-messages');
-            const div = document.createElement('div');
-            div.className = 'chat-msg';
-            div.innerHTML = `<b style="color:${msg.isAdmin ? '#facc15' : '#38bdf8'}">${msg.nick}:</b> ${msg.text}`;
-            box.appendChild(div);
-            box.scrollTop = box.scrollHeight;
-            setTimeout(() => div.remove(), 5 * 60 * 1000);
-        }
-
-        document.getElementById('chat-send').addEventListener('click', () => {
-            const inp = document.getElementById('chat-input');
-            if (inp.value.trim() && socket) socket.emit('chatMsg', inp.value.trim().slice(0, 32));
-            inp.value = '';
-        });
-
-        const adminWidget = document.getElementById('admin-widget');
-        document.getElementById('btn-admin-panel').addEventListener('click', () => {
-            adminWidget.classList.toggle('hidden');
-            syncAdminPlayers();
-        });
-
-        function syncAdminPlayers() {
-            if (!state.isAdmin) return;
-            const list = Object.values(state.otherPlayers).map(p => p.nickname);
-            if (!list.includes(state.nickname)) list.push(state.nickname);
-            adminWidget.contentWindow.postMessage({ type: 'UPDATE_ADMIN_LIST', players: list }, '*');
-        }
-
-        window.addEventListener('message', (e) => {
-            if (!state.isAdmin || !e.data) return;
-            if (e.data.type === 'DRAG_WIDGET') {
-                const r = adminWidget.getBoundingClientRect();
-                adminWidget.style.right = 'auto';
-                adminWidget.style.left = (r.left + e.data.dx) + 'px';
-                adminWidget.style.top = (r.top + e.data.dy) + 'px';
-            }
-            if (e.data.type === 'ADMIN_CMD') {
-                const { action, value, targetNick } = e.data;
-                if (action === 'close') return adminWidget.classList.add('hidden');
-                if (socket) socket.emit('adminCmd', { action, value, targetNick });
-                if (state.mode === 'single') {
-                    if (action === 'setEvent') { state.event = value; updateHUD(); }
-                    if (action === 'give') {
-                        if (value === 'hp') state.player.hp = 100;
-                        if (value === 'food') state.player.hunger = 100;
-                        if (value === 'res') { state.player.wood += 100; state.player.stone += 100; }
-                        if (value === 'build') { state.player.canBuild = true; document.getElementById('btn-build').classList.remove('hidden'); }
-                        updateHUD();
-                    }
-                }
-            }
-        });
-        document.getElementById('btn-singleplayer').addEventListener('click', () => { renderWorlds(); showScreen('worlds-screen'); });
-        document.getElementById('btn-create-world').addEventListener('click', () => {
-            const inp = document.getElementById('new-world-name');
-            const worlds = JSON.parse(localStorage.getItem('surv_worlds') || '[]');
-            worlds.push({ id: Date.now(), name: inp.value.trim() || `Мир #${Date.now().toString().slice(-3)}`, objects: generateWorld(2000, 2000) });
-            localStorage.setItem('surv_worlds', JSON.stringify(worlds));
-            inp.value = ''; renderWorlds();
-        });
-
-        function generateWorld(w, h) {
-            const objs = [];
-            for (let i = 0; i < 120; i++) {
-                const r = Math.random();
-                objs.push({ type: r > 0.65 ? 'rock' : (r > 0.45 ? 'bush' : 'tree'), x: Math.random() * w, y: Math.random() * h, hp: 30 });
-            }
-            return objs;
-        }
-
-        function renderWorlds() {
-            const list = document.getElementById('world-list');
-            const worlds = JSON.parse(localStorage.getItem('surv_worlds') || '[]');
-            list.innerHTML = worlds.length ? '' : '<p style="color:#94a3b8;text-align:center;">Нет миров</p>';
-            worlds.forEach(w => {
-                const div = document.createElement('div');
-                div.className = 'server-item';
-                div.innerHTML = `<span>${w.name}</span><button style="min-width:auto;padding:6px 12px;">Играть</button>`;
-                div.querySelector('button').onclick = () => {
-                    state.mode = 'single'; state.world = w.objects; state.builds = [];
-                    state.player = { x: 1000, y: 1000, hp: 100, hunger: 100, wood: 0, stone: 0, canBuild: state.isAdmin };
-                    document.getElementById('chat-box').classList.add('hidden');
-                    startGame();
-                };
-                list.appendChild(div);
-            });
-        }
-
-        const canvas = document.getElementById('game-canvas');
-        const ctx = canvas.getContext('2d');
-
-        function startGame() {
-            applyControls(); showScreen('game-screen');
-            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-            updateHUD();
-
-            const timer = setInterval(() => {
-                if (document.getElementById('game-screen').classList.contains('hidden')) return clearInterval(timer);
-                const drain = state.event === 'hurricane' ? 2 : 1;
-                state.player.hunger = Math.max(0, state.player.hunger - drain);
-                if (state.player.hunger === 0) state.player.hp = Math.max(0, state.player.hp - 2);
-                if (state.player.hp <= 0) { state.player.hp = 100; state.player.hunger = 100; }
-                updateHUD();
-            }, 3000);
-
-            loop();
-        }
-
-        function updateHUD() {
-            document.getElementById('hud-hp').textContent = state.player.hp;
-            document.getElementById('hud-hunger').textContent = state.player.hunger;
-            document.getElementById('hud-wood').textContent = state.player.wood;
-            document.getElementById('hud-stone').textContent = state.player.stone;
-            const evNames = { clear: '', rain: '[ДОЖДЬ]', hurricane: '[УРАГАН]', buff: '[БАФФ x2]' };
-            document.getElementById('hud-event').textContent = evNames[state.event] || '';
-        }
-
-        document.querySelectorAll('.touch-btn[data-key]').forEach(b => {
-            b.addEventListener('touchstart', (e) => { e.preventDefault(); state.keys[b.dataset.key] = true; });
-            b.addEventListener('touchend', (e) => { e.preventDefault(); state.keys[b.dataset.key] = false; });
-        });
-        window.addEventListener('keydown', (e) => {
-            if (e.key === 'w' || e.key === 'ArrowUp') state.keys.up = true;
-            if (e.key === 's' || e.key === 'ArrowDown') state.keys.down = true;
-            if (e.key === 'a' || e.key === 'ArrowLeft') state.keys.left = true;
-            if (e.key === 'd' || e.key === 'ArrowRight') state.keys.right = true;
-        });
-        window.addEventListener('keyup', (e) => {
-            if (e.key === 'w' || e.key === 'ArrowUp') state.keys.up = false;
-            if (e.key === 's' || e.key === 'ArrowDown') state.keys.down = false;
-            if (e.key === 'a' || e.key === 'ArrowLeft') state.keys.left = false;
-            if (e.key === 'd' || e.key === 'ArrowRight') state.keys.right = false;
-        });
-
-        document.getElementById('btn-mine').addEventListener('click', () => {
-            state.world.forEach((o, i) => {
-                if (Math.hypot(o.x - state.player.x, o.y - state.player.y) < 65) {
-                    o.hp -= 15;
-                    if (o.type === 'tree') state.player.wood += 2;
-                    if (o.type === 'rock') state.player.stone += 2;
-                    if (o.type === 'bush') state.player.hunger = Math.min(100, state.player.hunger + 15);
-                    if (o.hp <= 0) state.world.splice(i, 1);
-                    updateHUD();
-                }
-            });
-        });
-
-        document.getElementById('btn-eat').addEventListener('click', () => {
-            if (state.player.wood >= 1 && state.player.hunger < 100) {
-                state.player.wood -= 1; state.player.hunger = Math.min(100, state.player.hunger + 20);
-                updateHUD();
-            }
-        });
-
-        document.getElementById('btn-build').addEventListener('click', () => {
-            if (!state.player.canBuild && !state.isAdmin) return;
-            const pos = { x: Math.round(state.player.x), y: Math.round(state.player.y + 35) };
-            if (socket) socket.emit('buildBlock', pos);
-            else state.builds.push(pos);
-        });
-
-        function exitToMenu() {
-            cancelAnimationFrame(gameLoopId);
-            if (socket) socket.disconnect();
-            adminWidget.classList.add('hidden');
-            showScreen('menu-screen');
-        }
-        document.getElementById('btn-exit-game').addEventListener('click', exitToMenu);
-
-        function loop() {
-            let speed = 2 + (state.settings.sens * 0.4);
-            if (state.event === 'buff') speed *= 1.8;
-            let moved = false;
-
-            if (state.settings.controlType === 'joystick' && (state.joyVec.x !== 0 || state.joyVec.y !== 0)) {
-                state.player.x += state.joyVec.x * speed;
-                state.player.y += state.joyVec.y * speed;
-                moved = true;
-            } else {
-                if (state.keys.up) { state.player.y -= speed; moved = true; }
-                if (state.keys.down) { state.player.y += speed; moved = true; }
-                if (state.keys.left) { state.player.x -= speed; moved = true; }
-                if (state.keys.right) { state.player.x += speed; moved = true; }
-            }
-
-            if (state.event === 'hurricane') { state.player.x += 1.2; moved = true; }
-            if (moved && socket?.connected) socket.emit('move', { x: state.player.x, y: state.player.y });
-
-            ctx.fillStyle = state.event === 'rain' || state.event === 'hurricane' ? '#0f3923' : '#14532d';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            const cx = state.player.x - canvas.width / 2, cy = state.player.y - canvas.height / 2;
-
-            state.builds.forEach(b => {
-                ctx.fillStyle = '#92400e';
-                ctx.fillRect(b.x - cx - 20, b.y - cy - 20, 40, 40);
-            });
-
-            state.world.forEach(o => {
-                const sx = o.x - cx, sy = o.y - cy;
-                if (o.type === 'tree') { ctx.fillStyle = '#166534'; ctx.beginPath(); ctx.arc(sx, sy, 22, 0, Math.PI * 2); ctx.fill(); }
-                if (o.type === 'rock') { ctx.fillStyle = '#64748b'; ctx.fillRect(sx - 16, sy - 16, 32, 32); }
-                if (o.type === 'bush') { ctx.fillStyle = '#dc2626'; ctx.beginPath(); ctx.arc(sx, sy, 12, 0, Math.PI * 2); ctx.fill(); }
-            });
-
-            Object.values(state.otherPlayers).forEach(p => {
-                if (p.id === socket?.id) return;
-                ctx.fillStyle = p.isAdmin ? '#facc15' : '#38bdf8';
-                ctx.beginPath(); ctx.arc(p.x - cx, p.y - cy, 15, 0, Math.PI * 2); ctx.fill();
-                ctx.fillStyle = '#fff'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center';
-                ctx.fillText(p.nickname, p.x - cx, p.y - cy - 20);
-            });
-
-            ctx.fillStyle = state.isAdmin ? '#facc15' : '#3b82f6';
-            ctx.beginPath(); ctx.arc(canvas.width / 2, canvas.height / 2, 15, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = '#fff'; ctx.font = '13px sans-serif'; ctx.textAlign = 'center';
-            ctx.fillText(state.nickname, canvas.width / 2, canvas.height / 2 - 20);
-
-            if (state.event === 'rain' || state.event === 'hurricane') {
-                ctx.strokeStyle = 'rgba(147, 197, 253, 0.4)';
-                for (let i = 0; i < 40; i++) {
-                    const rx = Math.random() * canvas.width, ry = Math.random() * canvas.height;
-                    ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx - 6, ry + 14); ctx.stroke();
-                }
-            }
-
-            gameLoopId = requestAnimationFrame(loop);
-        }
-    </script>
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+let lastEmit = 0;
+function loop(ts) {
+  cv.width = window.innerWidth; cv.height = window.innerHeight;
+  if (!isFrozen && (joyVec.x || joyVec.y)) {
+    const spd = state.weather === 'speed' ? 5.2 : 3.4;
+    me.x = Math.max(40, Math.min(1960, me.x + joyVec.x * spd)); me.y = Math.max(40, Math.min(1960, me.y + joyVec.y * spd));
+    if (isMultiplayer && ts - lastEmit > 50) { socket.emit('move', { x: me.x, y: me.y }); lastEmit = ts; }
+  }
+  ctx.save(); ctx.translate(cv.width / 2 - me.x, cv.height / 2 - me.y);
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.beginPath(); ctx.arc(1000, 1000, 160, 0, Math.PI * 2); ctx.stroke();
+  state.resources.forEach(r => { ctx.fillStyle = r.type === 'stone' ? '#94a3b8' : (r.type === 'bush' ? '#22c55e' : '#15803d'); ctx.beginPath(); ctx.arc(r.x, r.y, 18, 0, Math.PI * 2); ctx.fill(); });
+  state.luckyBlocks.forEach(b => { ctx.fillStyle = '#facc15'; ctx.fillRect(b.x - 14, b.y - 14, 28, 28); ctx.fillStyle = '#000'; ctx.font = 'bold 16px sans-serif'; ctx.fillText('?', b.x - 4, b.y + 6); });
+  state.blocks.forEach(b => { ctx.fillStyle = b.type === 'brick' ? '#b91c1c' : (b.type === 'stone' ? '#64748b' : '#92400e'); ctx.fillRect(b.x - 15, b.y - 15, 30, 30); });
+  Object.values(state.players).forEach(p => { if (p.nick === myNick) return; ctx.fillStyle = p.isAdmin ? '#facc15' : '#38bdf8'; ctx.beginPath(); ctx.arc(p.x, p.y, 14, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#fff'; ctx.font = '11px sans-serif'; ctx.fillText(p.nick, p.x - 18, p.y - 20); });
+  ctx.fillStyle = isAdmin ? '#facc15' : '#fff'; ctx.beginPath(); ctx.arc(me.x, me.y, 14, 0, Math.PI * 2); ctx.fill();
+  ctx.restore(); requestAnimationFrame(loop);
+}
+</script>
 </body>
 </html>
