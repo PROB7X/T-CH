@@ -26,25 +26,13 @@ const rooms = {
 
 function createRoom(id, isOpen, adminOnly) {
   const world = {
-    id,
-    isOpen,
-    adminOnly,
-    weather: 'clear',
-    players: {},
-    resources: [],
-    blocks: [],
-    mobs: [],
-    luckyBlocks: [],
+    id, isOpen, adminOnly, weather: 'clear',
+    players: {}, resources: [], blocks: [], mobs: [], luckyBlocks: [],
     banned: new Set()
   };
-  generateWorldObjects(world);
-  return world;
-}
-
-function generateWorldObjects(world) {
   for (let i = 0; i < 45; i++) {
     world.resources.push({
-      id: 'res_' + Math.random().toString(36).slice(2, 9),
+      id: 'res_' + i + '_' + Math.random().toString(36).slice(2, 6),
       type: i % 3 === 0 ? 'stone' : (i % 5 === 0 ? 'bush' : 'tree'),
       x: 150 + Math.random() * 1700,
       y: 150 + Math.random() * 1700,
@@ -56,21 +44,20 @@ function generateWorldObjects(world) {
       id: 'mob_' + i,
       x: 300 + Math.random() * 1400,
       y: 300 + Math.random() * 1400,
-      hp: 3,
-      vx: 0,
-      vy: 0
+      hp: 3, vx: 0, vy: 0
     });
   }
+  return world;
 }
 
 setInterval(() => {
   Object.values(rooms).forEach(room => {
     if (!Object.keys(room.players).length) return;
     room.mobs.forEach(m => {
-      if (Math.random() < 0.05) {
+      if (Math.random() < 0.06) {
         const a = Math.random() * Math.PI * 2;
-        m.vx = Math.cos(a) * 1.2;
-        m.vy = Math.sin(a) * 1.2;
+        m.vx = Math.cos(a) * 1.4;
+        m.vy = Math.sin(a) * 1.4;
       }
       m.x = Math.max(80, Math.min(1920, m.x + m.vx));
       m.y = Math.max(80, Math.min(1920, m.y + m.vy));
@@ -81,18 +68,14 @@ setInterval(() => {
 
 function getRoomsMeta() {
   return Object.values(rooms).map(r => ({
-    id: r.id,
-    isOpen: r.isOpen,
-    adminOnly: r.adminOnly,
+    id: r.id, isOpen: r.isOpen, adminOnly: r.adminOnly,
     count: Object.keys(r.players).length
   }));
 }
 
 function notifyAdmins(room, alertData) {
   Object.values(room.players).forEach(p => {
-    if (p.isAdmin) {
-      io.to(p.socketId).emit('adminAlert', alertData);
-    }
+    if (p.isAdmin) io.to(p.socketId).emit('adminAlert', alertData);
   });
 }
 
@@ -114,9 +97,7 @@ io.on('connection', (socket) => {
   socket.on('joinRoom', ({ roomId, nick, isAdmin }, cb) => {
     const room = rooms[roomId];
     if (!room) return cb({ ok: false, msg: 'Комната не найдена' });
-    if (globalBans.has(nick) || room.banned.has(nick)) {
-      return cb({ ok: false, msg: 'Доступ запрещен (Бан)' });
-    }
+    if (globalBans.has(nick) || room.banned.has(nick)) return cb({ ok: false, msg: 'Доступ запрещен (Бан)' });
     if (!room.isOpen && !isAdmin) return cb({ ok: false, msg: 'Комната закрыта' });
     if (room.adminOnly && !isAdmin) return cb({ ok: false, msg: 'Только для OWNER' });
 
@@ -125,14 +106,9 @@ io.on('connection', (socket) => {
     socket.join(roomId);
 
     room.players[nick] = {
-      nick,
-      socketId: socket.id,
-      isAdmin: !!isAdmin,
-      x: 1000,
-      y: 1000,
-      hp: 100,
-      lastMoveTime: Date.now(),
-      acStrikes: 0,
+      nick, socketId: socket.id, isAdmin: !!isAdmin,
+      x: 1000, y: 1000, hp: 100,
+      lastMoveTime: Date.now(), acStrikes: 0,
       frozen: frozenPlayers.has(nick),
       inv: { wood: 0, stone: 0, brick: 0, meat: 0, amulet_tp: 0, amulet_swap: 0 }
     };
@@ -141,12 +117,9 @@ io.on('connection', (socket) => {
     cb({
       ok: true,
       state: {
-        weather: room.weather,
-        players: room.players,
-        resources: room.resources,
-        blocks: room.blocks,
-        mobs: room.mobs,
-        luckyBlocks: room.luckyBlocks
+        weather: room.weather, players: room.players,
+        resources: room.resources, blocks: room.blocks,
+        mobs: room.mobs, luckyBlocks: room.luckyBlocks
       }
     });
     socket.to(roomId).emit('playerJoined', room.players[nick]);
@@ -156,27 +129,24 @@ io.on('connection', (socket) => {
     if (!currentRoom || !currentNick) return;
     const p = currentRoom.players[currentNick];
     if (!p || p.frozen || frozenPlayers.has(currentNick)) {
-      return socket.emit('forcePos', { x: p.x, y: p.y });
+      return socket.emit('forcePos', { x: p ? p.x : 1000, y: p ? p.y : 1000 });
     }
-
     const now = Date.now();
     const dt = Math.max(16, now - p.lastMoveTime);
     const dist = Math.hypot(x - p.x, y - p.y);
-    const maxSpeed = (currentRoom.weather === 'speed' ? 0.65 : 0.42) * dt + 28;
+    const maxSpeed = (currentRoom.weather === 'speed' ? 0.75 : 0.48) * dt + 35;
 
     if (!p.isAdmin && dist > maxSpeed) {
       p.acStrikes++;
       if (p.acStrikes >= 3) {
         p.acStrikes = 0;
         notifyAdmins(currentRoom, {
-          type: 'anticheat',
-          target: currentNick,
+          type: 'anticheat', target: currentNick,
           reason: `Античит: спидхак (${Math.round(dist)}px)`
         });
       }
       return socket.emit('forcePos', { x: p.x, y: p.y });
     }
-
     p.acStrikes = Math.max(0, p.acStrikes - 0.2);
     p.lastMoveTime = now;
     p.x = Math.max(40, Math.min(1960, x));
@@ -191,23 +161,26 @@ io.on('connection', (socket) => {
 
     if (type === 'hitResource') {
       const idx = currentRoom.resources.findIndex(r => r.id === targetId);
-      if (idx !== -1) {
-        const res = currentRoom.resources[idx];
-        res.hp--;
-        if (res.hp <= 0) {
-          currentRoom.resources.splice(idx, 1);
-          const drop = res.type === 'stone' ? 'stone' : 'wood';
-          p.inv[drop] += 2;
-          io.to(currentRoom.id).emit('worldSync', { resources: currentRoom.resources });
-          socket.emit('invUpdate', p.inv);
-        }
+      if (idx !== -1 && --currentRoom.resources[idx].hp <= 0) {
+        const [res] = currentRoom.resources.splice(idx, 1);
+        const drop = res.type === 'stone' ? 'stone' : (res.type === 'bush' ? 'meat' : 'wood');
+        p.inv[drop] += 2;
+        io.to(currentRoom.id).emit('worldSync', { resources: currentRoom.resources });
+        socket.emit('invUpdate', p.inv);
+      }
+    } else if (type === 'hitMob') {
+      const idx = currentRoom.mobs.findIndex(m => m.id === targetId);
+      if (idx !== -1 && --currentRoom.mobs[idx].hp <= 0) {
+        currentRoom.mobs.splice(idx, 1);
+        p.inv.meat += 3;
+        io.to(currentRoom.id).emit('mobsUpdate', currentRoom.mobs);
+        socket.emit('invUpdate', p.inv);
       }
     } else if (type === 'hitLucky') {
       const idx = currentRoom.luckyBlocks.findIndex(b => b.id === targetId);
       if (idx !== -1) {
-        const lb = currentRoom.luckyBlocks.splice(idx, 1)[0];
-        const isLucky = Math.random() * 100 <= lb.luck;
-        if (isLucky) {
+        const [lb] = currentRoom.luckyBlocks.splice(idx, 1);
+        if (Math.random() * 100 <= lb.luck) {
           const drop = Math.random() < 0.5 ? 'amulet_tp' : 'amulet_swap';
           p.inv[drop] = (p.inv[drop] || 0) + 1;
           socket.emit('titleMsg', { text: 'УДАЧА! Выпал амулет', color: '#facc15' });
@@ -230,15 +203,14 @@ io.on('connection', (socket) => {
       } else if (item === 'amulet_swap' && p.inv.amulet_swap > 0) {
         const others = Object.values(currentRoom.players).filter(o => o.nick !== currentNick && !o.isAdmin);
         if (others.length) {
-          const target = others[Math.floor(Math.random() * others.length)];
+          const t = others[Math.floor(Math.random() * others.length)];
           p.inv.amulet_swap--;
-          const tx = target.x, ty = target.y;
-          target.x = p.x; target.y = p.y;
-          p.x = tx; p.y = ty;
+          [p.x, t.x] = [t.x, p.x];
+          [p.y, t.y] = [t.y, p.y];
           io.to(currentRoom.id).emit('playerMoved', { nick: currentNick, x: p.x, y: p.y });
-          io.to(currentRoom.id).emit('playerMoved', { nick: target.nick, x: target.x, y: target.y });
+          io.to(currentRoom.id).emit('playerMoved', { nick: t.nick, x: t.x, y: t.y });
           socket.emit('forcePos', { x: p.x, y: p.y });
-          io.to(target.socketId).emit('forcePos', { x: target.x, y: target.y });
+          io.to(t.socketId).emit('forcePos', { x: t.x, y: t.y });
           socket.emit('invUpdate', p.inv);
         }
       }
@@ -254,25 +226,19 @@ io.on('connection', (socket) => {
   });
 
   socket.on('chatMsg', (text) => {
-    if (!currentRoom || !currentNick) return;
-    if (mutedPlayers.has(currentNick)) return;
+    if (!currentRoom || !currentNick || mutedPlayers.has(currentNick)) return;
     const clean = String(text || '').trim().slice(0, 32);
     if (!clean) return;
     const p = currentRoom.players[currentNick];
     io.to(currentRoom.id).emit('chatBroadcast', {
-      id: 'msg_' + Date.now() + Math.random().toString(36).slice(2, 5),
-      nick: currentNick,
-      isAdmin: p?.isAdmin,
-      text: clean
+      id: 'm_' + Date.now(), nick: currentNick, isAdmin: p?.isAdmin, text: clean
     });
   });
 
   socket.on('reportPlayer', ({ target, reason }) => {
     if (!currentRoom || !currentNick || target === ADMIN_NICK) return;
     notifyAdmins(currentRoom, {
-      type: 'report',
-      from: currentNick,
-      target,
+      type: 'report', target,
       reason: `Жалоба от ${currentNick} на ${target}: ${reason}`
     });
   });
@@ -282,31 +248,22 @@ io.on('connection', (socket) => {
     const targetP = cmd.target ? currentRoom.players[cmd.target] : null;
 
     if (cmd.action === 'title') {
-      if (cmd.target === 'ALL') {
-        io.to(currentRoom.id).emit('titleMsg', { text: cmd.text, color: '#facc15' });
-      } else if (targetP) {
-        io.to(targetP.socketId).emit('titleMsg', { text: cmd.text, color: '#facc15' });
-      }
+      if (cmd.target === 'ALL') io.to(currentRoom.id).emit('titleMsg', { text: cmd.text, color: '#facc15' });
+      else if (targetP) io.to(targetP.socketId).emit('titleMsg', { text: cmd.text, color: '#facc15' });
     } else if (cmd.action === 'freeze' && targetP && cmd.target !== ADMIN_NICK) {
-      const nextState = !targetP.frozen;
-      targetP.frozen = nextState;
-      if (nextState) frozenPlayers.add(cmd.target);
-      else frozenPlayers.delete(cmd.target);
-      io.to(targetP.socketId).emit('freezeState', nextState);
+      targetP.frozen = !targetP.frozen;
+      targetP.frozen ? frozenPlayers.add(cmd.target) : frozenPlayers.delete(cmd.target);
+      io.to(targetP.socketId).emit('freezeState', targetP.frozen);
     } else if (cmd.action === 'restrictAll' && cmd.target !== ADMIN_NICK) {
       frozenPlayers.add(cmd.target);
       mutedPlayers.add(cmd.target);
-      if (targetP) {
-        targetP.frozen = true;
-        io.to(targetP.socketId).emit('freezeState', true);
-      }
+      if (targetP) { targetP.frozen = true; io.to(targetP.socketId).emit('freezeState', true); }
     } else if (cmd.action === 'tpTo' && targetP) {
-      const adminP = currentRoom.players[ADMIN_NICK];
-      if (adminP) {
-        adminP.x = targetP.x + 30;
-        adminP.y = targetP.y;
-        socket.emit('forcePos', { x: adminP.x, y: adminP.y });
-        io.to(currentRoom.id).emit('playerMoved', { nick: ADMIN_NICK, x: adminP.x, y: adminP.y });
+      const adm = currentRoom.players[ADMIN_NICK];
+      if (adm) {
+        adm.x = targetP.x + 30; adm.y = targetP.y;
+        socket.emit('forcePos', { x: adm.x, y: adm.y });
+        io.to(currentRoom.id).emit('playerMoved', { nick: ADMIN_NICK, x: adm.x, y: adm.y });
       }
     } else if (cmd.action === 'spawnLucky') {
       const count = Math.min(30, Math.max(1, Number(cmd.count) || 5));
@@ -314,9 +271,7 @@ io.on('connection', (socket) => {
       for (let i = 0; i < count; i++) {
         currentRoom.luckyBlocks.push({
           id: 'lb_' + Date.now() + '_' + i,
-          x: 200 + Math.random() * 1600,
-          y: 200 + Math.random() * 1600,
-          luck
+          x: 200 + Math.random() * 1600, y: 200 + Math.random() * 1600, luck
         });
       }
       io.to(currentRoom.id).emit('worldSync', { luckyBlocks: currentRoom.luckyBlocks });
@@ -328,13 +283,9 @@ io.on('connection', (socket) => {
       io.to(currentRoom.id).emit('weatherUpdate', cmd.weather);
     } else if (cmd.action === 'toggleRoom') {
       const r = rooms[cmd.roomId || currentRoom.id];
-      if (r) {
-        r.isOpen = !r.isOpen;
-        io.emit('roomsList', getRoomsMeta());
-      }
+      if (r) { r.isOpen = !r.isOpen; io.emit('roomsList', getRoomsMeta()); }
     } else if (cmd.action === 'mute' && cmd.target !== ADMIN_NICK) {
-      if (mutedPlayers.has(cmd.target)) mutedPlayers.delete(cmd.target);
-      else mutedPlayers.add(cmd.target);
+      mutedPlayers.has(cmd.target) ? mutedPlayers.delete(cmd.target) : mutedPlayers.add(cmd.target);
     } else if (cmd.action === 'banRoom' && cmd.target !== ADMIN_NICK) {
       currentRoom.banned.add(cmd.target);
       if (targetP) io.to(targetP.socketId).emit('kicked', 'Вы забанены в этой комнате');
