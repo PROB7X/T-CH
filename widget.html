@@ -6,86 +6,104 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; user-select: none; }
         body { background: transparent; overflow: hidden; }
         .panel {
-            width: 240px;
-            background: rgba(15, 23, 42, 0.92);
-            border: 1px solid #ef4444;
-            border-radius: 10px;
-            color: #f8fafc;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.6);
-            overflow: hidden;
+            width: 280px; background: rgba(15, 23, 42, 0.95); border: 1px solid #ef4444;
+            border-radius: 10px; color: #f8fafc; box-shadow: 0 10px 25px rgba(0,0,0,0.7);
         }
         .header {
-            background: #dc2626;
-            padding: 8px 12px;
-            font-size: 13px;
-            font-weight: bold;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            cursor: move; /* Курсор перетаскивания */
+            background: #dc2626; padding: 8px 12px; font-size: 13px; font-weight: bold;
+            display: flex; justify-content: space-between; align-items: center; cursor: move;
         }
-        .body { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
-        .stats { font-size: 12px; color: #cbd5e1; background: #1e293b; padding: 6px 8px; border-radius: 6px; }
-        button {
-            background: #2563eb; color: #fff; border: none; padding: 8px;
-            border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;
-            transition: background 0.2s;
+        .body { padding: 10px; display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
+        select, button {
+            width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid #334155;
+            background: #1e293b; color: #fff; font-size: 12px; cursor: pointer;
         }
+        button { background: #2563eb; border: none; font-weight: 600; }
         button:hover { background: #1d4ed8; }
-        button.danger { background: #991b1b; }
-        .close-btn { background: none; border: none; color: white; font-size: 16px; cursor: pointer; padding: 0; min-width: auto; }
+        .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+        .warn { background: #b45309; }
+        .danger { background: #991b1b; }
+        .success { background: #15803d; }
+        .close-btn { background: none; width: auto; padding: 0 4px; font-size: 16px; }
+        .label { color: #94a3b8; font-size: 11px; margin-top: 2px; }
     </style>
 </head>
 <body>
     <div class="panel">
         <div class="header" id="drag-handle">
-            <span>ADMIN WIDGET</span>
-            <button class="close-btn" onclick="sendCommand('close')">×</button>
+            <span>ADMIN CONTROL</span>
+            <button class="close-btn" onclick="send('close')">×</button>
         </div>
         <div class="body">
-            <div class="stats" id="info-box">Ожидание данных из игры...</div>
-            <button onclick="sendCommand('healAndRes')">Выдать 100 HP и ресурсы</button>
-            <button onclick="sendCommand('healAll')">Вылечить всех на сервере</button>
-            <button class="danger" onclick="sendCommand('teleportCenter')">Телепорт в центр (1000,1000)</button>
+            <div class="label">Управление сервером:</div>
+            <button class="success" id="btn-room2" onclick="send('toggleRoom2')">Открыть/Закрыть ob.timeos.op</button>
+
+            <div class="label">Запустить ивент:</div>
+            <div class="grid2">
+                <button onclick="send('setEvent', 'clear')">Ясно</button>
+                <button onclick="send('setEvent', 'rain')">Дождь</button>
+                <button onclick="send('setEvent', 'hurricane')">Ураган</button>
+                <button onclick="send('setEvent', 'buff')">Бафф скорости</button>
+            </div>
+
+            <div class="label">Выбор игрока:</div>
+            <select id="player-select"></select>
+
+            <div class="label">Выдать выбранному игроку:</div>
+            <div class="grid2">
+                <button onclick="give('hp')">+100 HP</button>
+                <button onclick="give('food')">Еду (+100)</button>
+                <button onclick="give('res')">Ресурсы (+100)</button>
+                <button onclick="give('build')">Право строить</button>
+            </div>
+
+            <div class="label">Модерация игрока:</div>
+            <div class="grid2">
+                <button class="warn" onclick="mod('mute')">Мьют / Размьют</button>
+                <button class="danger" onclick="mod('banRoom')">Бан (Сервер)</button>
+            </div>
+            <button class="danger" onclick="mod('banGlobal')">Глобальный бан (Игра)</button>
         </div>
     </div>
 
     <script>
-        // 1. Отправка команд в основной index.html
-        function sendCommand(cmd) {
-            window.parent.postMessage({ type: 'ADMIN_CMD', command: cmd }, '*');
+        function send(action, value = null, targetNick = null) {
+            window.parent.postMessage({ type: 'ADMIN_CMD', action, value, targetNick }, '*');
+        }
+        function give(item) {
+            const target = document.getElementById('player-select').value;
+            if (target) send('give', item, target);
+        }
+        function mod(action) {
+            const target = document.getElementById('player-select').value;
+            if (target) send(action, null, target);
         }
 
-        // 2. Получение данных от index.html для отображения в виджете
-        window.addEventListener('message', (event) => {
-            if (event.data && event.data.type === 'GAME_STATS') {
-                const { hp, wood, stone, playersCount } = event.data;
-                document.getElementById('info-box').innerHTML = 
-                    `HP: <b>${hp}</b> | Дерево: <b>${wood}</b> | Камень: <b>${stone}</b><br>Игроков онлайн: <b>${playersCount}</b>`;
+        window.addEventListener('message', (e) => {
+            if (e.data?.type === 'UPDATE_ADMIN_LIST') {
+                const sel = document.getElementById('player-select');
+                const current = sel.value;
+                sel.innerHTML = '';
+                e.data.players.forEach(nick => {
+                    const opt = document.createElement('option');
+                    opt.value = nick; opt.textContent = nick;
+                    sel.appendChild(opt);
+                });
+                if (e.data.players.includes(current)) sel.value = current;
             }
         });
 
-        // 3. Логика перетаскивания (передаём смещение мыши/пальца родительскому окну)
         const handle = document.getElementById('drag-handle');
-        let isDragging = false, startX, startY;
-
+        let dragging = false, sx, sy;
         handle.addEventListener('pointerdown', (e) => {
-            isDragging = true;
-            startX = e.clientX;
-            startY = e.clientY;
+            dragging = true; sx = e.clientX; sy = e.clientY;
             handle.setPointerCapture(e.pointerId);
         });
-
         handle.addEventListener('pointermove', (e) => {
-            if (!isDragging) return;
-            window.parent.postMessage({
-                type: 'DRAG_WIDGET',
-                dx: e.clientX - startX,
-                dy: e.clientY - startY
-            }, '*');
+            if (!dragging) return;
+            window.parent.postMessage({ type: 'DRAG_WIDGET', dx: e.clientX - sx, dy: e.clientY - sy }, '*');
         });
-
-        handle.addEventListener('pointerup', () => { isDragging = false; });
+        handle.addEventListener('pointerup', () => dragging = false);
     </script>
 </body>
 </html>
