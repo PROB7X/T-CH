@@ -1,137 +1,238 @@
 const express = require('express');
-const cors = require('cors');
+const fs = require('fs');
 const path = require('path');
 
 const app = express();
 const PORT = 3000;
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
-app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname)));
+app.use(express.static(__dirname));
 
-// Хранилище пользователей: { username: { password: string | null } }
-const users = {
-  System: { password: null }
-};
+function getAdminConfig() {
+  try {
+    const raw = fs.readFileSync(path.join(__dirname, 'secret.json'), 'utf8');
+    return JSON.parse(raw);
+  } catch (e) {
+    return { adminUsername: 'HELM77ZX', adminPassword: '' };
+  }
+}
 
-// Лента постов
-let posts = [
+// Хранилище в памяти сервера
+const users = new Map(); // username -> { password, isAdmin, lastActive }
+const posts = [
   {
     id: 1,
-    author: 'System',
-    time: '00:00',
-    text: 'Добро пожаловать в NioLit Mobile! Теперь доступны личные чаты с автоудалением сообщений через 7 дней.',
-    likes: 1
+    author: 'HELM77ZX',
+    isAdmin: true,
+    time: '12:00',
+    text: 'Система NioLit OS v2.0 запущена. Все модули работают штатно.',
+    likes: 10
   }
 ];
-
-// Личные сообщения: [{ id, from, to, text, time, createdAt }]
+// Заявки в друзья: { id, from, to, status: 'pending' | 'accepted', createdAt }
+let friendRequests = [];
+// Личные сообщения: { id, from, to, text, createdAt, time }
 let directMessages = [];
 
-// Функция очистки сообщений старше 7 дней
-function cleanupExpiredMessages() {
+function cleanupExpiredData() {
   const now = Date.now();
+  friendRequests = friendRequests.filter(r => (now - r.createdAt) < SEVEN_DAYS_MS);
   directMessages = directMessages.filter(m => (now - m.createdAt) < SEVEN_DAYS_MS);
 }
 
-// Автоматическая очистка каждый час
-setInterval(cleanupExpiredMessages, 60 * 60 * 1000);
+setInterval(cleanupExpiredData, 60 * 1000);
 
-function getFormattedTime() {
-  const now = new Date();
-  return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-}
-
-// Авторизация / регистрация пользователя (пароль необязателен)
+// Регистрация и вход
 app.post('/api/auth', (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !username.trim()) {
-    return res.status(400).json({ error: 'Имя пользователя обязательно' });
-  }
-  const cleanName = username.trim();
-  const cleanPass = password ? password.trim() : '';
+  cleanupExpiredData();
+  const { mode, username, password } = req.body || {};
+  const cleanName = String(username || '').trim();
+  const cleanPass = String(password || '').trim();
 
-  if (users[cleanName]) {
-    // Если у пользователя установлен пароль — проверяем его
-    if (users[cleanName].password && users[cleanName].password !== cleanPass) {
-      return res.status(403).json({ error: 'Неверный пароль для этого имени!' });
+  if (!cleanName || cleanName.length < 2 || cleanName.length > 20) {
+    return res.status(400).json({ ok: false, error: 'Имя должно быть от 2 до 20 символов' });
+  }
+
+  const adminCfg = getAdminConfig();
+  const isAdminTarget = cleanName.toUpperCase() === adminCfg.adminUsername.toUpperCase();
+
+  // Особая проверка для администратора HELM77ZX
+  if (isAdminTarget) {
+    if (!cleanPass) {
+      return res.status(401).json({ ok: false, requireAdminPass: true, error: 'Требуется пароль администратора' });
     }
-    // Если пароля не было, а пользователь решил его добавить
-    if (!users[cleanName].password && cleanPass) {
-      users[cleanName].password = cleanPass;
+    if (cleanPass !== adminCfg.adminPassword) {
+      return res.status(403).json({ ok: false, requireAdminPass: true, error: 'Неверный пароль администратора' });
     }
+    const existingAdmin = users.get(adminCfg.adminUsername);
+    if (existingAdmin && (Date.now() - existingAdmin.lastActive) < 15000) {
+      return res.status(409).json({ ok: false, error: 'Этот пользователь уже в сети' });
+    }
+    users.set(adminCfg.adminUsername, { password: adminCfg.adminPassword, isAdmin: true, lastActive: Date.now() });
+    return res.json({ ok: true, user: { username: adminCfg.adminUsername, isAdmin: true } });
+  }
+
+  // Обычные пользователи
+  const existingKey = Array.from(users.keys()).find(k => k.toLowerCase() === cleanName.toLowerCase());
+
+  if (mode === 'register') {
+    if (existingKey) {
+      return res.status(409).json({ ok: false, error: 'Это имя уже занято' });
+    }
+    users.set(cleanName, { password: cleanPass, isAdmin: false, lastActive: Date.now() });
+    return res.json({ ok: true, user: { username: cleanName, isAdmin: false } });
   } else {
-    users[cleanName] = { password: cleanPass || null };
+    // mode === 'login'
+    if (!existingKey) {
+      return res.status(404).json({ ok: false, error: 'Пользователь не найден. Зарегистрируйтесь' });
+    }
+    const userObj = users.get(existingKey);
+    if ((Date.now() - userObj.lastActive) < 15000) {
+      return res.status(409).json({ ok: false, error: 'Пользователь с таким именем уже онлайн' });
+    }
+    if (userObj.password && userObj.password !== cleanPass) {
+      return res.status(403).json({ ok: false, error: 'Неверный пароль' });
+    }
+    userObj.lastActive = Date.now();
+    return res.json({ ok: true, user: { username: existingKey, isAdmin: false } });
   }
-
-  res.json({ ok: true, username: cleanName });
 });
 
-// Список зарегистрированных пользователей
-app.get('/api/users', (req, res) => {
-  res.json(Object.keys(users));
+// Поддержание сессии (heartbeat) и выход
+app.post('/api/heartbeat', (req, res) => {
+  const { username } = req.body || {};
+  if (username && users.has(username)) {
+    users.get(username).lastActive = Date.now();
+  }
+  res.json({ ok: true });
 });
 
-// Посты общей ленты
+app.post('/api/logout', (req, res) => {
+  const { username } = req.body || {};
+  if (username && users.has(username)) {
+    users.get(username).lastActive = 0;
+  }
+  res.json({ ok: true });
+});
+
+// Лента постов
 app.get('/api/posts', (req, res) => {
-  res.json(posts);
+  res.json({ ok: true, posts });
 });
 
 app.post('/api/posts', (req, res) => {
-  const { author, text } = req.body;
-  if (!text || !text.trim()) {
-    return res.status(400).json({ error: 'Пустой текст' });
+  const { author, text } = req.body || {};
+  if (!author || !users.has(author) || !text) {
+    return res.status(400).json({ ok: false });
   }
+  const now = new Date();
+  const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   const newPost = {
     id: Date.now(),
-    author: author || 'Гость',
-    time: getFormattedTime(),
-    text: text.trim(),
+    author,
+    isAdmin: users.get(author).isAdmin,
+    time,
+    text: String(text).slice(0, 300),
     likes: 0
   };
   posts.unshift(newPost);
-  res.json(newPost);
+  res.json({ ok: true, post: newPost });
 });
 
 app.post('/api/posts/:id/like', (req, res) => {
   const post = posts.find(p => p.id == req.params.id);
-  if (!post) return res.status(404).json({ error: 'Не найдено' });
-  post.likes++;
-  res.json(post);
+  if (post) post.likes++;
+  res.json({ ok: true });
 });
 
-// Получить личную переписку между двумя пользователями (с предварительной очисткой старых)
-app.get('/api/dm', (req, res) => {
-  cleanupExpiredMessages();
-  const { u1, u2 } = req.query;
-  if (!u1 || !u2) return res.json([]);
+// Друзья и заявки
+app.get('/api/social/:username', (req, res) => {
+  cleanupExpiredData();
+  const me = req.params.username;
+  const allUsers = Array.from(users.entries()).map(([name, info]) => ({
+    username: name,
+    isAdmin: info.isAdmin,
+    online: (Date.now() - info.lastActive) < 15000
+  }));
 
-  const dialog = directMessages.filter(
-    m => (m.from === u1 && m.to === u2) || (m.from === u2 && m.to === u1)
+  const myRequests = friendRequests.filter(r => r.from === me || r.to === me);
+  res.json({ ok: true, users: allUsers, requests: myRequests });
+});
+
+app.post('/api/friends/request', (req, res) => {
+  cleanupExpiredData();
+  const { from, to } = req.body || {};
+  if (!from || !to || from === to) return res.status(400).json({ ok: false, error: 'Некорректный адресат' });
+  if (!users.has(to)) return res.status(404).json({ ok: false, error: 'Пользователь не существует' });
+
+  const exists = friendRequests.find(
+    r => (r.from === from && r.to === to) || (r.from === to && r.to === from)
   );
-  res.json(dialog);
+  if (exists) {
+    return res.status(400).json({ ok: false, error: 'Заявка уже отправлена или вы уже друзья' });
+  }
+
+  friendRequests.push({
+    id: Date.now(),
+    from,
+    to,
+    status: 'pending',
+    createdAt: Date.now()
+  });
+  res.json({ ok: true });
 });
 
-// Отправить личное сообщение
-app.post('/api/dm', (req, res) => {
-  cleanupExpiredMessages();
-  const { from, to, text } = req.body;
-  if (!from || !to || !text || !text.trim()) {
-    return res.status(400).json({ error: 'Некорректные данные' });
+app.post('/api/friends/accept', (req, res) => {
+  cleanupExpiredData();
+  const { id, username } = req.body || {};
+  const reqObj = friendRequests.find(r => r.id == id && r.to === username);
+  if (!reqObj) return res.status(404).json({ ok: false });
+  reqObj.status = 'accepted';
+  res.json({ ok: true });
+});
+
+// Личные сообщения (только между одобренными друзьями, хранение 7 дней)
+app.get('/api/dm/:me/:peer', (req, res) => {
+  cleanupExpiredData();
+  const { me, peer } = req.params;
+  const isFriend = friendRequests.some(
+    r => r.status === 'accepted' && ((r.from === me && r.to === peer) || (r.from === peer && r.to === me))
+  );
+  if (!isFriend) {
+    return res.status(403).json({ ok: false, error: 'Сначала пользователь должен одобрить заявку в друзья' });
   }
+  const history = directMessages.filter(
+    m => (m.from === me && m.to === peer) || (m.from === peer && m.to === me)
+  );
+  res.json({ ok: true, messages: history });
+});
+
+app.post('/api/dm', (req, res) => {
+  cleanupExpiredData();
+  const { from, to, text } = req.body || {};
+  const isFriend = friendRequests.some(
+    r => r.status === 'accepted' && ((r.from === from && r.to === to) || (r.from === to && r.to === from))
+  );
+  if (!isFriend) {
+    return res.status(403).json({ ok: false, error: 'Нет одобренной заявки в друзья' });
+  }
+  if (!text || !String(text).trim()) return res.status(400).json({ ok: false });
+
+  const now = new Date();
+  const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   const msg = {
     id: Date.now(),
-    from: from.trim(),
-    to: to.trim(),
-    text: text.trim(),
-    time: getFormattedTime(),
-    createdAt: Date.now()
+    from,
+    to,
+    text: String(text).slice(0, 500),
+    createdAt: Date.now(),
+    time
   };
   directMessages.push(msg);
-  res.json(msg);
+  res.json({ ok: true, message: msg });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`NioLit Mobile OS server running on port ${PORT}`);
+app.listen(PORT, () => {
+  console.log(`NioLit OS running on port ${PORT}`);
 });
