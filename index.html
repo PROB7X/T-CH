@@ -1,1320 +1,1052 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Telegram Stars &amp; NFT Gifts Online</title>
-<style>
-  :root {
-    --bg: #0c1017;
-    --panel: #151c28;
-    --panel-hover: #1c2536;
-    --border: #263247;
-    --text: #f0f4f8;
-    --muted: #8b9bb4;
-    --accent: #3390ec;
-    --accent-hover: #2678c9;
-    --gold: #ffb800;
-    --green: #22c55e;
-    --red: #ef4444;
-    --purple: #a855f7;
-  }
-
-  * {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  }
-
-  body {
-    background-color: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-
-  .overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(8, 11, 17, 0.92);
-    backdrop-filter: blur(8px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    padding: 20px;
-  }
-
-  .overlay.hidden {
-    display: none;
-  }
-
-  .modal {
-    position: relative;
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 36px 28px;
-    max-width: 440px;
-    width: 100%;
-    text-align: center;
-    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65);
-  }
-
-  .close-btn {
-    position: absolute;
-    top: 14px;
-    right: 16px;
-    width: 34px;
-    height: 34px;
-    border-radius: 50%;
-    border: 1px solid var(--border);
-    background: rgba(255, 255, 255, 0.05);
-    color: var(--muted);
-    font-size: 20px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-  }
-
-  .close-btn:hover {
-    background: rgba(239, 68, 68, 0.2);
-    color: #fff;
-    border-color: var(--red);
-  }
-
-  .modal h2 {
-    font-size: 22px;
-    margin-bottom: 10px;
-  }
-
-  .modal p {
-    color: var(--muted);
-    font-size: 14px;
-    line-height: 1.5;
-    margin-bottom: 24px;
-  }
-
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    background: var(--accent);
-    color: #fff;
-    border: none;
-    border-radius: 12px;
-    padding: 13px 22px;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: transform 0.15s, background 0.2s;
-    width: 100%;
-  }
-
-  .btn:hover {
-    background: var(--accent-hover);
-  }
-
-  .btn:active {
-    transform: scale(0.98);
-  }
-
-  .btn-sell {
-    background: rgba(34, 197, 94, 0.16);
-    color: var(--green);
-    border: 1px solid rgba(34, 197, 94, 0.35);
-    padding: 9px 14px;
-    font-size: 13px;
-  }
-
-  .btn-sell:hover {
-    background: rgba(34, 197, 94, 0.28);
-  }
-
-  .btn-buy {
-    background: var(--accent);
-    padding: 9px 14px;
-    font-size: 13px;
-  }
-
-  .btn-buy:disabled {
-    background: #232d3f;
-    color: var(--muted);
-    cursor: not-allowed;
-  }
-
-  .input-field {
-    width: 100%;
-    padding: 13px 16px;
-    border-radius: 12px;
-    border: 1px solid var(--border);
-    background: #0d131d;
-    color: var(--text);
-    font-size: 16px;
-    margin-bottom: 16px;
-    outline: none;
-  }
-
-  .input-field:focus {
-    border-color: var(--accent);
-  }
-
-  header {
-    background: var(--panel);
-    border-bottom: 1px solid var(--border);
-    padding: 14px 24px;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 14px;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-  }
-
-  .brand {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .brand h1 {
-    font-size: 18px;
-    font-weight: 700;
-  }
-
-  .status-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 12px;
-    padding: 4px 10px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--border);
-    color: var(--muted);
-  }
-
-  .status-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--gold);
-  }
-
-  .status-dot.online {
-    background: var(--green);
-    box-shadow: 0 0 8px var(--green);
-  }
-
-  .stats {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    flex-wrap: wrap;
-  }
-
-  .stat-box {
-    background: #0d131d;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 8px 14px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 14px;
-    font-weight: 600;
-  }
-
-  .star-svg {
-    width: 24px;
-    height: 24px;
-    flex-shrink: 0;
-  }
-
-  .star-svg-sm {
-    width: 16px;
-    height: 16px;
-    vertical-align: -3px;
-  }
-
-  .container {
-    max-width: 1280px;
-    margin: 0 auto;
-    padding: 24px;
-    display: grid;
-    grid-template-columns: 1fr 360px;
-    gap: 24px;
-  }
-
-  @media (max-width: 980px) {
-    .container {
-      grid-template-columns: 1fr;
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NioLit OS</title>
+  <style>
+    :root {
+      --bg-gradient: radial-gradient(circle at 20% 20%, #1e293b 0%, #0f172a 55%, #020617 100%);
+      --glass: rgba(15, 23, 42, 0.82);
+      --glass-light: rgba(30, 41, 59, 0.88);
+      --border: rgba(148, 163, 184, 0.22);
+      --accent: #38bdf8;
+      --accent-hover: #0ea5e9;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --danger: #ef4444;
+      --success: #22c55e;
+      --taskbar-h: 46px;
     }
-  }
 
-  .section-header {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 16px;
-  }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    }
 
-  .section-title {
-    font-size: 18px;
-    font-weight: 700;
-  }
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg-gradient);
+      color: var(--text);
+    }
 
-  .tag-bar {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 18px;
-  }
+    #desktop {
+      position: relative;
+      width: 100vw;
+      height: calc(100vh - var(--taskbar-h));
+      overflow: hidden;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      flex-wrap: wrap;
+      align-content: flex-start;
+      gap: 16px;
+    }
 
-  .tag-btn {
-    background: var(--panel);
-    color: var(--muted);
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    padding: 6px 14px;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
+    .watermark {
+      position: absolute;
+      right: 32px;
+      bottom: 24px;
+      font-size: 42px;
+      font-weight: 800;
+      letter-spacing: 4px;
+      color: rgba(255, 255, 255, 0.04);
+      pointer-events: none;
+    }
 
-  .tag-btn:hover {
-    border-color: var(--accent);
-    color: var(--text);
-  }
+    .desktop-icon {
+      width: 86px;
+      padding: 10px 6px;
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      text-align: center;
+    }
+    .desktop-icon:hover { background: rgba(255, 255, 255, 0.1); }
+    .desktop-icon:active { transform: scale(0.96); }
+    .desktop-icon .icon-box {
+      width: 46px;
+      height: 46px;
+      border-radius: 12px;
+      background: var(--glass-light);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    .desktop-icon span {
+      font-size: 12px;
+      line-height: 1.2;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+    }
 
-  .tag-btn.active {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: #fff;
-  }
+    .window {
+      position: absolute;
+      min-width: 300px;
+      min-height: 200px;
+      background: var(--glass);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      will-change: transform, width, height;
+    }
 
-  .market-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(225px, 1fr));
-    gap: 16px;
-  }
+    /* Строгий 100% Culling: окно не рендерится только когда полностью невидимо */
+    .window.culled {
+      display: none !important;
+    }
 
-  .card {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    transition: transform 0.2s, border-color 0.2s;
-  }
+    .window-header {
+      height: 36px;
+      background: rgba(15, 23, 42, 0.94);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+      cursor: grab;
+    }
+    .window-header:active { cursor: grabbing; }
+    .window-title {
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .window-controls { display: flex; gap: 6px; }
+    .win-btn {
+      width: 24px;
+      height: 24px;
+      border: none;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s;
+    }
+    .win-btn:hover { background: rgba(255, 255, 255, 0.18); }
+    .win-btn.close:hover { background: var(--danger); }
 
-  .card:hover {
-    border-color: #3a4c6b;
-    transform: translateY(-2px);
-  }
+    .window-body {
+      flex: 1;
+      overflow: auto;
+      padding: 14px;
+      user-select: text;
+      display: flex;
+      flex-direction: column;
+    }
 
-  .card-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 6px;
-    margin-bottom: 10px;
-  }
+    .resizer {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      width: 14px;
+      height: 14px;
+      cursor: nwse-resize;
+    }
 
-  .card-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-  }
+    #taskbar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: var(--taskbar-h);
+      background: rgba(2, 6, 23, 0.92);
+      backdrop-filter: blur(12px);
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+      z-index: 9000;
+    }
 
-  .badge-tag {
-    font-size: 10px;
-    font-weight: 700;
-    text-transform: uppercase;
-    padding: 3px 7px;
-    border-radius: 6px;
-    background: rgba(51, 144, 236, 0.14);
-    color: #7cc0ff;
-    border: 1px solid rgba(51, 144, 236, 0.25);
-  }
+    .taskbar-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      height: 100%;
+    }
 
-  .badge-tag.rare {
-    background: rgba(168, 85, 247, 0.16);
-    color: #d8b4fe;
-    border-color: rgba(168, 85, 247, 0.3);
-  }
+    #start-btn {
+      background: linear-gradient(135deg, #0284c7, #38bdf8);
+      color: #020617;
+      font-weight: 800;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      letter-spacing: 0.5px;
+    }
+    #start-btn:hover { filter: brightness(1.1); }
 
-  .badge-tag.legendary {
-    background: rgba(255, 184, 0, 0.16);
-    color: #fde047;
-    border-color: rgba(255, 184, 0, 0.35);
-  }
+    #running-apps {
+      display: flex;
+      gap: 6px;
+      margin-left: 8px;
+    }
+    .task-item {
+      padding: 5px 12px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid transparent;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      max-width: 150px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .task-item.active {
+      background: rgba(56, 189, 248, 0.18);
+      border-color: rgba(56, 189, 248, 0.45);
+    }
 
-  .nft-stage {
-    width: 100%;
-    height: 130px;
-    background: radial-gradient(circle at center, #1e293b 0%, #0d131d 100%);
-    border-radius: 12px;
-    border: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 12px;
-    overflow: hidden;
-  }
+    .taskbar-right {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .status-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      margin-right: 5px;
+    }
 
-  .nft-stage svg {
-    width: 96px;
-    height: 96px;
-  }
+    #fullscreen-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(2, 6, 23, 0.88);
+      backdrop-filter: blur(18px);
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 20px;
+      text-align: center;
+      padding: 20px;
+    }
+    #fullscreen-overlay.hidden { display: none; }
+    #close-fs-overlay {
+      position: absolute;
+      top: 22px;
+      right: 26px;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: 0.2s;
+    }
+    #close-fs-overlay:hover {
+      background: var(--danger);
+      border-color: var(--danger);
+    }
+    .fs-card {
+      max-width: 420px;
+      background: var(--glass-light);
+      border: 1px solid var(--border);
+      padding: 32px;
+      border-radius: 18px;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.65);
+    }
+    .fs-card h1 {
+      font-size: 28px;
+      margin-bottom: 8px;
+      background: linear-gradient(90deg, #38bdf8, #818cf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .fs-card p {
+      color: var(--text-muted);
+      font-size: 14px;
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+    .primary-btn {
+      background: var(--accent);
+      color: #020617;
+      border: none;
+      padding: 12px 26px;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: 0.15s;
+    }
+    .primary-btn:hover {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+    }
 
-  .nft-name {
-    font-size: 16px;
-    font-weight: 700;
-    margin-bottom: 4px;
-  }
+    .app-btn {
+      background: var(--accent);
+      color: #020617;
+      border: none;
+      padding: 7px 14px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .app-input, .app-textarea {
+      width: 100%;
+      background: rgba(2, 6, 23, 0.65);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      outline: none;
+    }
+    .app-input:focus, .app-textarea:focus { border-color: var(--accent); }
 
-  .nft-desc {
-    font-size: 12px;
-    color: var(--muted);
-    margin-bottom: 12px;
-    line-height: 1.4;
-  }
+    .social-layout {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      gap: 10px;
+    }
+    .social-tabs {
+      display: flex;
+      gap: 8px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .tab-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 5px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .tab-btn.active {
+      background: var(--accent);
+      color: #020617;
+      border-color: var(--accent);
+      font-weight: 600;
+    }
+    .feed-list {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding-right: 4px;
+    }
+    .post-card {
+      background: rgba(2, 6, 23, 0.55);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+    .post-author {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 4px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .post-text {
+      font-size: 13px;
+      line-height: 1.4;
+      margin-bottom: 8px;
+      word-break: break-word;
+    }
+    .post-actions {
+      display: flex;
+      gap: 12px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .like-btn {
+      cursor: pointer;
+      background: none;
+      border: none;
+      color: inherit;
+      font-size: 12px;
+    }
+    .like-btn:hover { color: #f43f5e; }
 
-  .price-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 12px;
-    background: #0d131d;
-    padding: 8px 10px;
-    border-radius: 10px;
-  }
+    .terminal-box {
+      background: #020617;
+      color: #4ade80;
+      font-family: 'Consolas', monospace;
+      font-size: 12px;
+      padding: 10px;
+      border-radius: 6px;
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .term-input-row {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+    }
 
-  .price-val {
-    font-weight: 700;
-    font-size: 15px;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-  }
-
-  .trend {
-    font-size: 12px;
-    font-weight: 700;
-    padding: 2px 6px;
-    border-radius: 6px;
-  }
-
-  .trend.up {
-    color: var(--green);
-    background: rgba(34, 197, 94, 0.15);
-  }
-
-  .trend.down {
-    color: var(--red);
-    background: rgba(239, 68, 68, 0.15);
-  }
-
-  .sidebar {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-  }
-
-  .panel-box {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 18px;
-  }
-
-  .inv-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    max-height: 440px;
-    overflow-y: auto;
-  }
-
-  .inv-item {
-    background: #0d131d;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 10px 12px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-  }
-
-  .inv-info {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .inv-mini-svg {
-    width: 40px;
-    height: 40px;
-    flex-shrink: 0;
-  }
-
-  .inv-title {
-    font-size: 13px;
-    font-weight: 700;
-  }
-
-  .inv-meta {
-    font-size: 11px;
-    color: var(--muted);
-  }
-
-  .leader-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 0;
-    border-bottom: 1px solid var(--border);
-    font-size: 13px;
-  }
-
-  .leader-row:last-child {
-    border-bottom: none;
-  }
-
-  .toast {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background: #1e293b;
-    border: 1px solid var(--accent);
-    color: #fff;
-    padding: 12px 18px;
-    border-radius: 12px;
-    font-size: 14px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-    z-index: 2000;
-    opacity: 0;
-    transform: translateY(10px);
-    transition: all 0.25s;
-    pointer-events: none;
-  }
-
-  .toast.show {
-    opacity: 1;
-    transform: translateY(0);
-  }
-
-  /* =========================================================
-     ЗАЦИКЛЕННЫЕ РЕВЕРСИВНЫЕ АНИМАЦИИ NFT (ДЕЙСТВИЕ -> ВОЗВРАТ)
-     ========================================================= */
-  @keyframes duckJump {
-    0%, 100% { transform: translateY(0) rotate(0deg); }
-    45% { transform: translateY(-16px) rotate(-8deg); }
-    65% { transform: translateY(-12px) rotate(6deg); }
-  }
-  .anim-duck { animation: duckJump 2.6s ease-in-out infinite; transform-origin: center; }
-
-  @keyframes safeDoor {
-    0%, 100% { transform: scaleX(1); }
-    45%, 60% { transform: scaleX(0.15); }
-  }
-  .anim-safe-door { animation: safeDoor 3.2s ease-in-out infinite; transform-origin: 24px 50px; }
-
-  @keyframes safeGem {
-    0%, 25%, 80%, 100% { opacity: 0; transform: scale(0.5); }
-    45%, 60% { opacity: 1; transform: scale(1.15); }
-  }
-  .anim-safe-gem { animation: safeGem 3.2s ease-in-out infinite; transform-origin: 50px 52px; }
-
-  @keyframes catFloat {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-13px); }
-  }
-  .anim-cat { animation: catFloat 2.8s ease-in-out infinite; }
-
-  @keyframes wingFlap {
-    0%, 100% { transform: rotate(0deg); }
-    50% { transform: rotate(-28deg); }
-  }
-  .anim-wing { animation: wingFlap 2s ease-in-out infinite; transform-origin: 48px 52px; }
-
-  @keyframes hourglassFlip {
-    0%, 15% { transform: rotate(0deg); }
-    45%, 65% { transform: rotate(180deg); }
-    90%, 100% { transform: rotate(360deg); }
-  }
-  .anim-chrono { animation: hourglassFlip 4s ease-in-out infinite; transform-origin: 50px 50px; }
-
-  @keyframes crownPulse {
-    0%, 100% { transform: translateY(0) scale(1); }
-    50% { transform: translateY(-8px) scale(1.08); }
-  }
-  .anim-crown { animation: crownPulse 2.4s ease-in-out infinite; transform-origin: 50px 55px; }
-
-  @keyframes rocketLaunch {
-    0%, 100% { transform: translate(0, 0); }
-    50% { transform: translate(8px, -14px); }
-  }
-  .anim-rocket { animation: rocketLaunch 2.5s ease-in-out infinite; }
-
-  @keyframes flameFlicker {
-    0%, 100% { transform: scaleY(0.7); opacity: 0.7; }
-    50% { transform: scaleY(1.35); opacity: 1; }
-  }
-  .anim-flame { animation: flameFlicker 0.6s ease-in-out infinite; transform-origin: 36px 68px; }
-
-  @keyframes potionTilt {
-    0%, 100% { transform: rotate(0deg); }
-    50% { transform: rotate(-24deg); }
-  }
-  .anim-potion { animation: potionTilt 3s ease-in-out infinite; transform-origin: 50px 60px; }
-
-  @keyframes bubbleRise {
-    0%, 100% { transform: translateY(0); opacity: 0.2; }
-    50% { transform: translateY(-18px); opacity: 1; }
-  }
-  .anim-bubble { animation: bubbleRise 3s ease-in-out infinite; }
-
-  @keyframes robotWave {
-    0%, 100% { transform: rotate(0deg); }
-    40% { transform: rotate(-45deg); }
-    60% { transform: rotate(-20deg); }
-  }
-  .anim-arm { animation: robotWave 2.4s ease-in-out infinite; transform-origin: 72px 54px; }
-
-  @keyframes diamondSpin {
-    0%, 100% { transform: scaleX(1) translateY(0); }
-    50% { transform: scaleX(0.35) translateY(-10px); }
-  }
-  .anim-diamond { animation: diamondSpin 2.6s ease-in-out infinite; transform-origin: 50px 50px; }
-
-  @keyframes ufoBeam {
-    0%, 100% { opacity: 0.1; transform: scaleY(0.5); }
-    50% { opacity: 0.85; transform: scaleY(1); }
-  }
-  .anim-beam { animation: ufoBeam 2.8s ease-in-out infinite; transform-origin: 50px 48px; }
-
-  @keyframes swordSlash {
-    0%, 100% { transform: rotate(0deg) translateY(0); }
-    50% { transform: rotate(35deg) translateY(-8px); }
-  }
-  .anim-sword { animation: swordSlash 2.2s ease-in-out infinite; transform-origin: 50px 75px; }
-</style>
+    .calc-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin-top: 10px;
+      flex: 1;
+    }
+    .calc-btn {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      font-size: 15px;
+      cursor: pointer;
+    }
+    .calc-btn:hover { background: rgba(255,255,255,0.16); }
+  </style>
 </head>
 <body>
 
-<svg width="0" height="0" style="position:absolute">
-  <defs>
-    <linearGradient id="tgStarGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FFF3A1"/>
-      <stop offset="45%" stop-color="#FFC700"/>
-      <stop offset="100%" stop-color="#FF8A00"/>
-    </linearGradient>
-    <linearGradient id="tgStarGrad2" x1="100%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#FFE066"/>
-      <stop offset="100%" stop-color="#E66000"/>
-    </linearGradient>
-    <symbol id="tg-star-icon" viewBox="0 0 64 64">
-      <path d="M32 3 L40.8 21.4 L61 24.2 L46.2 38.4 L49.9 58.5 L32 48.8 L14.1 58.5 L17.8 38.4 L3 24.2 L23.2 21.4 Z" fill="url(#tgStarGrad1)" stroke="#FFD54F" stroke-width="1.5" stroke-linejoin="round"/>
-      <path d="M32 3 L32 48.8 L49.9 58.5 L46.2 38.4 L61 24.2 L40.8 21.4 Z" fill="url(#tgStarGrad2)" opacity="0.45"/>
-      <path d="M32 7 L38.5 21 L53 23.2 L41 34 L32 28 Z" fill="#FFFFFF" opacity="0.55"/>
-    </symbol>
-  </defs>
-</svg>
-
-<!-- 1. ОКНО ПОЛНОЭКРАННОГО РЕЖИМА -->
-<div id="fsModal" class="overlay">
-  <div class="modal">
-    <button id="declineFsBtn" class="close-btn" title="Отказаться от полноэкранного режима">&times;</button>
-    <svg class="star-svg" style="width:52px;height:52px;margin-bottom:12px;"><use href="#tg-star-icon"/></svg>
-    <h2>Режим полного экрана</h2>
-    <p>Для полного погружения в торговлю NFT-подарками разверните игру на весь экран. Вы можете отказаться, нажав крестик сверху справа.</p>
-    <button id="enterFsBtn" class="btn">На весь экран</button>
-  </div>
-</div>
-
-<!-- 2. ОКНО ВВОДА ИМЕНИ -->
-<div id="nameModal" class="overlay hidden">
-  <div class="modal">
-    <svg class="star-svg" style="width:52px;height:52px;margin-bottom:12px;"><use href="#tg-star-icon"/></svg>
-    <h2>Добро пожаловать в Stars NFT</h2>
-    <p>Введите ваш игровой никнейм для подключения к онлайн-бирже и таблице лидеров.</p>
-    <input id="playerNameInput" class="input-field" type="text" maxlength="20" placeholder="Например: CryptoWhale" />
-    <button id="startGameBtn" class="btn">Начать игру</button>
-  </div>
-</div>
-
-<!-- ШАПКА -->
-<header>
-  <div class="brand">
-    <svg class="star-svg"><use href="#tg-star-icon"/></svg>
-    <div>
-      <h1>Stars NFT Market</h1>
-      <div class="status-pill">
-        <span id="netDot" class="status-dot"></span>
-        <span id="netStatus">Подключение к серверу...</span>
-      </div>
+  <div id="fullscreen-overlay">
+    <button id="close-fs-overlay" title="Отказаться от полноэкранного режима">✕</button>
+    <div class="fs-card">
+      <h1>NioLit OS</h1>
+      <p>Для полного погружения в систему рекомендуется развернуть окно на весь экран.</p>
+      <button id="enter-fs-btn" class="primary-btn">На весь экран</button>
     </div>
   </div>
 
-  <div class="stats">
-    <div class="stat-box">
-      <span>Игрок:</span>
-      <span id="displayPlayerName" style="color: var(--accent);">—</span>
+  <main id="desktop">
+    <div class="watermark">NIOLIT OS</div>
+  </main>
+
+  <footer id="taskbar">
+    <div class="taskbar-left">
+      <button id="start-btn">❖ NioLit</button>
+      <div id="running-apps"></div>
     </div>
-    <div class="stat-box">
-      <svg class="star-svg"><use href="#tg-star-icon"/></svg>
-      <span id="displayBalance" style="color: var(--gold); font-size: 16px;">0</span>
-      <span style="color: var(--muted); font-size: 12px;">Stars</span>
+    <div class="taskbar-right">
+      <div id="culling-stat" title="Оптимизация рендера">Рендер: 0/0</div>
+      <div id="net-status"><span class="status-dot" id="net-dot"></span><span id="net-text">Сеть: :3000</span></div>
+      <div id="clock">00:00</div>
     </div>
-  </div>
-</header>
-
-<!-- ОСНОВНОЙ КОНТЕНТ -->
-<main class="container">
-  <section>
-    <div class="section-header">
-      <div class="section-title">Маркетплейс NFT-подарков (12 коллекций)</div>
-      <div style="font-size: 12px; color: var(--muted);">Курс обновляется каждые 4 сек</div>
-    </div>
-
-    <!-- ПАНЕЛЬ ТЭГОВ -->
-    <div id="tagBar" class="tag-bar"></div>
-
-    <!-- СЕТКА ПОДАРКОВ -->
-    <div id="marketGrid" class="market-grid"></div>
-  </section>
-
-  <aside class="sidebar">
-    <div class="panel-box">
-      <div class="section-title" style="margin-bottom: 12px;">Ваши NFT-подарки (<span id="invCount">0</span>)</div>
-      <div id="inventoryList" class="inv-list">
-        <div style="color: var(--muted); font-size: 13px; text-align: center; padding: 20px 0;">
-          У вас пока нет подарков. Купите первый NFT на бирже!
-        </div>
-      </div>
-    </div>
-
-    <div class="panel-box">
-      <div class="section-title" style="margin-bottom: 10px;">Онлайн-топ трейдеров</div>
-      <div id="leaderboardList">
-        <div style="color: var(--muted); font-size: 13px;">Синхронизация с 103.82.102.226:3000...</div>
-      </div>
-    </div>
-  </aside>
-</main>
-
-<div id="toast" class="toast"></div>
+  </footer>
 
 <script>
-  // =========================================================
-  // КОНФИГУРАЦИЯ ОНЛАЙН-СЕРВЕРА (FIRSTBYTE)
-  // =========================================================
-  // Примечание: если сайт открыт по HTTPS на GitHub Pages, браузер может блокировать
-  // запросы к HTTP (Mixed Content). Для работы по HTTPS настройте Nginx + SSL на домене
-  // или используйте прокси-адрес.
-  const SERVER_URL = "http://103.82.102.226:3000";
+(() => {
+  /* =========================================================================
+     СЕТЕВОЕ ПОДКЛЮЧЕНИЕ К ПОРТУ 3000
+     ========================================================================= */
+  const API_BASE = `${window.location.protocol}//${window.location.hostname || 'localhost'}:3000`;
+  let isConnected = false;
+  let currentUser = localStorage.getItem('niolit_username') || 'User_' + Math.floor(100 + Math.random() * 900);
 
-  // =========================================================
-  // КАТАЛОГ ИЗ 12 КАСТОМНЫХ NFT С ТЭГАМИ И РЕВЕРСИВНОЙ АНИМАЦИЕЙ
-  // =========================================================
-  const NFT_CATALOG = [
-    {
-      id: "cyber_duck",
-      name: "Cyber Duck #01",
-      basePrice: 40,
-      tags: ["Животные", "Киберпанк", "Стартовый"],
-      rarity: "common",
-      desc: "Подпрыгивает в неоне и возвращается на базу.",
-      svg: `<svg viewBox="0 0 100 100">
-        <g class="anim-duck">
-          <ellipse cx="50" cy="64" rx="24" ry="18" fill="#FFD600"/>
-          <circle cx="58" cy="40" r="15" fill="#FFE600"/>
-          <path d="M70 38 L86 42 L70 46 Z" fill="#FF6D00"/>
-          <rect x="48" y="34" width="22" height="7" rx="2" fill="#00E5FF"/>
-          <path d="M36 62 Q48 54 58 64 Q46 72 36 62 Z" fill="#F59E0B"/>
-        </g>
-      </svg>`
-    },
-    {
-      id: "astro_cat",
-      name: "Astro Cat #07",
-      basePrice: 65,
-      tags: ["Животные", "Космос", "Стартовый"],
-      rarity: "common",
-      desc: "Парит в невесомости и мягко опускается обратно.",
-      svg: `<svg viewBox="0 0 100 100">
-        <g class="anim-cat">
-          <circle cx="50" cy="52" r="28" fill="rgba(56, 189, 248, 0.22)" stroke="#38BDF8" stroke-width="2.5"/>
-          <polygon points="34,38 38,24 46,34" fill="#F472B6"/>
-          <polygon points="66,38 62,24 54,34" fill="#F472B6"/>
-          <circle cx="50" cy="48" r="16" fill="#F8FAFC"/>
-          <circle cx="44" cy="46" r="2.5" fill="#0F172A"/>
-          <circle cx="56" cy="46" r="2.5" fill="#0F172A"/>
-          <polygon points="48,51 52,51 50,54" fill="#FB7185"/>
-        </g>
-      </svg>`
-    },
-    {
-      id: "neon_rocket",
-      name: "Star Rocket #12",
-      basePrice: 90,
-      tags: ["Космос", "Техника"],
-      rarity: "common",
-      desc: "Делает тестовый взлёт и возвращается на стартовый стол.",
-      svg: `<svg viewBox="0 0 100 100">
-        <g class="anim-rocket">
-          <polygon class="anim-flame" points="32,66 42,74 24,84" fill="#FF6D00"/>
-          <path d="M40 68 L32 60 L58 26 C68 20 78 22 76 34 L42 68 Z" fill="#F8FAFC" stroke="#3390EC" stroke-width="2"/>
-          <circle cx="58" cy="42" r="6" fill="#38BDF8"/>
-          <polygon points="34,58 24,62 32,48" fill="#EF4444"/>
-          <polygon points="44,68 40,78 54,70" fill="#EF4444"/>
-        </g>
-      </svg>`
-    },
-    {
-      id: "magic_potion",
-      name: "Elixir of Stars",
-      basePrice: 115,
-      tags: ["Магия", "Редкое"],
-      rarity: "rare",
-      desc: "Наклоняется, выпускает магический пузырь и встаёт ровно.",
-      svg: `<svg viewBox="0 0 100 100">
-        <circle class="anim-bubble" cx="36" cy="36" r="4" fill="#E879F9"/>
-        <g class="anim-potion">
-          <rect x="44" y="24" width="12" height="12" rx="2" fill="#94A3B8"/>
-          <rect x="42" y="20" width="16" height="5" rx="2" fill="#D97706"/>
-          <circle cx="50" cy="58" r="22" fill="rgba(192, 132, 252, 0.25)" stroke="#C084FC" stroke-width="2.5"/>
-          <path d="M31 62 A20 20 0 0 0 69 62 Z" fill="#A855F7"/>
-        </g>
-      </svg>`
-    },
-    {
-      id: "quantum_safe",
-      name: "Quantum Safe",
-      basePrice: 150,
-      tags: ["Техника", "Киберпанк", "Редкое"],
-      rarity: "rare",
-      desc: "Открывает створку, показывает рубин и запирается снова.",
-      svg: `<svg viewBox="0 0 100 100">
-        <rect x="22" y="24" width="56" height="52" rx="8" fill="#1E293B" stroke="#64748B" stroke-width="3"/>
-        <polygon class="anim-safe-gem" points="50,38 62,50 50,62 38,50" fill="#F43F5E"/>
-        <g class="anim-safe-door">
-          <rect x="26" y="28" width="48" height="44" rx="5" fill="#334155" stroke="#94A3B8" stroke-width="2"/>
-          <circle cx="54" cy="50" r="9" fill="#0F172A" stroke="#38BDF8" stroke-width="2.5"/>
-        </g>
-      </svg>`
-    },
-    {
-      id: "cyber_bot",
-      name: "Helper Bot V2",
-      basePrice: 185,
-      tags: ["Киберпанк", "Техника", "Редкое"],
-      rarity: "rare",
-      desc: "Приветственно машет манипулятором и опускает руку.",
-      svg: `<svg viewBox="0 0 100 100">
-        <line x1="50" y1="16" x2="50" y2="28" stroke="#38BDF8" stroke-width="3"/>
-        <circle cx="50" cy="14" r="4" fill="#F43F5E"/>
-        <rect x="32" y="28" width="36" height="24" rx="6" fill="#475569"/>
-        <circle cx="42" cy="40" r="4" fill="#22C55E"/>
-        <circle cx="58" cy="40" r="4" fill="#22C55E"/>
-        <rect x="30" y="55" width="40" height="24" rx="6" fill="#334155"/>
-        <rect class="anim-arm" x="70" y="54" width="8" height="20" rx="4" fill="#38BDF8"/>
-      </svg>`
-    },
-    {
-      id: "ufo_saucer",
-      name: "Invader UFO",
-      basePrice: 230,
-      tags: ["Космос", "Киберпанк", "Редкое"],
-      rarity: "rare",
-      desc: "Включает гравитационный луч и выключает его.",
-      svg: `<svg viewBox="0 0 100 100">
-        <polygon class="anim-beam" points="38,48 62,48 76,84 24,84" fill="rgba(34, 197, 94, 0.35)"/>
-        <path d="M34 38 A16 14 0 0 1 66 38 Z" fill="#38BDF8"/>
-        <ellipse cx="50" cy="42" rx="32" ry="10" fill="#94A3B8"/>
-        <circle cx="32" cy="42" r="2.5" fill="#FACC15"/>
-        <circle cx="50" cy="44" r="2.5" fill="#FACC15"/>
-        <circle cx="68" cy="42" r="2.5" fill="#FACC15"/>
-      </svg>`
-    },
-    {
-      id: "crystal_dragon",
-      name: "Crystal Dragon",
-      basePrice: 290,
-      tags: ["Животные", "Магия", "Редкое"],
-      rarity: "rare",
-      desc: "Делает мощный взмах крылом и складывает его.",
-      svg: `<svg viewBox="0 0 100 100">
-        <path class="anim-wing" d="M48 52 L20 26 L26 54 L38 56 Z" fill="#A855F7"/>
-        <path d="M46 76 C44 56 54 40 66 32 C74 28 80 34 74 42 C66 48 62 62 64 76 Z" fill="#7E22CE"/>
-        <circle cx="68" cy="35" r="2" fill="#FDE047"/>
-      </svg>`
-    },
-    {
-      id: "astral_blade",
-      name: "Astral Blade",
-      basePrice: 360,
-      tags: ["Магия", "Легендарное"],
-      rarity: "legendary",
-      desc: "Совершает энергетический выпад и возвращается в стойку.",
-      svg: `<svg viewBox="0 0 100 100">
-        <g class="anim-sword">
-          <polygon points="50,14 56,58 44,58" fill="#38BDF8"/>
-          <polygon points="50,14 50,58 44,58" fill="#BAE6FD"/>
-          <rect x="34" y="58" width="32" height="6" rx="3" fill="#F59E0B"/>
-          <rect x="47" y="64" width="6" height="16" rx="2" fill="#78350F"/>
-        </g>
-      </svg>`
-    },
-    {
-      id: "chrono_relic",
-      name: "Chrono Relic",
-      basePrice: 450,
-      tags: ["Магия", "Техника", "Легендарное"],
-      rarity: "legendary",
-      desc: "Переворачивает время на 180° и возвращает цикл назад.",
-      svg: `<svg viewBox="0 0 100 100">
-        <g class="anim-chrono">
-          <rect x="28" y="20" width="44" height="6" rx="3" fill="#F59E0B"/>
-          <rect x="28" y="74" width="44" height="6" rx="3" fill="#F59E0B"/>
-          <polygon points="34,26 66,26 50,50" fill="rgba(56, 189, 248, 0.35)" stroke="#38BDF8" stroke-width="2"/>
-          <polygon points="50,50 66,74 34,74" fill="rgba(56, 189, 248, 0.35)" stroke="#38BDF8" stroke-width="2"/>
-          <polygon points="39,66 61,66 50,53" fill="#FACC15"/>
-        </g>
-      </svg>`
-    },
-    {
-      id: "void_diamond",
-      name: "Ton Diamond #00",
-      basePrice: 580,
-      tags: ["Космос", "Легендарное"],
-      rarity: "legendary",
-      desc: "Вращается вокруг своей оси и фиксирует грани.",
-      svg: `<svg viewBox="0 0 100 100">
-        <g class="anim-diamond">
-          <polygon points="32,28 68,28 82,46 50,80 18,46" fill="#0284C7"/>
-          <polygon points="32,28 68,28 50,46" fill="#7DD3FC"/>
-          <polygon points="18,46 50,46 50,80" fill="#0369A1"/>
-          <polygon points="82,46 50,46 50,80" fill="#38BDF8"/>
-        </g>
-      </svg>`
-    },
-    {
-      id: "crown_of_stars",
-      name: "Crown of Stars",
-      basePrice: 750,
-      tags: ["Магия", "Легендарное"],
-      rarity: "legendary",
-      desc: "Парит с королевским сиянием и опускается на пьедестал.",
-      svg: `<svg viewBox="0 0 100 100">
-        <g class="anim-crown">
-          <polygon points="22,68 26,34 40,50 50,26 60,50 74,34 78,68" fill="#FACC15" stroke="#EA580C" stroke-width="2" stroke-linejoin="round"/>
-          <rect x="22" y="68" width="56" height="8" rx="3" fill="#D97706"/>
-          <circle cx="50" cy="56" r="4" fill="#EF4444"/>
-          <circle cx="34" cy="58" r="3" fill="#38BDF8"/>
-          <circle cx="66" cy="58" r="3" fill="#38BDF8"/>
-        </g>
-      </svg>`
+  let socialPosts = [];
+  let chatMessages = [];
+
+  async function syncNetworkState() {
+    const dot = document.getElementById('net-dot');
+    const txt = document.getElementById('net-text');
+    try {
+      const res = await fetch(`${API_BASE}/api/state`);
+      if (!res.ok) throw new Error('HTTP error');
+      const data = await res.json();
+      socialPosts = data.posts || [];
+      chatMessages = data.chatMessages || [];
+      isConnected = true;
+      dot.style.background = '#22c55e';
+      txt.textContent = 'Онлайн (:3000)';
+      document.dispatchEvent(new CustomEvent('niolit-network-update'));
+    } catch (e) {
+      isConnected = false;
+      dot.style.background = '#ef4444';
+      txt.textContent = 'Офлайн (:3000)';
     }
-  ];
-
-  // =========================================================
-  // СОСТОЯНИЕ ИГРОКА
-  // =========================================================
-  let state = {
-    playerName: "",
-    balance: 250,
-    inventory: [],
-    selectedTag: "Все",
-    fsDeclined: false,
-    onlineMode: false
-  };
-
-  let marketPrices = {};
-  let marketTrends = {};
-
-  NFT_CATALOG.forEach(item => {
-    marketPrices[item.id] = item.basePrice;
-    marketTrends[item.id] = 0;
-  });
-
-  // =========================================================
-  // ЭЛЕМЕНТЫ DOM
-  // =========================================================
-  const fsModal = document.getElementById("fsModal");
-  const enterFsBtn = document.getElementById("enterFsBtn");
-  const declineFsBtn = document.getElementById("declineFsBtn");
-  const nameModal = document.getElementById("nameModal");
-  const playerNameInput = document.getElementById("playerNameInput");
-  const startGameBtn = document.getElementById("startGameBtn");
-  const displayPlayerName = document.getElementById("displayPlayerName");
-  const displayBalance = document.getElementById("displayBalance");
-  const tagBar = document.getElementById("tagBar");
-  const marketGrid = document.getElementById("marketGrid");
-  const inventoryList = document.getElementById("inventoryList");
-  const invCount = document.getElementById("invCount");
-  const leaderboardList = document.getElementById("leaderboardList");
-  const netDot = document.getElementById("netDot");
-  const netStatus = document.getElementById("netStatus");
-  const toastEl = document.getElementById("toast");
-
-  function showToast(msg) {
-    toastEl.textContent = msg;
-    toastEl.classList.add("show");
-    clearTimeout(toastEl._timer);
-    toastEl._timer = setTimeout(() => toastEl.classList.remove("show"), 2600);
   }
 
-  // =========================================================
-  // ЛОГИКА ПОЛНОГО ЭКРАНА И ВВОДА ИМЕНИ
-  // =========================================================
-  enterFsBtn.addEventListener("click", async () => {
+  syncNetworkState();
+  setInterval(syncNetworkState, 3000);
+
+  /* =========================================================================
+     1. УПРАВЛЕНИЕ ПОЛНОЭКРАННЫМ РЕЖИМОМ
+     ========================================================================= */
+  const fsOverlay = document.getElementById('fullscreen-overlay');
+  const enterFsBtn = document.getElementById('enter-fs-btn');
+  const closeFsBtn = document.getElementById('close-fs-overlay');
+
+  enterFsBtn.addEventListener('click', async () => {
     try {
       if (!document.fullscreenElement) {
         await document.documentElement.requestFullscreen();
       }
-    } catch (e) {
-      showToast("Браузер ограничил полный экран, продолжаем так.");
-    }
-    fsModal.classList.add("hidden");
-    if (!state.playerName) {
-      nameModal.classList.remove("hidden");
-      playerNameInput.focus();
+      fsOverlay.classList.add('hidden');
+    } catch (err) {
+      alert('Нажмите F11 для перехода в полноэкранный режим.');
     }
   });
 
-  declineFsBtn.addEventListener("click", () => {
-    state.fsDeclined = true;
-    fsModal.classList.add("hidden");
-    if (!state.playerName) {
-      nameModal.classList.remove("hidden");
-      playerNameInput.focus();
+  closeFsBtn.addEventListener('click', () => {
+    fsOverlay.classList.add('hidden');
+  });
+
+  document.addEventListener('fullscreenchange', () => {
+    if (document.fullscreenElement) {
+      fsOverlay.classList.add('hidden');
+    } else {
+      fsOverlay.classList.remove('hidden');
     }
   });
 
-  document.addEventListener("fullscreenchange", () => {
-    if (!document.fullscreenElement && !state.fsDeclined) {
-      fsModal.classList.remove("hidden");
-    }
-  });
+  /* =========================================================================
+     2. УМНЫЙ РЕНДЕР (OCCLUSION CULLING ТОЛЬКО ПРИ 100% НЕВИДИМОСТИ)
+     ========================================================================= */
+  const windowsState = [];
+  let topZIndex = 100;
 
-  async function completeRegistration() {
-    const raw = playerNameInput.value.trim();
-    if (!raw) {
-      showToast("Введите ваше имя!");
-      return;
+  function getWindowRect(winObj) {
+    if (winObj.minimized) return null;
+    if (winObj.maximized) {
+      return {
+        left: 0,
+        top: 0,
+        right: window.innerWidth,
+        bottom: window.innerHeight - 46
+      };
     }
-    state.playerName = raw;
-    displayPlayerName.textContent = state.playerName;
-    nameModal.classList.add("hidden");
-
-    loadLocalSave();
-    await syncWithServer(true);
-    renderAll();
+    return {
+      left: winObj.x,
+      top: winObj.y,
+      right: winObj.x + winObj.w,
+      bottom: winObj.y + winObj.h
+    };
   }
 
-  startGameBtn.addEventListener("click", completeRegistration);
-  playerNameInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") completeRegistration();
-  });
-
-  // =========================================================
-  // ОНЛАЙН-СИНХРОНИЗАЦИЯ С СЕРВЕРОМ FIRSTBYTE
-  // =========================================================
-  function saveLocal() {
-    if (!state.playerName) return;
-    localStorage.setItem("tg_stars_save_" + state.playerName, JSON.stringify({
-      balance: state.balance,
-      inventory: state.inventory
-    }));
+  function isCompletelyOutsideViewport(rect) {
+    const viewW = window.innerWidth;
+    const viewH = window.innerHeight - 46;
+    return (
+      rect.right <= 0 ||
+      rect.bottom <= 0 ||
+      rect.left >= viewW ||
+      rect.top >= viewH
+    );
   }
 
-  function loadLocalSave() {
-    const saved = localStorage.getItem("tg_stars_save_" + state.playerName);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (typeof parsed.balance === "number") state.balance = parsed.balance;
-        if (Array.isArray(parsed.inventory)) state.inventory = parsed.inventory;
-      } catch (e) {}
+  function isCompletelyCoveredBy(rectA, rectB) {
+    return (
+      rectA.left >= rectB.left &&
+      rectA.top >= rectB.top &&
+      rectA.right <= rectB.right &&
+      rectA.bottom <= rectB.bottom
+    );
+  }
+
+  function updateRenderCulling() {
+    const sorted = [...windowsState].sort((a, b) => b.zIndex - a.zIndex);
+    const higherRects = [];
+    let renderedCount = 0;
+
+    for (const win of sorted) {
+      if (win.minimized) {
+        win.el.classList.add('culled');
+        continue;
+      }
+
+      const rect = getWindowRect(win);
+      const offscreen = isCompletelyOutsideViewport(rect);
+      const fullyOccluded = higherRects.some(upper => isCompletelyCoveredBy(rect, upper));
+
+      if (offscreen || fullyOccluded) {
+        win.el.classList.add('culled');
+      } else {
+        win.el.classList.remove('culled');
+        renderedCount++;
+      }
+
+      higherRects.push(rect);
     }
+
+    document.getElementById('culling-stat').textContent = `Рендер: ${renderedCount}/${windowsState.length}`;
   }
 
-  async function syncWithServer(isInitial = false) {
-    if (!state.playerName) return;
-    try {
-      const res = await fetch(`${SERVER_URL}/api/sync`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          playerName: state.playerName,
-          balance: state.balance,
-          inventory: state.inventory,
-          isInitial
-        })
-      });
-      if (!res.ok) throw new Error("Server error");
-      const data = await res.json();
+  /* =========================================================================
+     3 & 4. ПРИЛОЖЕНИЯ И СОЦСЕТИ
+     ========================================================================= */
+  const APPS = [
+    {
+      id: 'niogram',
+      name: 'NioGram',
+      icon: '🌐',
+      w: 460,
+      h: 430,
+      render: (container) => {
+        let activeTab = 'feed';
+        container.innerHTML = `
+          <div class="social-layout">
+            <div class="social-tabs">
+              <div style="display:flex; gap:6px;">
+                <button class="tab-btn active" data-tab="feed">Лента</button>
+                <button class="tab-btn" data-tab="chat">Чат</button>
+              </div>
+              <input type="text" id="nick-input" class="app-input" style="width:130px; padding:4px 8px; font-size:12px;" value="${currentUser}" title="Ваш никнейм" />
+            </div>
+            <div id="niogram-content" style="flex:1; display:flex; flex-direction:column; overflow:hidden;"></div>
+          </div>
+        `;
 
-      state.onlineMode = true;
-      netDot.classList.add("online");
-      netStatus.textContent = "Онлайн: 103.82.102.226:3000";
+        const nickInput = container.querySelector('#nick-input');
+        nickInput.onchange = () => {
+          currentUser = nickInput.value.trim() || 'User';
+          localStorage.setItem('niolit_username', currentUser);
+        };
 
-      if (data.marketPrices) {
-        Object.keys(data.marketPrices).forEach(id => {
-          const oldP = marketPrices[id] || data.marketPrices[id];
-          const newP = data.marketPrices[id];
-          marketTrends[id] = newP - oldP;
-          marketPrices[id] = newP;
+        const contentEl = container.querySelector('#niogram-content');
+        const tabs = container.querySelectorAll('.tab-btn');
+
+        function renderFeed() {
+          contentEl.innerHTML = `
+            <div style="display:flex; gap:6px; margin-bottom:10px;">
+              <input type="text" id="new-post-input" class="app-input" placeholder="Опубликовать запись в сеть..." />
+              <button id="send-post-btn" class="app-btn">Пост</button>
+            </div>
+            <div class="feed-list" id="feed-list"></div>
+          `;
+          const list = contentEl.querySelector('#feed-list');
+
+          function drawPosts() {
+            if (!socialPosts.length) {
+              list.innerHTML = `<div style="color:var(--text-muted); font-size:13px; text-align:center; margin-top:20px;">Нет записей или нет соединения с портом 3000.</div>`;
+              return;
+            }
+            list.innerHTML = socialPosts.map(p => `
+              <div class="post-card">
+                <div class="post-author"><span>@${p.author}</span><span style="color:#64748b;font-weight:400">${p.time}</span></div>
+                <div class="post-text">${p.text}</div>
+                <div class="post-actions">
+                  <button class="like-btn" data-id="${p.id}">❤️ ${p.likes}</button>
+                </div>
+              </div>
+            `).join('');
+
+            list.querySelectorAll('.like-btn').forEach(btn => {
+              btn.onclick = async () => {
+                await fetch(`${API_BASE}/api/posts/${btn.dataset.id}/like`, { method: 'POST' }).catch(() => {});
+                syncNetworkState();
+              };
+            });
+          }
+
+          drawPosts();
+
+          contentEl.querySelector('#send-post-btn').onclick = async () => {
+            const inp = contentEl.querySelector('#new-post-input');
+            const text = inp.value.trim();
+            if (!text) return;
+            inp.value = '';
+            await fetch(`${API_BASE}/api/posts`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ author: currentUser, text })
+            }).catch(() => {});
+            syncNetworkState();
+          };
+        }
+
+        function renderChat() {
+          contentEl.innerHTML = `
+            <div class="feed-list" id="chat-list" style="margin-bottom:8px;"></div>
+            <div style="display:flex; gap:6px;">
+              <input type="text" id="chat-input" class="app-input" placeholder="Сообщение в общий чат..." />
+              <button id="chat-send" class="app-btn">Отправить</button>
+            </div>
+          `;
+          const list = contentEl.querySelector('#chat-list');
+
+          function drawChat() {
+            list.innerHTML = chatMessages.map(m => `
+              <div class="post-card" style="padding:6px 10px;">
+                <strong style="color:var(--accent);font-size:12px;">${m.user}:</strong>
+                <span style="font-size:13px;">${m.text}</span>
+              </div>
+            `).join('');
+            list.scrollTop = list.scrollHeight;
+          }
+          drawChat();
+
+          const sendMsg = async () => {
+            const inp = contentEl.querySelector('#chat-input');
+            const text = inp.value.trim();
+            if (!text) return;
+            inp.value = '';
+            await fetch(`${API_BASE}/api/chat`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ user: currentUser, text })
+            }).catch(() => {});
+            syncNetworkState();
+          };
+
+          contentEl.querySelector('#chat-send').onclick = sendMsg;
+          contentEl.querySelector('#chat-input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') sendMsg();
+          });
+        }
+
+        document.addEventListener('niolit-network-update', () => {
+          if (!document.body.contains(container)) return;
+          if (activeTab === 'feed' && document.activeElement?.id !== 'new-post-input') renderFeed();
+          if (activeTab === 'chat' && document.activeElement?.id !== 'chat-input') renderChat();
+        });
+
+        tabs.forEach(t => {
+          t.onclick = () => {
+            tabs.forEach(x => x.classList.remove('active'));
+            t.classList.add('active');
+            activeTab = t.dataset.tab;
+            activeTab === 'feed' ? renderFeed() : renderChat();
+          };
+        });
+
+        renderFeed();
+      }
+    },
+    {
+      id: 'terminal',
+      name: 'Терминал',
+      icon: '💻',
+      w: 460,
+      h: 300,
+      render: (container) => {
+        container.innerHTML = `
+          <div class="terminal-box" id="term-out">
+            <div>NioLit OS Shell v1.0</div>
+            <div>Введите <b>help</b> для просмотра доступных команд.</div>
+          </div>
+          <div class="term-input-row">
+            <input type="text" class="app-input" id="term-in" placeholder="Введите команду..." />
+            <button class="app-btn" id="term-run">Enter</button>
+          </div>
+        `;
+        const out = container.querySelector('#term-out');
+        const inp = container.querySelector('#term-in');
+
+        function log(msg) {
+          const line = document.createElement('div');
+          line.innerHTML = msg;
+          out.appendChild(line);
+          out.scrollTop = out.scrollHeight;
+        }
+
+        async function exec() {
+          const cmd = inp.value.trim();
+          if (!cmd) return;
+          log(`<span style="color:#38bdf8">${currentUser}@niolit:~$</span> ${cmd}`);
+          inp.value = '';
+
+          if (cmd === 'help') {
+            log('Доступные команды: <b>status</b>, <b>render</b>, <b>whoami</b>, <b>clear</b>');
+          } else if (cmd === 'clear') {
+            out.innerHTML = '';
+          } else if (cmd === 'whoami') {
+            log(currentUser);
+          } else if (cmd === 'render') {
+            log(`Открыто окон: ${windowsState.length}. Режим отсечения: 100% перекрытие.`);
+          } else if (cmd === 'status') {
+            await syncNetworkState();
+            log(isConnected
+              ? '<span style="color:#22c55e">[OK] Соединение с портом 3000 установлено.</span>'
+              : '<span style="color:#ef4444">[ERR] Порт 3000 недоступен.</span>');
+          } else {
+            log(`Команда не найдена: ${cmd}`);
+          }
+        }
+
+        container.querySelector('#term-run').onclick = exec;
+        inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') exec(); });
+      }
+    },
+    {
+      id: 'notes',
+      name: 'Заметки',
+      icon: '📝',
+      w: 360,
+      h: 300,
+      render: (container) => {
+        const saved = localStorage.getItem('niolit_notes') || '';
+        container.innerHTML = `
+          <textarea class="app-textarea" style="flex:1; resize:none; margin-bottom:8px;" placeholder="Введите текст заметки...">${saved}</textarea>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span id="note-status" style="font-size:12px; color:var(--text-muted);">Локальное хранилище</span>
+            <button class="app-btn" id="save-note">Сохранить</button>
+          </div>
+        `;
+        const area = container.querySelector('textarea');
+        container.querySelector('#save-note').onclick = () => {
+          localStorage.setItem('niolit_notes', area.value);
+          container.querySelector('#note-status').textContent = 'Сохранено!';
+        };
+      }
+    },
+    {
+      id: 'calc',
+      name: 'Калькулятор',
+      icon: '🧮',
+      w: 280,
+      h: 340,
+      render: (container) => {
+        container.innerHTML = `
+          <input type="text" id="calc-disp" class="app-input" style="text-align:right; font-size:20px; font-weight:700;" readonly value="0" />
+          <div class="calc-grid">
+            ${['7','8','9','/','4','5','6','*','1','2','3','-','C','0','=','+'].map(k => `<button class="calc-btn">${k}</button>`).join('')}
+          </div>
+        `;
+        const disp = container.querySelector('#calc-disp');
+        container.querySelectorAll('.calc-btn').forEach(b => {
+          b.onclick = () => {
+            const v = b.textContent;
+            if (v === 'C') disp.value = '0';
+            else if (v === '=') {
+              try { disp.value = Function('"use strict";return (' + disp.value + ')')(); }
+              catch { disp.value = 'Ошибка'; }
+            } else {
+              disp.value = disp.value === '0' ? v : disp.value + v;
+            }
+          };
         });
       }
-
-      if (isInitial && data.player) {
-        state.balance = data.player.balance;
-        state.inventory = data.player.inventory || [];
-      }
-
-      if (Array.isArray(data.leaderboard)) {
-        renderLeaderboard(data.leaderboard);
-      }
-      renderAll();
-    } catch (err) {
-      state.onlineMode = false;
-      netDot.classList.remove("online");
-      netStatus.textContent = "Автономный режим (сервер недоступен)";
-      renderFallbackLeaderboard();
     }
+  ];
+
+  const desktop = document.getElementById('desktop');
+  const runningAppsContainer = document.getElementById('running-apps');
+
+  APPS.forEach(app => {
+    const icon = document.createElement('div');
+    icon.className = 'desktop-icon';
+    icon.innerHTML = `<div class="icon-box">${app.icon}</div><span>${app.name}</span>`;
+    icon.onclick = () => openApp(app);
+    desktop.appendChild(icon);
+  });
+
+  function focusWindow(winObj) {
+    topZIndex++;
+    winObj.zIndex = topZIndex;
+    winObj.el.style.zIndex = topZIndex;
+    winObj.minimized = false;
+    updateTaskbar();
+    updateRenderCulling();
   }
 
-  function renderLeaderboard(list) {
-    leaderboardList.innerHTML = list.map((p, idx) => `
-      <div class="leader-row">
-        <span><b>#${idx + 1}</b> ${escapeHtml(p.playerName)}</span>
-        <span style="color: var(--gold); font-weight: 700;">
-          ${p.balance} <svg class="star-svg-sm"><use href="#tg-star-icon"/></svg>
-        </span>
-      </div>
-    `).join("");
-  }
-
-  function renderFallbackLeaderboard() {
-    const bots = [
-      { playerName: "TonWhale", balance: 1420 },
-      { playerName: "DurovFan", balance: 890 },
-      { playerName: "StarHunter", balance: 510 }
-    ];
-    if (state.playerName) {
-      bots.push({ playerName: state.playerName + " (Вы)", balance: state.balance });
-    }
-    bots.sort((a, b) => b.balance - a.balance);
-    renderLeaderboard(bots);
-  }
-
-  function escapeHtml(str) {
-    return str.replace(/[&<>"']/g, m => ({
-      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-    }[m]));
-  }
-
-  // =========================================================
-  // ТЭГИ, МАРКЕТПЛЕЙС И ИНВЕНТАРЬ
-  // =========================================================
-  function getAllTags() {
-    const set = new Set(["Все"]);
-    NFT_CATALOG.forEach(item => item.tags.forEach(t => set.add(t)));
-    return Array.from(set);
-  }
-
-  function renderTags() {
-    const tags = getAllTags();
-    tagBar.innerHTML = tags.map(tag => `
-      <button class="tag-btn ${state.selectedTag === tag ? "active" : ""}" data-tag="${tag}">
-        #${tag}
-      </button>
-    `).join("");
-
-    tagBar.querySelectorAll(".tag-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        state.selectedTag = btn.dataset.tag;
-        renderTags();
-        renderMarket();
-      });
-    });
-  }
-
-  function renderMarket() {
-    const filtered = state.selectedTag === "Все"
-      ? NFT_CATALOG
-      : NFT_CATALOG.filter(item => item.tags.includes(state.selectedTag));
-
-    marketGrid.innerHTML = filtered.map(item => {
-      const price = marketPrices[item.id];
-      const diff = marketTrends[item.id] || 0;
-      const trendHtml = diff >= 0
-        ? `<span class="trend up">+${diff}</span>`
-        : `<span class="trend down">${diff}</span>`;
-      const canBuy = state.balance >= price;
-
-      const tagsHtml = item.tags.map(t => {
-        let cls = "badge-tag";
-        if (t === "Редкое") cls += " rare";
-        if (t === "Легендарное") cls += " legendary";
-        return `<span class="${cls}">${t}</span>`;
-      }).join("");
-
-      return `
-        <div class="card">
-          <div>
-            <div class="card-top">
-              <div class="card-tags">${tagsHtml}</div>
-            </div>
-            <div class="nft-stage">${item.svg}</div>
-            <div class="nft-name">${item.name}</div>
-            <div class="nft-desc">${item.desc}</div>
-          </div>
-          <div>
-            <div class="price-row">
-              <div class="price-val">
-                <svg class="star-svg-sm"><use href="#tg-star-icon"/></svg>
-                <span>${price}</span>
-              </div>
-              ${trendHtml}
-            </div>
-            <button class="btn btn-buy" data-buy="${item.id}" ${canBuy ? "" : "disabled"}>
-              Купить подарок
-            </button>
-          </div>
-        </div>
-      `;
-    }).join("");
-
-    marketGrid.querySelectorAll("[data-buy]").forEach(btn => {
-      btn.addEventListener("click", () => buyGift(btn.dataset.buy));
-    });
-  }
-
-  function renderInventory() {
-    invCount.textContent = state.inventory.length;
-    if (state.inventory.length === 0) {
-      inventoryList.innerHTML = `
-        <div style="color: var(--muted); font-size: 13px; text-align: center; padding: 20px 0;">
-          У вас пока нет подарков. Купите первый NFT на бирже!
-        </div>
-      `;
+  function openApp(app) {
+    const existing = windowsState.find(w => w.appId === app.id);
+    if (existing) {
+      focusWindow(existing);
       return;
     }
 
-    inventoryList.innerHTML = state.inventory.map((owned, index) => {
-      const item = NFT_CATALOG.find(c => c.id === owned.id);
-      if (!item) return "";
-      const currentPrice = marketPrices[item.id];
-      const profit = currentPrice - owned.boughtAt;
-      const profitColor = profit >= 0 ? "var(--green)" : "var(--red)";
-      const profitSign = profit >= 0 ? "+" : "";
+    const offset = windowsState.length * 28;
+    const winObj = {
+      id: 'win_' + Date.now(),
+      appId: app.id,
+      title: app.name,
+      icon: app.icon,
+      x: 120 + offset,
+      y: 45 + offset,
+      w: app.w,
+      h: app.h,
+      zIndex: ++topZIndex,
+      minimized: false,
+      maximized: false,
+      el: null
+    };
 
-      return `
-        <div class="inv-item">
-          <div class="inv-info">
-            <div class="inv-mini-svg">${item.svg}</div>
-            <div>
-              <div class="inv-title">${item.name}</div>
-              <div class="inv-meta">
-                Куплено: ${owned.boughtAt} | Сейчас: <b style="color:${profitColor}">${currentPrice} (${profitSign}${profit})</b>
-              </div>
-            </div>
-          </div>
-          <button class="btn btn-sell" data-sell="${index}">
-            Продать за ${currentPrice}
-          </button>
+    const winEl = document.createElement('div');
+    winEl.className = 'window';
+    winEl.style.left = winObj.x + 'px';
+    winEl.style.top = winObj.y + 'px';
+    winEl.style.width = winObj.w + 'px';
+    winEl.style.height = winObj.h + 'px';
+    winEl.style.zIndex = winObj.zIndex;
+
+    winEl.innerHTML = `
+      <div class="window-header">
+        <div class="window-title"><span>${app.icon}</span><span>${app.name}</span></div>
+        <div class="window-controls">
+          <button class="win-btn min" title="Свернуть">_</button>
+          <button class="win-btn max" title="Развернуть">□</button>
+          <button class="win-btn close" title="Закрыть">✕</button>
         </div>
-      `;
-    }).join("");
+      </div>
+      <div class="window-body"></div>
+      <div class="resizer"></div>
+    `;
 
-    inventoryList.querySelectorAll("[data-sell]").forEach(btn => {
-      btn.addEventListener("click", () => sellGift(Number(btn.dataset.sell)));
+    winObj.el = winEl;
+    desktop.appendChild(winEl);
+    windowsState.push(winObj);
+
+    app.render(winEl.querySelector('.window-body'));
+
+    winEl.addEventListener('mousedown', () => focusWindow(winObj));
+
+    winEl.querySelector('.min').onclick = (e) => {
+      e.stopPropagation();
+      winObj.minimized = true;
+      updateTaskbar();
+      updateRenderCulling();
+    };
+
+    winEl.querySelector('.max').onclick = (e) => {
+      e.stopPropagation();
+      winObj.maximized = !winObj.maximized;
+      if (winObj.maximized) {
+        winEl.style.left = '0px';
+        winEl.style.top = '0px';
+        winEl.style.width = '100%';
+        winEl.style.height = '100%';
+        winEl.style.borderRadius = '0';
+      } else {
+        winEl.style.left = winObj.x + 'px';
+        winEl.style.top = winObj.y + 'px';
+        winEl.style.width = winObj.w + 'px';
+        winEl.style.height = winObj.h + 'px';
+        winEl.style.borderRadius = '12px';
+      }
+      updateRenderCulling();
+    };
+
+    winEl.querySelector('.close').onclick = (e) => {
+      e.stopPropagation();
+      const idx = windowsState.indexOf(winObj);
+      if (idx > -1) windowsState.splice(idx, 1);
+      winEl.remove();
+      updateTaskbar();
+      updateRenderCulling();
+    };
+
+    const header = winEl.querySelector('.window-header');
+    header.onmousedown = (e) => {
+      if (winObj.maximized) return;
+      focusWindow(winObj);
+      const startX = e.clientX - winObj.x;
+      const startY = e.clientY - winObj.y;
+
+      function onMove(ev) {
+        winObj.x = ev.clientX - startX;
+        winObj.y = Math.max(0, ev.clientY - startY);
+        winEl.style.left = winObj.x + 'px';
+        winEl.style.top = winObj.y + 'px';
+        updateRenderCulling();
+      }
+      function onUp() {
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+      }
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    };
+
+    const resizer = winEl.querySelector('.resizer');
+    resizer.onmousedown = (e) => {
+      e.stopPropagation();
+      if (winObj.maximized) return;
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const startW = winObj.w;
+      const startH = winObj.h;
+
+      function onResize(ev) {
+        winObj.w = Math.max(280, startW + (ev.clientX - startX));
+        winObj.h = Math.max(200, startH + (ev.clientY - startY));
+        winEl.style.width = winObj.w + 'px';
+        winEl.style.height = winObj.h + 'px';
+        updateRenderCulling();
+      }
+      function onStop() {
+        window.removeEventListener('mousemove', onResize);
+        window.removeEventListener('mouseup', onStop);
+      }
+      window.addEventListener('mousemove', onResize);
+      window.addEventListener('mouseup', onStop);
+    };
+
+    updateTaskbar();
+    updateRenderCulling();
+  }
+
+  function updateTaskbar() {
+    runningAppsContainer.innerHTML = '';
+    const highestZ = Math.max(0, ...windowsState.filter(w => !w.minimized).map(w => w.zIndex));
+
+    windowsState.forEach(win => {
+      const btn = document.createElement('div');
+      btn.className = 'task-item' + (!win.minimized && win.zIndex === highestZ ? ' active' : '');
+      btn.innerHTML = `<span>${win.icon}</span><span>${win.title}</span>`;
+      btn.onclick = () => {
+        if (win.minimized) {
+          focusWindow(win);
+        } else if (win.zIndex === highestZ) {
+          win.minimized = true;
+          updateTaskbar();
+          updateRenderCulling();
+        } else {
+          focusWindow(win);
+        }
+      };
+      runningAppsContainer.appendChild(btn);
     });
   }
 
-  function renderAll() {
-    displayBalance.textContent = state.balance;
-    renderTags();
-    renderMarket();
-    renderInventory();
-    if (!state.onlineMode) renderFallbackLeaderboard();
-  }
-
-  // =========================================================
-  // ПОКУПКА И ПРОДАЖА
-  // =========================================================
-  function buyGift(id) {
-    const item = NFT_CATALOG.find(c => c.id === id);
-    const price = marketPrices[id];
-    if (!item || state.balance < price) return;
-
-    state.balance -= price;
-    state.inventory.push({
-      id: item.id,
-      boughtAt: price,
-      ts: Date.now()
-    });
-
-    saveLocal();
-    renderAll();
-    syncWithServer(false);
-    showToast(`Куплен подарок ${item.name} за ${price} Stars!`);
-  }
-
-  function sellGift(index) {
-    const owned = state.inventory[index];
-    if (!owned) return;
-    const item = NFT_CATALOG.find(c => c.id === owned.id);
-    const sellPrice = marketPrices[owned.id];
-
-    state.balance += sellPrice;
-    state.inventory.splice(index, 1);
-
-    saveLocal();
-    renderAll();
-    syncWithServer(false);
-    showToast(`Продано: ${item.name} за ${sellPrice} Stars!`);
-  }
-
-  // =========================================================
-  // ДИНАМИКА ЦЕН И ОПРОС СЕРВЕРА
-  // =========================================================
   setInterval(() => {
-    if (state.onlineMode) {
-      syncWithServer(false);
-    } else {
-      NFT_CATALOG.forEach(item => {
-        const changePercent = (Math.random() - 0.48) * 0.24;
-        const oldPrice = marketPrices[item.id];
-        const minP = Math.max(10, Math.round(item.basePrice * 0.55));
-        const maxP = Math.round(item.basePrice * 2.2);
-        const newPrice = Math.min(maxP, Math.max(minP, Math.round(oldPrice * (1 + changePercent))));
-        marketTrends[item.id] = newPrice - oldPrice;
-        marketPrices[item.id] = newPrice;
-      });
-      if (state.playerName) renderAll();
-    }
-  }, 4000);
+    const now = new Date();
+    document.getElementById('clock').textContent =
+      `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  }, 1000);
 
-  renderTags();
-  renderMarket();
+  window.addEventListener('resize', updateRenderCulling);
+})();
 </script>
 </body>
 </html>
